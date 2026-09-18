@@ -1,0 +1,135 @@
+.wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: var(--page-padding-y) var(--page-padding-x);
+  max-width: var(--content-width-tablet);
+  margin-inline: auto;
+  width: 100%;
+}
+
+.top {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressDots {
+  display: flex;
+  gap: 6px;
+  margin-block-end: 4px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-border);
+}
+
+.dotActive {
+  background: var(--color-primary);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (min-width: 768px) {
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+}
+
+.card {
+  position: relative;
+  text-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 13px;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  min-height: var(--min-touch-target);
+}
+
+.cardSelected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.checkBadge {
+  position: absolute;
+  top: 10px;
+  inset-inline-end: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardIcon {
+  font-size: 28px;
+}
+
+.cardLabel {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.cardDescription {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.brandLine {
+  margin-block-start: 6px;
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--color-primary);
+  opacity: 0;
+  animation: fade-in 0.4s ease-in forwards;
+}
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+.skipLink {
+  text-align: center;
+  font-size: var(--text-sm);
+}
+
+.skipLink a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+}

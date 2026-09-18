@@ -123,8 +123,10 @@
     },
     "claim": {
       "title": "Find your institution",
+      "searchLabel": "Institution",
       "searchPlaceholder": "Search for your institution",
       "notListed": "Not listed? We'll add it",
+      "notListedToast": "We don't have this one yet — tell us at {email} and we'll add it.",
       "changeLink": "Change",
       "claimButton": "Claim this institution as admin",
       "confirmTitle": "Claim submitted",
