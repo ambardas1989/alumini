@@ -34,15 +34,27 @@
     "logOut": "Log out",
     "stayLoggedIn": "Stay logged in"
   },
+  "brand": {
+    "tagline": "Some bonds never graduate.",
+    "subline": "Find your batch. Stay connected forever.",
+    "onboarding": {
+      "alumni_line": "Your batch. Forever.",
+      "teacher_line": "Your tribe is here.",
+      "school_admin_line": "Their journey started with you."
+    }
+  },
   "auth": {
     "login": {
       "title": "Welcome back",
       "subtitle": "Sign in to continue",
       "googleButton": "Sign in with Google",
+      "googleComingSoon": "Google sign-in coming soon",
       "emailLabel": "Email address",
       "passwordLabel": "Password",
+      "signInButton": "Sign in",
       "signupLink": "Don't have an account? Sign up",
       "forgotPassword": "Forgot password?",
+      "sessionExpiredBanner": "Your session expired. Please sign in again.",
       "errors": {
         "invalidCredentials": "Incorrect email or password",
         "rateLimited": "Too many attempts. Wait a few minutes.",
@@ -56,7 +68,14 @@
       "emailLabel": "Email address",
       "passwordLabel": "Password",
       "confirmPasswordLabel": "Confirm password",
+      "signUpButton": "Sign up",
       "loginLink": "Already have an account? Sign in",
+      "passwordStrength": {
+        "label": "Password strength",
+        "weak": "Weak",
+        "fair": "Fair",
+        "strong": "Strong"
+      },
       "errors": {
         "passwordMismatch": "Passwords do not match",
         "passwordTooShort": "At least 8 characters",
@@ -64,22 +83,32 @@
       }
     },
     "mfa": {
-      "setupTitle": "Set up two-factor authentication",
-      "setupSubtitle": "Scan this QR code with your authenticator app",
+      "setupTitle": "Secure your account",
+      "setupSubtitle": "Two-factor authentication keeps your account safe",
+      "scanQrInstruction": "Scan this QR code with your authenticator app",
       "manualKey": "Can't scan? Enter this key manually:",
+      "copySecret": "Copy",
+      "secretCopied": "Copied",
       "appSuggestion": "Use Google Authenticator, Authy, or any TOTP app",
       "codeLabel": "6-digit code",
-      "verifyTitle": "Enter your authentication code",
-      "verifySubtitle": "Open your authenticator app to get the code",
+      "confirmSetupInstruction": "Enter the 6-digit code to confirm setup",
+      "verifyTitle": "Welcome back",
+      "verifySubtitle": "Enter the code from your authenticator app",
+      "troubleLink": "Having trouble? Sign in again",
+      "submitButton": "Submit",
+      "redirectingIn": "Redirecting in {seconds}...",
       "errors": {
         "invalidCode": "Incorrect code",
-        "expiredCode": "Session expired. Please log in again.",
-        "maxAttempts": "Too many attempts. Please log in again."
+        "maxAttemptsRedirect": "Too many attempts. Redirecting to sign in...",
+        "expiredCode": "Session expired. Please sign in again."
       }
     }
   },
   "onboarding": {
     "title": "What brings you here?",
+    "subtitle": "We'll personalise your experience",
+    "skipLink": "Already set up? Skip",
+    "continueButton": "Continue",
     "alumni": {
       "label": "Find my classmates",
       "description": "Connect with your batch and school friends"
@@ -88,9 +117,19 @@
       "label": "Connect with my students",
       "description": "Stay in touch with all your classes"
     },
-    "admin": {
+    "school_admin": {
       "label": "Manage my institution",
       "description": "Set up your school or college on AlumTribe"
+    },
+    "claim": {
+      "title": "Find your institution",
+      "searchPlaceholder": "Search for your institution",
+      "notListed": "Not listed? We'll add it",
+      "changeLink": "Change",
+      "claimButton": "Claim this institution as admin",
+      "confirmTitle": "Claim submitted",
+      "confirmMessage": "Our team reviews within 24 hours.",
+      "goHomeButton": "Go to home"
     }
   },
   "home": {

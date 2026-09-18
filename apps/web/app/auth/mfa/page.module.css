@@ -1,0 +1,147 @@
+.top {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.qrSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.qrSkeleton {
+  width: 200px;
+  height: 200px;
+  border-radius: 12px;
+  background: var(--color-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scanInstruction {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.qrImage {
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+}
+
+.manualKeyToggle {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  font-family: var(--font-primary);
+  cursor: pointer;
+}
+
+.manualKeyBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-cream);
+  border: 1px solid var(--color-border);
+}
+
+.secret {
+  font-family: monospace;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  letter-spacing: 0.05em;
+  word-break: break-all;
+}
+
+.copyButton {
+  flex-shrink: 0;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  padding-inline: 10px;
+  padding-block: 4px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.appSuggestion {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-block-start: 4px;
+}
+
+.appIcons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+.appIcon {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-cream);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding-inline: 10px;
+  padding-block: 4px;
+}
+
+.codeSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.codeInstruction {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.troubleLink {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.redirectNotice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.countdown {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  font-weight: 600;
+}

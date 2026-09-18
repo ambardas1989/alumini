@@ -1,0 +1,52 @@
+.row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.box {
+  width: 44px;
+  height: 52px;
+  min-height: 44px;
+  text-align: center;
+  font-size: 20px; /* well above the 16px iOS-zoom floor */
+  font-weight: 700;
+  font-family: var(--font-primary);
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.box:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.box:disabled {
+  opacity: 0.6;
+}
+
+/* Reduced-motion users already get this animation compressed to ~0 via the
+   global *,*::before,*::after{animation-duration:.01ms!important} rule in
+   app/globals.css — no separate override needed here. */
+.shake .box {
+  border-color: var(--color-error);
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}

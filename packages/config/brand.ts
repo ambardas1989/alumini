@@ -14,19 +14,35 @@
 export const brand = {
   // ── Identity ────────────────────────────────────────────────────────────
   /** Display name shown in UI, emails, app store listings */
-  name: 'Alumini',
+  name: 'AlumTribe',
 
   /** Short tagline shown on splash screen and marketing */
-  tagline: 'Your class. Your people. Connected forever.',
+  tagline: 'Some bonds never graduate.',
+
+  /** Secondary line — shown alongside tagline on first-impression moments (e.g. signup) */
+  subline: 'Find your batch. Stay connected forever.',
 
   /** Primary domain — used for deep links, OAuth callbacks, email from-address */
-  domain: 'alumini.app',
+  domain: 'alumtribe.com',
 
   /** Support email */
-  supportEmail: 'support@alumini.app',
+  supportEmail: 'hello@alumtribe.com',
 
   /** Legal entity name (for Terms of Service, Privacy Policy) */
   legalName: 'Alumini Technologies Pvt. Ltd.',
+
+  /**
+   * Persona-specific brand lines — shown once, right after a user picks
+   * that persona during onboarding (or as a reminder in the persona
+   * switcher). Deliberately not reused as generic taglines elsewhere —
+   * each is written to land as a personal, in-the-moment affirmation, not
+   * marketing copy.
+   */
+  onboardingLines: {
+    alumni: 'Your batch. Forever.',
+    teacher: 'Your tribe is here.',
+    school_admin: 'Their journey started with you.',
+  },
 
   // ── Colours (light mode) ────────────────────────────────────────────────
   colors: {

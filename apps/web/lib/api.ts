@@ -56,6 +56,14 @@ interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   body?: unknown;
   query?: Record<string, QueryValue>;
+  /**
+   * Overrides the Authorization header. Needed for the brief pre-session
+   * window between login()/signup() and a completed MFA challenge, where
+   * the caller only holds a short-lived mfaPendingToken (see
+   * lib/mfaSession.ts) — not a real session token from lib/auth.ts's
+   * getToken(), which is what every other call implicitly uses below.
+   */
+  token?: string;
 }
 
 function buildUrl(path: string, query?: Record<string, QueryValue>): string {
@@ -90,7 +98,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const token = getToken();
+  const token = options.token ?? getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let response: Response;
@@ -169,21 +177,32 @@ export function googleAuth(): string {
   return `${API_BASE_URL}/auth/google`;
 }
 
-/** Starts TOTP enrolment (the default/only method this covers — see GET /auth/mfa/setup). */
-export function setupMfa(): Promise<SetupMfaResponse> {
-  return request<{ method: string; qrCodeDataUrl: string; secret: string }>('/auth/mfa/setup').then(
-    (raw) => ({ qrCodeUrl: raw.qrCodeDataUrl, secret: raw.secret }),
-  );
+/**
+ * Starts TOTP enrolment (the default/only method this covers — see GET
+ * /auth/mfa/setup). Takes the mfaPendingToken explicitly (see
+ * lib/mfaSession.ts) — at this point in the flow there is no real session
+ * for the default Authorization header (lib/auth.ts's getToken()) to send.
+ */
+export function setupMfa(token: string): Promise<SetupMfaResponse> {
+  return request<{ method: string; qrCodeDataUrl: string; secret: string }>('/auth/mfa/setup', {
+    token,
+  }).then((raw) => ({ qrCodeUrl: raw.qrCodeDataUrl, secret: raw.secret }));
 }
 
-/** Confirms MFA enrolment — always TOTP here, matching setupMfa(). */
-export function verifyMfa(code: string): Promise<LoginResponse> {
-  return request('/auth/mfa/verify', { method: 'POST', body: { method: 'totp', code } });
+/** Confirms MFA enrolment — always TOTP here, matching setupMfa(). Same mfaPendingToken reasoning as setupMfa(). */
+export function verifyMfa(token: string, code: string): Promise<LoginResponse> {
+  return request('/auth/mfa/verify', { method: 'POST', body: { method: 'totp', code }, token });
 }
 
-/** Completes a pending login (or re-authorises a sensitive action) with the account's enrolled method. */
-export function challengeMfa(code: string): Promise<LoginResponse> {
-  return request('/auth/mfa/challenge', { method: 'POST', body: { code } });
+/**
+ * Completes a pending login with the account's enrolled method. Also used,
+ * elsewhere in the app, for the sensitive-action MFA re-challenge on an
+ * already-logged-in user — that call site passes lib/auth.ts's getToken()
+ * explicitly rather than relying on the default, since by then it's a real
+ * access token, not an mfaPendingToken.
+ */
+export function challengeMfa(token: string, code: string): Promise<LoginResponse> {
+  return request('/auth/mfa/challenge', { method: 'POST', body: { code }, token });
 }
 
 /**

@@ -1,0 +1,18 @@
+/* No min-height here — AppShell's own .app-shell rule (styles/layout.css)
+   already establishes the 100dvh/100vh-tall flex column this sits inside;
+   flex: 1 is enough to fill it. */
+.wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--page-padding-y) var(--page-padding-x);
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
