@@ -3,8 +3,9 @@
  * All functions are pure — no side effects, no external dependencies.
  */
 
-import type { ClassroomIdParams } from '@alumini/types';
-import { appConfig } from '@alumini/config/app';
+import type { ClassroomIdParams } from "@alumini/types";
+export type { ClassroomIdParams };
+import { appConfig } from "@alumini/config/app";
 
 // ── Classroom ID Generation ───────────────────────────────────────────────────
 
@@ -42,13 +43,15 @@ export function generateClassroomId(params: ClassroomIdParams): string {
   if (grade) {
     // School format: grade + optional section (e.g. '9A', '10', '12B')
     classSegment = section
-      ? `${grade}${section.toUpperCase().replace(/\s+/g, '')}`
+      ? `${grade}${section.toUpperCase().replace(/\s+/g, "")}`
       : grade;
   } else if (program) {
     // College format: program slug (e.g. 'MBA', 'BTECH')
-    classSegment = program.toUpperCase().replace(/\s+/g, '');
+    classSegment = program.toUpperCase().replace(/\s+/g, "");
   } else {
-    throw new Error('Either grade (school) or program (college) must be provided');
+    throw new Error(
+      "Either grade (school) or program (college) must be provided",
+    );
   }
 
   const parts: string[] = [
@@ -59,7 +62,7 @@ export function generateClassroomId(params: ClassroomIdParams): string {
     batchYear.toString(),
   ];
 
-  return parts.join('-');
+  return parts.join("-");
 }
 
 // ── Name Redaction ────────────────────────────────────────────────────────────
@@ -75,19 +78,19 @@ export function generateClassroomId(params: ClassroomIdParams): string {
  * redactName('Arjun')        // → 'A***'
  */
 export function redactName(fullName: string): string {
-  if (!fullName) return '***';
+  if (!fullName) return "***";
 
   const parts = fullName.trim().split(/\s+/);
 
   return parts
     .map((part) => {
-      if (part.length <= 1) return part + '.';
+      if (part.length <= 1) return part + ".";
       if (appConfig.REDACTION_KEEP_FIRST_CHAR) {
-        return part[0] + '***';
+        return part[0] + "***";
       }
-      return '***';
+      return "***";
     })
-    .join(' ');
+    .join(" ");
 }
 
 // ── Institution Code Generation ───────────────────────────────────────────────
@@ -102,10 +105,11 @@ export function generateInstitutionCode(
   countryCode: string,
   year: number,
 ): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // No ambiguous chars (0/O, 1/I)
-  const randomPart = Array.from({ length: 6 }, () =>
-    chars[Math.floor(Math.random() * chars.length)],
-  ).join('');
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No ambiguous chars (0/O, 1/I)
+  const randomPart = Array.from(
+    { length: 6 },
+    () => chars[Math.floor(Math.random() * chars.length)],
+  ).join("");
 
   return `${countryCode.toUpperCase()}-${year}-${randomPart}`;
 }
@@ -120,11 +124,11 @@ export function generateInstitutionCode(
  * @returns Total points accumulated
  */
 export function calculateVouchPoints(
-  vouches: Array<{ role: 'student' | 'teacher' }>,
+  vouches: Array<{ role: "student" | "teacher" }>,
 ): number {
   return vouches.reduce((total, vouch) => {
     const points =
-      vouch.role === 'teacher'
+      vouch.role === "teacher"
         ? appConfig.VOUCH_POINTS_TEACHER
         : appConfig.VOUCH_POINTS_STUDENT;
     return total + points;
@@ -135,7 +139,7 @@ export function calculateVouchPoints(
  * Returns true if the accumulated vouch points meet the threshold.
  */
 export function isVouchThresholdMet(
-  vouches: Array<{ role: 'student' | 'teacher' }>,
+  vouches: Array<{ role: "student" | "teacher" }>,
 ): boolean {
   return calculateVouchPoints(vouches) >= appConfig.VOUCH_POINTS_REQUIRED;
 }
@@ -172,7 +176,7 @@ export function isExpired(expiresAt: string | Date): boolean {
  */
 export function isValidClassroomId(globalId: string): boolean {
   // Must be uppercase, parts separated by hyphens, 4–5 parts
-  const parts = globalId.split('-');
+  const parts = globalId.split("-");
   if (parts.length < 4 || parts.length > 6) return false;
 
   // Each part must be alphanumeric uppercase

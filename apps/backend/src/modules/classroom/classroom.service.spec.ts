@@ -21,8 +21,6 @@ const mockAuditLog = jest.fn().mockResolvedValue(undefined);
 const mockEventEmit = jest.fn();
 
 // Track all Supabase calls
-let mockSupabaseData: any = null;
-let mockSupabaseError: any = null;
 const mockMaybeSingle = jest.fn();
 const mockSingle = jest.fn();
 const mockInsert = jest.fn();
@@ -31,14 +29,21 @@ const mockEq = jest.fn();
 const mockIlike = jest.fn();
 const mockLimit = jest.fn();
 
+// Each chained call returns 'this' so the chain resolves correctly.
+// mockInsert needs to return an object with .select() for the insert().select().single() chain.
+const mockInsertChain = {
+  select: jest.fn().mockReturnValue({ single: mockSingle }),
+};
+
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
     from: jest.fn(() => ({
       select: mockSelect.mockReturnThis(),
-      insert: mockInsert.mockReturnThis(),
+      insert: jest.fn(() => mockInsertChain),
       eq: mockEq.mockReturnThis(),
       ilike: mockIlike.mockReturnThis(),
       limit: mockLimit.mockReturnThis(),
+      update: jest.fn().mockReturnThis(),
       single: mockSingle,
       maybeSingle: mockMaybeSingle,
     })),
@@ -81,8 +86,9 @@ describe('ClassroomService', () => {
           useValue: { log: mockAuditLog },
         },
         {
+          // Must use the string token NestJS registers EventEmitter2 under
           provide: EventEmitter2,
-          useValue: { emit: mockEventEmit },
+          useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() },
         },
       ],
     }).compile();
@@ -249,6 +255,8 @@ describe('ClassroomService', () => {
   describe('searchInstitutions()', () => {
     it('should return matching institutions', async () => {
       const mockInstitutions = [mockInstitution];
+      // ilike returns 'this', limit resolves the chain
+      mockIlike.mockReturnThis();
       mockLimit.mockResolvedValue({ data: mockInstitutions, error: null });
 
       const results = await service.searchInstitutions('birla');
@@ -256,6 +264,7 @@ describe('ClassroomService', () => {
     });
 
     it('should return empty array on Supabase error', async () => {
+      mockIlike.mockReturnThis();
       mockLimit.mockResolvedValue({ data: null, error: { message: 'Query failed' } });
 
       const results = await service.searchInstitutions('birla');
@@ -263,11 +272,12 @@ describe('ClassroomService', () => {
     });
 
     it('should filter by country code when provided', async () => {
+      mockIlike.mockReturnThis();
+      mockEq.mockReturnThis();
       mockLimit.mockResolvedValue({ data: [], error: null });
 
       await service.searchInstitutions('iit', 'IN');
 
-      // The eq filter for country_code should have been applied
       expect(mockEq).toHaveBeenCalledWith('country_code', 'IN');
     });
   });
