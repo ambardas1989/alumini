@@ -14,11 +14,13 @@
  * has used.
  *
  * CROSS-MODULE EVENTS:
- * - Emits 'event.created' after insert — CorridorService.handleEventCreated()
- *   listens and auto-posts an event_card message with metadata.event_id
- *   (SPEC.md §10.1). The payload shape here (`{ eventId, classroomId,
- *   title }`) matches exactly what that listener already expects — it was
- *   written from this same assumption before this module existed.
+ * - Emits 'event.created' after insert. Two independent listeners:
+ *   CorridorService.handleEventCreated() posts an event_card message
+ *   (metadata.event_id) and only needs {eventId, classroomId, title};
+ *   NotificationService.handleEventCreated() (added when the notification
+ *   module was built) also needs eventDate/location/isOnline to compose
+ *   the push/in-app notification body, so those were added to the payload
+ *   rather than having notification re-fetch the row it was just handed.
  * - Emits 'event.deleted' on deletion. See deleteEvent()'s comment for the
  *   orphaned-event_card limitation this is meant to eventually address.
  */
@@ -87,11 +89,14 @@ export class EventsService {
       throw new BadRequestException('Failed to create event. Please try again.');
     }
 
-    // CorridorModule listens and posts the event_card — see module comment.
+    // CorridorModule and NotificationModule both listen — see module comment.
     this.eventEmitter.emit('event.created', {
-      eventId: event.id,
+      eventId:     event.id,
       classroomId,
-      title: dto.title,
+      title:       dto.title,
+      eventDate:   event.event_date,
+      location:    dto.location,
+      isOnline:    dto.isOnline ?? false,
     });
 
     await this.audit.log({

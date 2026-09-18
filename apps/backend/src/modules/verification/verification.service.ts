@@ -531,10 +531,14 @@ export class VerificationService {
     );
 
     // Schedule document deletion (emit event — storage module handles this)
-    // Document should be deleted immediately after approval per privacy design
+    // Document should be deleted immediately after approval per privacy design.
+    // userId is also included (added when NotificationModule was built) so
+    // its handler can notify the applicant without a second DB round trip —
+    // this event now has two independent listeners with different needs.
     this.eventEmitter.emit('verification.document.approved', {
       storagePath: verification.document_storage_path,
       verificationId,
+      userId: verification.user_id,
     });
 
     await this.audit.log({
