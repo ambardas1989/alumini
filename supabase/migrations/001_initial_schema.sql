@@ -361,8 +361,7 @@ CREATE TABLE public.verifications (
   vouches               jsonb       NOT NULL DEFAULT '[]'::jsonb,
   vouch_points          numeric     NOT NULL DEFAULT 0,
   -- Code verification fields
-  code_id               uuid        REFERENCES public.institution_codes(id),
-  -- Review fields (for document and admin-reviewed verifications)
+  code_id uuid, -- FK to institution_codes added after that table is created  -- Review fields (for document and admin-reviewed verifications)
   reviewed_by           uuid        REFERENCES public.profiles(id),
   reviewed_at           timestamptz,
   rejection_reason      text,
@@ -942,3 +941,9 @@ ON CONFLICT (slug) DO NOTHING;
 -- SELECT indexname FROM pg_indexes
 --   WHERE schemaname = 'public' ORDER BY indexname;
 -- ============================================================
+
+-- Add FK from verifications to institution_codes
+-- (defined here because institution_codes is created after verifications)
+ALTER TABLE public.verifications
+ADD CONSTRAINT verifications_code_id_fkey
+FOREIGN KEY (code_id) REFERENCES public.institution_codes(id);

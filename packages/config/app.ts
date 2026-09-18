@@ -143,6 +143,16 @@ export const appConfig = {
   /** Monthly premium subscription price in US Dollars */
   PREMIUM_PRICE_USD: 2,
 
+  // ── Classroom ─────────────────────────────────────────────────────────────
+
+  /**
+   * How many years back from the current year a classroom still counts as
+   * "active" in the teacher filing cabinet view (SPEC.md §12.1) — e.g. 1
+   * means batch years [currentYear - 1, currentYear] bubble to the top,
+   * everything older collapses into "alumni".
+   */
+  CLASSROOM_ACTIVE_YEAR_WINDOW: 1,
+
   // ── Pagination ────────────────────────────────────────────────────────────
 
   /** Number of messages returned per page in chat */
