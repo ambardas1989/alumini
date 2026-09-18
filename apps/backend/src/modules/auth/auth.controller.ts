@@ -23,7 +23,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 
 import { AuthService } from './auth.service';
@@ -36,6 +35,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthTokenGuard } from './guards/auth-token.guard';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthTokenPayload } from './auth.types';
 import { GoogleProfile } from './strategies/google.strategy';
@@ -63,14 +63,14 @@ export class AuthController {
   // ── Google OAuth ─────────────────────────────────────────────────────────
 
   @Get('google')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Start Google OAuth — redirects to the Google consent screen' })
   googleAuth(): void {
     // Intercepted by GoogleStrategy before this body ever runs.
   }
 
   @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback — completes account link/creation' })
   async googleCallback(@Req() req: Request & { user: GoogleProfile }) {
     return this.authService.loginWithGoogle(req.user, req);

@@ -30,13 +30,44 @@ async function bootstrap(): Promise<void> {
   app.use(compression());
 
   // ── CORS ─────────────────────────────────────────────────────────────────
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
+  // Always-allowed frontend origins, plus whatever CORS_ORIGINS adds on top
+  // (comma-separated, e.g. a production custom domain). '*' in an entry
+  // matches any subdomain segment(s) — needed for Cloudflare Pages/Render's
+  // per-deploy preview URLs, which don't have a fixed hostname to whitelist.
+  const DEFAULT_ALLOWED_ORIGINS = [
+    'http://localhost:3000', // local Next.js dev
+    'http://localhost:19006', // local Expo web
+    'https://*.pages.dev', // Cloudflare Pages preview URLs
+    'https://*.onrender.com', // Render preview URLs
+  ];
+
+  const envOrigins = (process.env.CORS_ORIGINS ?? '')
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
 
+  const allowedOrigins = [...DEFAULT_ALLOWED_ORIGINS, ...envOrigins];
+
+  const originMatches = (origin: string, pattern: string): boolean => {
+    if (!pattern.includes('*')) return origin === pattern;
+
+    const regex = pattern
+      .split('*')
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.+');
+    return new RegExp(`^${regex}$`).test(origin);
+  };
+
   app.enableCors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
+    origin: (origin, callback) => {
+      // No Origin header (server-to-server calls, curl, native mobile
+      // clients) isn't a browser cross-origin request — nothing to check.
+      if (!origin || allowedOrigins.some((pattern) => originMatches(origin, pattern))) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });

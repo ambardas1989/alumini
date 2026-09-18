@@ -44,7 +44,7 @@ import * as QRCode from 'qrcode';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
-import { AuditEventType, MfaMethod, PersonaType } from '@alumini/types';
+import { AuditEventType, ErrorCode, MfaMethod, PersonaType } from '@alumini/types';
 import { daysFromNow, isExpired } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
 import { brand } from '@alumini/config/brand';
@@ -56,6 +56,7 @@ import { MfaVerifyDto } from './dto/mfa-verify.dto';
 import { MfaChallengeDto } from './dto/mfa-challenge.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { LoginResponseDto } from './dto/login-response.dto';
 import { GoogleProfile } from './strategies/google.strategy';
 import {
   AuthTokenPayload,
@@ -66,6 +67,9 @@ import {
   MfaVerifiedResponse,
   TokenPairResponse,
 } from './auth.types';
+
+/** Outcome of a single MFA code check — see verifyCode() and mfaFailureException(). */
+type MfaCodeCheckResult = 'valid' | 'invalid' | 'expired' | 'max_attempts';
 
 @Injectable()
 export class AuthService {
@@ -134,7 +138,10 @@ export class AuthService {
         metadata: { email_domain: dto.email.split('@')[1] ?? null },
         req,
       });
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException({
+        message: 'Invalid email or password',
+        error: ErrorCode.AUTH_INVALID_CREDENTIALS,
+      });
     }
 
     return this.completePasswordVerifiedLogin(data.user.id, dto.email, req);
@@ -318,23 +325,27 @@ export class AuthService {
    * Confirms the code from initiateMfaSetup(), turns MFA on for the account,
    * and — since this always follows a signup or login that was waiting on
    * MFA — immediately issues the full session that was withheld until now.
+   *
+   * Response shape is intentionally narrower than the TokenPairResponse
+   * every other session-issuing flow returns (no refreshToken) — this is
+   * the shape the frontend's POST /auth/mfa/verify integration expects.
    */
   async completeMfaSetup(
     userId: string,
     email: string,
     dto: MfaVerifyDto,
     req?: Request,
-  ): Promise<TokenPairResponse> {
-    const isValid = await this.verifyCode(userId, dto.method, dto.code, { confirmSetup: true });
+  ): Promise<LoginResponseDto> {
+    const result = await this.verifyCode(userId, dto.method, dto.code, { confirmSetup: true });
 
-    if (!isValid) {
+    if (result !== 'valid') {
       await this.audit.log({
         eventType: AuditEventType.AUTH_MFA_FAILURE,
         actorId: userId,
-        metadata: { method: dto.method, stage: 'setup' },
+        metadata: { method: dto.method, stage: 'setup', reason: result },
         req,
       });
-      throw new UnauthorizedException('Incorrect verification code');
+      throw this.mfaFailureException(result);
     }
 
     const { error } = await this.supabase
@@ -354,7 +365,13 @@ export class AuthService {
       req,
     });
 
-    return this.issueTokenPair(userId, email, req, { event: 'mfa_setup_complete' });
+    const tokenPair = await this.issueTokenPair(userId, email, req, { event: 'mfa_setup_complete' });
+
+    return {
+      accessToken: tokenPair.accessToken,
+      expiresAt: daysFromNow(appConfig.JWT_EXPIRY_DAYS).toISOString(),
+      user: await this.loadLoginResponseUser(userId, email),
+    };
   }
 
   // ── MFA challenge (login completion + sensitive-action re-auth) ────────
@@ -387,16 +404,16 @@ export class AuthService {
       throw new BadRequestException('No MFA method is configured for this account');
     }
 
-    const isValid = await this.verifyCode(userId, method, dto.code, { confirmSetup: false });
+    const result = await this.verifyCode(userId, method, dto.code, { confirmSetup: false });
 
-    if (!isValid) {
+    if (result !== 'valid') {
       await this.audit.log({
         eventType: AuditEventType.AUTH_MFA_FAILURE,
         actorId: userId,
-        metadata: { method, purpose: authToken.purpose },
+        metadata: { method, purpose: authToken.purpose, reason: result },
         req,
       });
-      throw new UnauthorizedException('Incorrect verification code');
+      throw this.mfaFailureException(result);
     }
 
     await this.audit.log({
@@ -439,7 +456,7 @@ export class AuthService {
     method: MfaMethod,
     code: string,
     opts: { confirmSetup: boolean },
-  ): Promise<boolean> {
+  ): Promise<MfaCodeCheckResult> {
     if (method === MfaMethod.TOTP) {
       const { data: record } = await this.supabase
         .from('mfa_totp_secrets')
@@ -447,8 +464,8 @@ export class AuthService {
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (!record) return false;
-      if (!opts.confirmSetup && !record.confirmed) return false;
+      if (!record) return 'invalid';
+      if (!opts.confirmSetup && !record.confirmed) return 'invalid';
 
       const isValid = speakeasy.totp.verify({
         secret: record.secret,
@@ -464,7 +481,7 @@ export class AuthService {
           .eq('user_id', userId);
       }
 
-      return isValid;
+      return isValid ? 'valid' : 'invalid';
     }
 
     // SMS — check against the most recent unconsumed, unexpired challenge.
@@ -477,9 +494,9 @@ export class AuthService {
       .limit(1)
       .maybeSingle();
 
-    if (!challenge) return false;
-    if (isExpired(challenge.expires_at)) return false;
-    if (challenge.attempts >= appConfig.RATE_LIMIT_MFA_PER_MIN) return false;
+    if (!challenge) return 'invalid';
+    if (isExpired(challenge.expires_at)) return 'expired';
+    if (challenge.attempts >= appConfig.RATE_LIMIT_MFA_PER_MIN) return 'max_attempts';
 
     const matches = challenge.code_hash === this.hash(code);
 
@@ -488,7 +505,28 @@ export class AuthService {
       .update({ attempts: challenge.attempts + 1, consumed: matches })
       .eq('id', challenge.id);
 
-    return matches;
+    return matches ? 'valid' : 'invalid';
+  }
+
+  /** Maps a non-'valid' verifyCode() result to the matching structured ErrorCode. */
+  private mfaFailureException(result: Exclude<MfaCodeCheckResult, 'valid'>): UnauthorizedException {
+    switch (result) {
+      case 'expired':
+        return new UnauthorizedException({
+          message: 'This code has expired. Please request a new one.',
+          error: ErrorCode.AUTH_MFA_EXPIRED,
+        });
+      case 'max_attempts':
+        return new UnauthorizedException({
+          message: 'Too many incorrect attempts. Please request a new code.',
+          error: ErrorCode.AUTH_MFA_MAX_ATTEMPTS,
+        });
+      default:
+        return new UnauthorizedException({
+          message: 'Incorrect verification code',
+          error: ErrorCode.AUTH_MFA_INVALID_CODE,
+        });
+    }
   }
 
   // ── Session management ───────────────────────────────────────────────────
@@ -505,7 +543,10 @@ export class AuthService {
         secret: process.env.JWT_SECRET,
       });
     } catch {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException({
+        message: 'Invalid or expired refresh token',
+        error: ErrorCode.AUTH_SESSION_EXPIRED,
+      });
     }
 
     if (payload.purpose !== 'refresh' || !payload.sessionId) {
@@ -520,7 +561,10 @@ export class AuthService {
       .maybeSingle();
 
     if (!session || session.revoked_at || isExpired(session.expires_at)) {
-      throw new UnauthorizedException('Session is no longer valid. Please log in again.');
+      throw new UnauthorizedException({
+        message: 'Session is no longer valid. Please log in again.',
+        error: ErrorCode.AUTH_SESSION_EXPIRED,
+      });
     }
 
     const accessToken = await this.signToken(
@@ -696,6 +740,23 @@ export class AuthService {
       email: profile?.email ?? fallbackEmail,
       fullName: profile?.full_name ?? '',
       mfaEnabled: profile?.mfa_enabled ?? false,
+    };
+  }
+
+  /** User shape for LoginResponseDto (POST /auth/mfa/verify) — see completeMfaSetup(). */
+  private async loadLoginResponseUser(userId: string, fallbackEmail: string) {
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('id, email, full_name, avatar_url, active_persona')
+      .eq('id', userId)
+      .single();
+
+    return {
+      id: profile?.id ?? userId,
+      email: profile?.email ?? fallbackEmail,
+      fullName: profile?.full_name ?? '',
+      avatarUrl: profile?.avatar_url ?? null,
+      activePersona: profile?.active_persona ?? PersonaType.ALUMNI,
     };
   }
 

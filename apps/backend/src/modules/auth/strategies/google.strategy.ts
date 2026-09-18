@@ -19,6 +19,23 @@ export interface GoogleProfile {
   avatarUrl?: string;
 }
 
+/**
+ * Whether all three Google OAuth env vars are present. AuthModule uses this
+ * to decide whether to register GoogleStrategy as a provider at all (so its
+ * constructor — which requires a non-empty clientID/clientSecret/callbackURL,
+ * per passport-oauth2 — is never invoked when they're missing, e.g. on a
+ * fresh Render deploy before OAuth credentials are configured) and
+ * GoogleAuthGuard uses it to fail the /auth/google routes cleanly with a 503
+ * instead of ever reaching passport for a strategy that was never registered.
+ */
+export function isGoogleOAuthConfigured(): boolean {
+  return !!(
+    process.env.GOOGLE_CLIENT_ID &&
+    process.env.GOOGLE_CLIENT_SECRET &&
+    process.env.GOOGLE_CALLBACK_URL
+  );
+}
+
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor() {

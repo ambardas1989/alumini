@@ -26,8 +26,15 @@ import type { Request, Response } from 'express';
 
 interface ErrorResponseBody {
   statusCode: number;
-  message: string | string[];
+  /**
+   * A packages/types ErrorCode value when the throwing code provided one
+   * (`throw new SomeException({ message, error: ErrorCode.X })`), otherwise
+   * falls back to the exception's class name (e.g. "NotFoundException").
+   * Kept as `string`, not `ErrorCode`, because that fallback is a real,
+   * valid value here too — only some throw sites have a structured code.
+   */
   error: string;
+  message: string | string[];
   timestamp: string;
 }
 

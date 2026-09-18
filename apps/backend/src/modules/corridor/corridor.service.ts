@@ -100,7 +100,7 @@ import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
 import { MembershipService } from '../membership/membership.service';
-import { AuditEventType, ChannelType, MessageType } from '@alumini/types';
+import { AuditEventType, ChannelType, ErrorCode, MessageType } from '@alumini/types';
 import { getRange, redactName } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
 
@@ -163,7 +163,10 @@ export class CorridorService {
 
     if (!hasFullAccess) {
       if (channel !== ChannelType.CLASSROOM) {
-        throw new ForbiddenException('You do not have access to this channel');
+        throw new ForbiddenException({
+          message: 'You do not have access to this channel',
+          error: ErrorCode.CHANNEL_ACCESS_DENIED,
+        });
       }
 
       // Plain "are they at least a member" check — MembershipService's
@@ -179,7 +182,10 @@ export class CorridorService {
         .maybeSingle();
 
       if (!membership) {
-        throw new ForbiddenException('Only members of this classroom can read its messages');
+        throw new ForbiddenException({
+          message: 'Only members of this classroom can read its messages',
+          error: ErrorCode.CHANNEL_ACCESS_DENIED,
+        });
       }
 
       redact = true;
@@ -256,7 +262,10 @@ export class CorridorService {
   async sendMessage(userId: string, classroomId: string, channel: ChannelType, dto: SendMessageDto, req?: Request) {
     const canAccess = await this.membershipService.canAccessChannel(userId, classroomId, channel);
     if (!canAccess) {
-      throw new ForbiddenException('You do not have access to post in this channel');
+      throw new ForbiddenException({
+        message: 'You do not have access to post in this channel',
+        error: ErrorCode.CHANNEL_ACCESS_DENIED,
+      });
     }
 
     const { data: message, error } = await this.supabase

@@ -243,7 +243,10 @@ describe('AuthService', () => {
       } as any);
 
       expect(result.accessToken).toBeDefined();
-      expect(result.refreshToken).toBeDefined();
+      expect(result.expiresAt).toBeDefined();
+      expect(result.user).toEqual(
+        expect.objectContaining({ id: 'user-1', email: 'user@example.com' }),
+      );
       expect(mockAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: AuditEventType.AUTH_MFA_SETUP }),
       );

@@ -49,6 +49,7 @@ import { createHash, randomInt } from 'crypto';
 import { AuditService } from '../audit/audit.service';
 import {
   AuditEventType,
+  ErrorCode,
   VerificationMethod,
   PersonaType,
   MemberRole,
@@ -204,13 +205,19 @@ export class VerificationService {
 
     if (isExpired(otpRow.expires_at)) {
       await this.supabase.from('verification_email_otps').update({ consumed: true }).eq('id', otpRow.id);
-      throw new BadRequestException('This code has expired. Please request a new one.');
+      throw new BadRequestException({
+        message: 'This code has expired. Please request a new one.',
+        error: ErrorCode.VERIFICATION_OTP_EXPIRED,
+      });
     }
 
     if (otpRow.attempts >= appConfig.EMAIL_OTP_MAX_ATTEMPTS) {
       // Should already be consumed by the branch below, but guards against
       // a row that was exhausted by a previous request in the same window.
-      throw new BadRequestException('Too many incorrect attempts. Please request a new code.');
+      throw new BadRequestException({
+        message: 'Too many incorrect attempts. Please request a new code.',
+        error: ErrorCode.VERIFICATION_OTP_MAX_ATTEMPTS,
+      });
     }
 
     const isValid = otpRow.code_hash === this.hashOtp(otp);
@@ -228,8 +235,8 @@ export class VerificationService {
 
       throw new BadRequestException(
         exhausted
-          ? 'Too many incorrect attempts. Please request a new code.'
-          : 'Incorrect verification code.',
+          ? { message: 'Too many incorrect attempts. Please request a new code.', error: ErrorCode.VERIFICATION_OTP_MAX_ATTEMPTS }
+          : { message: 'Incorrect verification code.', error: ErrorCode.VERIFICATION_OTP_INVALID },
       );
     }
 
@@ -721,7 +728,10 @@ export class VerificationService {
   ): Promise<{ verified: boolean }> {
     // Validate code format before hitting DB
     if (!isValidInstitutionCode(code)) {
-      throw new BadRequestException('Invalid code format');
+      throw new BadRequestException({
+        message: 'Invalid code format',
+        error: ErrorCode.VERIFICATION_CODE_INVALID,
+      });
     }
 
     const { data: codeRecord } = await this.supabase
@@ -732,7 +742,10 @@ export class VerificationService {
       .maybeSingle();
 
     if (!codeRecord) {
-      throw new BadRequestException('Invalid code or code not valid for this classroom');
+      throw new BadRequestException({
+        message: 'Invalid code or code not valid for this classroom',
+        error: ErrorCode.VERIFICATION_CODE_INVALID,
+      });
     }
 
     // Friendly pre-check — the RPC re-validates expiry itself for the
@@ -740,12 +753,18 @@ export class VerificationService {
     // don't go through the RPC at all, so this is the only expiry guard
     // they get.
     if (isExpired(codeRecord.expires_at)) {
-      throw new BadRequestException('This code has expired');
+      throw new BadRequestException({
+        message: 'This code has expired',
+        error: ErrorCode.VERIFICATION_CODE_EXPIRED,
+      });
     }
 
     if (codeRecord.type === 'personal') {
       if (codeRecord.is_redeemed) {
-        throw new BadRequestException('This code has already been redeemed');
+        throw new BadRequestException({
+          message: 'This code has already been redeemed',
+          error: ErrorCode.VERIFICATION_CODE_REDEEMED,
+        });
       }
 
       const { error: updateError } = await this.supabase
@@ -778,9 +797,10 @@ export class VerificationService {
       // fully redeemed, expired, or not found under lock — i.e. it lost a
       // race, or the pre-check above was stale by the time the RPC ran.
       if (!redeemed) {
-        throw new BadRequestException(
-          'This code has expired or reached its maximum redemption limit',
-        );
+        throw new BadRequestException({
+          message: 'This code has expired or reached its maximum redemption limit',
+          error: ErrorCode.VERIFICATION_CODE_REDEEMED,
+        });
       }
     }
 

@@ -28,7 +28,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AuditService } from '../audit/audit.service';
-import { AuditEventType, PersonaType } from '@alumini/types';
+import { AuditEventType, ErrorCode, PersonaType } from '@alumini/types';
 import { generateClassroomId, getRange, redactName, type ClassroomIdParams } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
 import { CreateClassroomDto } from './dto/create-classroom.dto';
@@ -115,6 +115,7 @@ export class ClassroomService {
     if (existing) {
       throw new ConflictException({
         message: `Classroom ${globalId} already exists.`,
+        error: ErrorCode.CLASSROOM_DUPLICATE,
         existingClassroomId: existing.id,
         globalId: existing.global_id,
         memberCount: existing.member_count,
@@ -367,9 +368,11 @@ export class ClassroomService {
       .maybeSingle();
 
     if (!requesterMembership) {
-      throw new ForbiddenException(
-        'Only members of this classroom can view its member list. Join first, or see the classroom summary instead.',
-      );
+      throw new ForbiddenException({
+        message:
+          'Only members of this classroom can view its member list. Join first, or see the classroom summary instead.',
+        error: ErrorCode.CLASSROOM_NOT_MEMBER,
+      });
     }
 
     const isVerified = requesterMembership.verification_status === 'verified';
@@ -498,7 +501,10 @@ export class ClassroomService {
       .maybeSingle();
 
     if (!membership) {
-      throw new NotFoundException('You are not a member of this classroom');
+      throw new NotFoundException({
+        message: 'You are not a member of this classroom',
+        error: ErrorCode.CLASSROOM_NOT_MEMBER,
+      });
     }
 
     if (membership.role === 'admin') {
