@@ -106,8 +106,15 @@ import { appConfig } from '@alumini/config/app';
 
 import { SendMessageDto } from './dto/send-message.dto';
 
-/** Shape returned to callers — deliberately looser than @alumini/types' Message/RedactedMessage unions so one function can produce either. */
-interface PresentedMessage {
+/**
+ * Shape returned to callers — deliberately looser than @alumini/types'
+ * Message/RedactedMessage unions so one function can produce either.
+ * Exported (not just used internally) because CorridorController's
+ * getMessages() return type is inferred from this — with
+ * tsconfig's declaration:true, an unexported type used in a public
+ * method's inferred return type fails to build (TS4053: "cannot be named").
+ */
+export interface PresentedMessage {
   id: string;
   classroomId: string;
   channel: ChannelType;
