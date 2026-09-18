@@ -103,6 +103,8 @@ export enum AuditEventType {
   CLASSROOM_JOINED        = 'classroom.joined',
   CLASSROOM_LEFT          = 'classroom.left',
   CLASSROOM_SETTINGS_UPDATED = 'classroom.settings.updated',
+  CLASSROOM_ADMIN_PROMOTED = 'classroom.admin.promoted',
+  CLASSROOM_ADMIN_DEMOTED  = 'classroom.admin.demoted',
 
   // Institution
   INSTITUTION_CLAIMED     = 'institution.claimed',
