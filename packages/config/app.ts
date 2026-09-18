@@ -37,6 +37,25 @@ export const appConfig = {
   CODE_EXPIRY_DAYS: 90,
 
   /**
+   * Upper bound on a single batch code's max_redemptions. SPEC.md §11.5
+   * says this "cannot exceed class size," but the classrooms table has no
+   * fixed-capacity field to check against — member_count is a live count
+   * of people who've already joined, not a target size for NEW batch-code
+   * redemptions. This is a configurable administrative ceiling standing in
+   * for that missing field.
+   */
+  MAX_BATCH_CODE_REDEMPTIONS: 200,
+
+  /**
+   * How many times to retry generateInstitutionCode() on a collision
+   * before giving up. Collision odds with a 6-char code from a 33-symbol
+   * alphabet are astronomically small (33^6 ≈ 1.29 billion combinations) —
+   * this bound exists to satisfy "must check for uniqueness" defensively,
+   * not because collisions are expected in practice.
+   */
+  CODE_UNIQUENESS_MAX_RETRIES: 5,
+
+  /**
    * Number of student vouches needed for a teacher to become verified.
    * Must come from students in that specific classroom.
    */
