@@ -1,0 +1,45 @@
+/**
+ * Global classes for the two structural layout components
+ * (components/layout/AppShell.tsx, PageContainer.tsx). Plain global CSS —
+ * not a CSS Module — because AppShell's own doc comment specifies these
+ * exact class names, and a page.tsx elsewhere in the app may want to
+ * target `.app-shell`/`.app-content` directly without importing the
+ * component. Imported once from app/layout.tsx.
+ */
+
+.app-shell {
+  /* Fallback declared FIRST, dvh SECOND: CSS uses the last valid
+     declaration for a repeated property, so a browser that understands
+     100dvh applies it (overriding the vh fallback above it); a browser
+     that doesn't recognise `dvh` simply ignores that whole declaration
+     and keeps 100vh. Declaring them in the opposite order — dvh first,
+     vh second — would make every browser, including ones that support
+     dvh, end up using the plain vh value, defeating the point. */
+  min-height: 100vh; /* fallback for browsers without dvh support */
+  min-height: 100dvh; /* dvh = dynamic viewport height (mobile browser bars) */
+  max-width: var(--app-max-width);
+  margin: var(--app-margin);
+  position: relative;
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-content {
+  flex: 1;
+  min-height: 0; /* allows children to scroll inside a flex column instead of overflowing it */
+}
+
+/* AppShell intentionally applies no padding of its own — PageHeader (if a
+   screen renders one) and PageContainer own their own spacing, so a
+   screen that wants edge-to-edge content (e.g. a chat view) isn't fighting
+   padding applied above it. */
+
+.page-container {
+  padding-inline: var(--page-padding-x);
+  padding-block: var(--page-padding-y);
+}
+
+.page-container--no-padding {
+  padding: 0;
+}

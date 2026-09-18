@@ -1,17 +1,23 @@
 .nav {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
+  inset-inline: 0;
+  /* min-height, not height: box-sizing:border-box (global reset) counts
+     the safe-area padding below toward the box's total height, so a fixed
+     60px here would squeeze the tabs on a device with a large safe-area
+     inset (e.g. the iPhone home indicator) instead of growing past it. */
+  min-height: 60px;
   display: flex;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   z-index: 100;
+  /* iPhone home indicator / Android gesture bar */
+  padding-bottom: calc(12px + var(--safe-area-bottom));
 }
 
 .tab {
   flex: 1;
+  min-height: var(--min-touch-target);
   display: flex;
   flex-direction: column;
   align-items: center;

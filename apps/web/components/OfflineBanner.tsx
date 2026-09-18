@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from '@/lib/useTranslations';
 import styles from './OfflineBanner.module.css';
 
 export function OfflineBanner() {
+  const t = useTranslations('common');
   // Starts `false` (matches SSR, where `navigator` doesn't exist) and is
   // corrected on mount — avoids a hydration mismatch from reading
   // navigator.onLine during the initial render.
@@ -27,7 +29,7 @@ export function OfflineBanner() {
 
   return (
     <div className={styles.banner} role="status">
-      You are offline
+      {t('offline')}
     </div>
   );
 }

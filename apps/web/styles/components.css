@@ -1,0 +1,90 @@
+/**
+ * Base styles for native form elements — normalizes their appearance
+ * across Chrome/Safari/Firefox/Edge before any component-level CSS runs.
+ * Imported once, globally, from app/layout.tsx (after globals.css).
+ *
+ * These are element-selector rules (`button`, `input`, ...), which are
+ * lower specificity than any component's own class-based CSS Module rules
+ * — a component can always override a specific property here. The
+ * min-width/min-height touch-target rules below are the one exception
+ * worth calling out: CSS resolves min-width/min-height as a floor against
+ * width/height regardless of which rule has higher specificity, so a
+ * component that sets an explicit smaller width/height (e.g. a compact
+ * icon button) still can't end up under 44px from these rules alone.
+ */
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+
+button,
+[role='button'] {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  min-height: 44px; /* Apple HIG touch target */
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation; /* Removes 300ms tap delay on mobile */
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────────── */
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: 16px; /* CRITICAL: prevents iOS zoom on focus when <16px */
+  line-height: 1.5;
+  width: 100%;
+  min-height: 44px;
+  border-radius: var(--radius, 8px);
+  border: 1px solid var(--color-border);
+  padding: 10px 14px;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  transition: border-color 0.15s ease;
+}
+
+/* font-size: 16px on inputs is NOT a design choice —
+   it prevents iOS Safari from auto-zooming the page
+   when an input is focused. Never set input font-size
+   below 16px or iOS will zoom in and break the layout. */
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+/* ── Checkboxes and radios ───────────────────────────────────────────── */
+/* Custom styled to look identical on Chrome, Safari, Firefox, Edge */
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: 20px;
+  height: 20px;
+  min-height: unset;
+  min-width: unset;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+/**
+ * ── Images ──────────────────────────────────────────────────────────
+ * Use next/image for every image in this app, not a plain <img> tag
+ * (apps/web/components/ui/Avatar.tsx is the one deliberate exception —
+ * it renders arbitrary user-supplied Supabase Storage URLs and doesn't
+ * know their dimensions ahead of time). next/image handles, automatically:
+ *   - WebP/AVIF conversion (see images.formats in next.config.js)
+ *   - Lazy loading (below-the-fold images load on demand)
+ *   - Correct sizing for retina/high-DPI displays (srcset generation)
+ *   - No layout shift (CLS) — width/height are reserved before the image loads
+ */

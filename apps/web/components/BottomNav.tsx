@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { useTranslations } from '@/lib/useTranslations';
 import styles from './BottomNav.module.css';
 
 interface Tab {
   href: string;
-  label: string;
+  labelKey: 'home' | 'classes' | 'messages' | 'profile';
   icon: ReactNode;
 }
 
@@ -25,7 +26,7 @@ const ICON_PROPS = {
 const TABS: Tab[] = [
   {
     href: '/',
-    label: 'Home',
+    labelKey: 'home',
     icon: (
       <svg {...ICON_PROPS}>
         <path d="M3 11.5 12 4l9 7.5" />
@@ -35,7 +36,7 @@ const TABS: Tab[] = [
   },
   {
     href: '/classrooms',
-    label: 'Classes',
+    labelKey: 'classes',
     icon: (
       <svg {...ICON_PROPS}>
         <rect x="3" y="4" width="18" height="16" rx="2" />
@@ -45,7 +46,7 @@ const TABS: Tab[] = [
   },
   {
     href: '/messages',
-    label: 'Messages',
+    labelKey: 'messages',
     icon: (
       <svg {...ICON_PROPS}>
         <path d="M4 4h16v12H8l-4 4V4Z" />
@@ -54,7 +55,7 @@ const TABS: Tab[] = [
   },
   {
     href: '/profile',
-    label: 'Profile',
+    labelKey: 'profile',
     icon: (
       <svg {...ICON_PROPS}>
         <circle cx="12" cy="8" r="4" />
@@ -66,9 +67,10 @@ const TABS: Tab[] = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const t = useTranslations('nav');
 
   return (
-    <nav className={styles.nav} aria-label="Primary">
+    <nav className={styles.nav} aria-label={t('primaryLabel')}>
       {TABS.map((tab) => {
         const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
         return (
@@ -79,7 +81,7 @@ export function BottomNav() {
             aria-current={active ? 'page' : undefined}
           >
             <span className={styles.icon}>{tab.icon}</span>
-            <span className={styles.label}>{tab.label}</span>
+            <span className={styles.label}>{t(tab.labelKey)}</span>
           </Link>
         );
       })}

@@ -1,0 +1,171 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "save": "Save",
+    "back": "Back",
+    "continue": "Continue",
+    "done": "Done",
+    "or": "or",
+    "required": "This field is required",
+    "offline": "You are offline",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "dismissNotification": "Dismiss notification",
+    "goBack": "Go back"
+  },
+  "nav": {
+    "primaryLabel": "Primary",
+    "home": "Home",
+    "classes": "Classes",
+    "messages": "Messages",
+    "profile": "Profile"
+  },
+  "status": {
+    "verified": "Verified",
+    "pending": "Pending",
+    "rejected": "Rejected"
+  },
+  "session": {
+    "expiringTitle": "Session expiring soon",
+    "expiringMessage": "Your session expires in {minutes, plural, one {# minute} other {# minutes}}.",
+    "logOut": "Log out",
+    "stayLoggedIn": "Stay logged in"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Sign in to continue",
+      "googleButton": "Sign in with Google",
+      "emailLabel": "Email address",
+      "passwordLabel": "Password",
+      "signupLink": "Don't have an account? Sign up",
+      "forgotPassword": "Forgot password?",
+      "errors": {
+        "invalidCredentials": "Incorrect email or password",
+        "rateLimited": "Too many attempts. Wait a few minutes.",
+        "suspended": "Your account has been suspended. Contact support.",
+        "networkError": "Connection failed. Check your internet."
+      }
+    },
+    "signup": {
+      "title": "Create your account",
+      "fullNameLabel": "Full name",
+      "emailLabel": "Email address",
+      "passwordLabel": "Password",
+      "confirmPasswordLabel": "Confirm password",
+      "loginLink": "Already have an account? Sign in",
+      "errors": {
+        "passwordMismatch": "Passwords do not match",
+        "passwordTooShort": "At least 8 characters",
+        "invalidEmail": "Enter a valid email address"
+      }
+    },
+    "mfa": {
+      "setupTitle": "Set up two-factor authentication",
+      "setupSubtitle": "Scan this QR code with your authenticator app",
+      "manualKey": "Can't scan? Enter this key manually:",
+      "appSuggestion": "Use Google Authenticator, Authy, or any TOTP app",
+      "codeLabel": "6-digit code",
+      "verifyTitle": "Enter your authentication code",
+      "verifySubtitle": "Open your authenticator app to get the code",
+      "errors": {
+        "invalidCode": "Incorrect code",
+        "expiredCode": "Session expired. Please log in again.",
+        "maxAttempts": "Too many attempts. Please log in again."
+      }
+    }
+  },
+  "onboarding": {
+    "title": "What brings you here?",
+    "alumni": {
+      "label": "Find my classmates",
+      "description": "Connect with your batch and school friends"
+    },
+    "teacher": {
+      "label": "Connect with my students",
+      "description": "Stay in touch with all your classes"
+    },
+    "admin": {
+      "label": "Manage my institution",
+      "description": "Set up your school or college on AlumTribe"
+    }
+  },
+  "home": {
+    "title": "My classrooms",
+    "verificationBanner": "Verify your membership to post and read messages",
+    "activeClassrooms": "Active classrooms",
+    "suggestedForYou": "Suggested for you",
+    "empty": {
+      "title": "No classrooms yet",
+      "description": "Find your batch to get started",
+      "cta": "Find my batch"
+    }
+  },
+  "classroom": {
+    "card": {
+      "memberCount": "{count, plural, one {# member} other {# members}}"
+    },
+    "channels": {
+      "staffRoomLocked": "Staff Room is for teachers only",
+      "studentAlleyLocked": "Student Alley is for students only"
+    },
+    "messages": {
+      "empty": "No messages yet. Say hello!",
+      "deleted": "Message deleted",
+      "redacted": "Verify your membership to read messages",
+      "inputPlaceholder": "Write a message...",
+      "sendFailed": "Failed to send. Tap to retry.",
+      "unverifiedInput": "Verify membership to post"
+    }
+  },
+  "verification": {
+    "title": "Verify your membership",
+    "methods": {
+      "email": {
+        "label": "Institutional email",
+        "description": "Get a code sent to your school email"
+      },
+      "vouch": {
+        "label": "Peer vouching",
+        "description": "3 verified classmates vouch for you"
+      },
+      "document": {
+        "label": "Upload document",
+        "description": "Degree cert, transcript, or student ID"
+      },
+      "linkedin": {
+        "label": "LinkedIn import",
+        "description": "Auto-match from your LinkedIn profile"
+      },
+      "personalCode": {
+        "label": "Personal code",
+        "description": "Enter the code your institution sent you"
+      },
+      "batchCode": {
+        "label": "Batch code",
+        "description": "Enter the shared code for your batch"
+      }
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "editButton": "Edit profile",
+    "signOut": "Sign out",
+    "switchPersona": "Switch persona",
+    "stats": {
+      "classrooms": "Classrooms",
+      "connections": "Connections",
+      "profile": "Profile"
+    }
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "networkDown": "Check your connection and try again.",
+    "notFound": "This page doesn't exist or was removed.",
+    "serverError": "Something went wrong on our end. Try again shortly.",
+    "sessionExpired": "Your session expired. Please log in again."
+  }
+}

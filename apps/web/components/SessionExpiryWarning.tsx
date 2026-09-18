@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as api from '@/lib/api';
 import { clearSession, getTokenExpiry, setToken, setTokenExpiry } from '@/lib/auth';
+import { useTranslations } from '@/lib/useTranslations';
 import { Button } from './ui/Button';
 import styles from './SessionExpiryWarning.module.css';
 
@@ -12,6 +13,7 @@ const WARNING_THRESHOLD_MS = 5 * 60_000;
 export function SessionExpiryWarning() {
   const [minutesLeft, setMinutesLeft] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const t = useTranslations('session');
 
   useEffect(() => {
     const check = () => {
@@ -59,17 +61,20 @@ export function SessionExpiryWarning() {
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="session-expiry-title">
       <div className={styles.modal}>
         <h2 id="session-expiry-title" className={styles.title}>
-          Session expiring soon
+          {t('expiringTitle')}
         </h2>
-        <p className={styles.message}>
-          Your session expires in {minutesLeft} minute{minutesLeft === 1 ? '' : 's'}.
-        </p>
+        {/* {minutes} is substituted straight into the ICU plural pattern in
+            en.json — next-intl formats the number itself, so it's passed
+            as-is rather than pre-formatted with lib/format.ts's
+            formatNumber() (which would hand the pattern an already-
+            stringified number and break its plural-category selection). */}
+        <p className={styles.message}>{t('expiringMessage', { minutes: minutesLeft })}</p>
         <div className={styles.actions}>
           <Button variant="ghost" size="md" onClick={handleLogout}>
-            Log out
+            {t('logOut')}
           </Button>
           <Button variant="primary" size="md" loading={refreshing} onClick={handleStayLoggedIn}>
-            Stay logged in
+            {t('stayLoggedIn')}
           </Button>
         </div>
       </div>

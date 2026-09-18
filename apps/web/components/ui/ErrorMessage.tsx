@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from './Button';
+import { useTranslations } from '@/lib/useTranslations';
 import styles from './ErrorMessage.module.css';
 
 interface ErrorMessageProps {
@@ -10,13 +11,15 @@ interface ErrorMessageProps {
 }
 
 export function ErrorMessage({ message, fullPage = false, onRetry }: ErrorMessageProps) {
+  const t = useTranslations('common');
+
   if (fullPage) {
     return (
       <div className={styles.fullPage}>
         <p className={styles.fullPageMessage}>{message}</p>
         {onRetry && (
           <Button variant="secondary" size="md" onClick={onRetry}>
-            Try again
+            {t('retry')}
           </Button>
         )}
       </div>

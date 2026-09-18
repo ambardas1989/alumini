@@ -1,3 +1,24 @@
+/**
+ * Global stylesheet — imported once from app/layout.tsx.
+ *
+ * NOTE ON FILE LOCATION: kept here at app/globals.css (Next.js App
+ * Router's own convention — the file layout.tsx actually imports) rather
+ * than moved to apps/web/styles/globals.css. apps/web/styles/ holds the
+ * *new* files this pass added (breakpoints.ts, spacing.ts, components.css,
+ * layout.css) that had no prior home; this file already had one, so this
+ * pass extends it in place instead of fragmenting global CSS across two
+ * files with the same name.
+ *
+ * LOGICAL CSS PROPERTIES: used throughout this codebase's components
+ * instead of left/right-based ones.
+ *   margin-inline-start = margin-left in LTR, margin-right in RTL
+ *   padding-inline-end  = padding-right in LTR, padding-left in RTL
+ * This enables RTL language support (Arabic, Hebrew, Urdu) later by
+ * changing only the html[dir] attribute — no component changes. (top/
+ * bottom-based properties don't need this: RTL flips the inline/horizontal
+ * axis, never the block/vertical one.)
+ */
+
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
@@ -22,6 +43,52 @@
   --color-info-light: #dbeafe;
   --color-error: #dc2626;
   --color-error-light: #fee2e2;
+
+  /* Touch target floor — kept in sync with styles/spacing.ts's MIN_TOUCH_TARGET */
+  --min-touch-target: 44px;
+
+  /* Safe area insets — iPhone notch/Dynamic Island, Android cutouts */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+
+  /* Content max widths per breakpoint */
+  --content-width-mobile: 100%;
+  --content-width-tablet: 680px;
+  --content-width-desktop: 960px;
+  --content-width-wide: 1200px;
+
+  /* App shell — mobile app feel on desktop */
+  --app-max-width: 480px; /* Phone shell on desktop */
+  --app-margin: auto; /* Centered on desktop */
+
+  /* Layout padding adapts to screen size */
+  --page-padding-x: 16px;
+  --page-padding-y: 16px;
+
+  /* Fluid typography — scales smoothly between breakpoints via clamp() */
+  --text-xs: clamp(10px, 2.5vw, 12px);
+  --text-sm: clamp(12px, 3vw, 14px);
+  --text-base: clamp(14px, 3.5vw, 16px);
+  --text-lg: clamp(16px, 4vw, 18px);
+  --text-xl: clamp(18px, 4.5vw, 20px);
+  --text-2xl: clamp(20px, 5vw, 24px);
+  --text-3xl: clamp(24px, 6vw, 30px);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-padding-x: 24px;
+    --page-padding-y: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --page-padding-x: 32px;
+    --page-padding-y: 32px;
+  }
 }
 
 [data-theme='dark'] {
@@ -39,10 +106,26 @@
   --color-warning-light: #2a2010;
 }
 
-* {
+html[dir='rtl'] {
+  direction: rtl;
+}
+html[dir='ltr'] {
+  direction: ltr;
+}
+
+/* ── Box model reset — identical on Chrome, Safari, Firefox, Edge ──────── */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+  -webkit-box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* ── Tap highlight removal — iOS Safari, Android Chrome ─────────────────── */
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -50,19 +133,93 @@ body {
   height: 100%;
 }
 
-body {
-  font-family: var(--font-primary);
-  background: var(--color-bg);
-  color: var(--color-text-primary);
-  -webkit-font-smoothing: antialiased;
+/* ── Text size adjustment — prevents iOS auto-zooming text ──────────────── */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
-button,
-input {
+/* ── Scroll behaviour ─────────────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Prevent horizontal overflow on mobile ──────────────────────────────── */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+body {
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  /* Font rendering — consistent across Windows/Mac/iOS/Android */
+  -webkit-font-smoothing: antialiased; /* Mac/iOS Chrome, Safari */
+  -moz-osx-font-smoothing: grayscale; /* Firefox on Mac */
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern' 1;
+}
+
+/* ── Input appearance reset — iOS Safari adds rounded corners/shadows ──── */
+input,
+textarea,
+select,
+button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   font-family: inherit;
   color: inherit;
 }
 
 a {
   color: inherit;
+}
+
+/* ── Focus visible — keyboard navigation (Chrome, Safari, Firefox, Edge) ── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Scrollbar styling — Chrome/Edge via ::-webkit-*, Firefox via scrollbar-width ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* ── Image/video defaults ────────────────────────────────────────────────── */
+img,
+video {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }

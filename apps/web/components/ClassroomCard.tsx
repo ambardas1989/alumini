@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { VerificationStatus } from '@alumini/types';
+import { useTranslations } from '@/lib/useTranslations';
 import { Badge, type BadgeVariant } from './ui/Badge';
 import { SkeletonCard } from './ui/SkeletonCard';
 import styles from './ClassroomCard.module.css';
@@ -21,16 +22,19 @@ interface ClassroomCardProps {
   loading?: boolean;
 }
 
-const STATUS_BADGE: Record<VerificationStatus, { variant: BadgeVariant; label: string }> = {
-  verified: { variant: 'verified', label: 'Verified' },
-  pending: { variant: 'pending', label: 'Pending' },
-  rejected: { variant: 'rejected', label: 'Rejected' },
+const STATUS_VARIANT: Record<VerificationStatus, BadgeVariant> = {
+  verified: 'verified',
+  pending: 'pending',
+  rejected: 'rejected',
 };
 
 export function ClassroomCard({ classroom, onTap, loading = false }: ClassroomCardProps) {
+  const tStatus = useTranslations('status');
+  const tCard = useTranslations('classroom.card');
+
   if (loading) return <SkeletonCard />;
 
-  const status = classroom.verificationStatus ? STATUS_BADGE[classroom.verificationStatus] : undefined;
+  const statusVariant = classroom.verificationStatus ? STATUS_VARIANT[classroom.verificationStatus] : undefined;
 
   return (
     <Link
@@ -41,10 +45,16 @@ export function ClassroomCard({ classroom, onTap, loading = false }: ClassroomCa
       {classroom.institution && <p className={styles.institution}>{classroom.institution.name}</p>}
       <p className={styles.name}>{classroom.name}</p>
       <div className={styles.row}>
+        {/* batchYear is a year, never thousands-formatted (formatNumber()
+            would render "2,012", which no one writes for a class year) —
+            memberCount goes through the ICU plural pattern below instead
+            of formatNumber(), for the same reason as SessionExpiryWarning:
+            next-intl formats the number itself while resolving the plural
+            category, so it takes the raw number, not a pre-formatted string. */}
         <span className={styles.stat}>
-          {classroom.batchYear} &middot; {classroom.memberCount} member{classroom.memberCount === 1 ? '' : 's'}
+          {classroom.batchYear} &middot; {tCard('memberCount', { count: classroom.memberCount })}
         </span>
-        {status && <Badge variant={status.variant} label={status.label} />}
+        {statusVariant && <Badge variant={statusVariant} label={tStatus(statusVariant)} />}
       </div>
     </Link>
   );

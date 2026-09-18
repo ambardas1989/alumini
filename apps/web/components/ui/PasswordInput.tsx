@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState, type InputHTMLAttributes } from 'react';
+import { useTranslations } from '@/lib/useTranslations';
 // Shares Input's own stylesheet (label/input/error/hint classes) rather than
 // rendering <Input/> as a black box — a toggle button needs to sit inside
 // the same row as the field, which CSS Modules' scoping makes impossible to
@@ -16,6 +17,7 @@ interface PasswordInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>,
 
 export function PasswordInput({ label, error, hint, id, className, ...rest }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
+  const t = useTranslations('common');
   const generatedId = useId();
   const inputId = id ?? generatedId;
   const describedById = error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined;
@@ -40,9 +42,9 @@ export function PasswordInput({ label, error, hint, id, className, ...rest }: Pa
           type="button"
           className={styles.toggle}
           onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-label={visible ? t('hidePassword') : t('showPassword')}
         >
-          {visible ? 'Hide' : 'Show'}
+          {visible ? t('hidePassword') : t('showPassword')}
         </button>
       </div>
       {error && (
