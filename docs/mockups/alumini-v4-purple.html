@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alumini</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --pg:#F0ECFF;--cream:#F8F5FF;--card:#FFF;
+  --b1:#DDD5F8;--b2:#A590E8;
+  --t1:#12063A;--t2:#3B2870;--t3:#7A62B8;--t4:#A590E8;
+  --ac:#4A1FA8;--ac-lt:#EAE4FF;--ac-md:#7A55D8;
+  --ok:#16A34A;--ok-lt:#DCFCE7;
+  --warn:#D97706;--warn-lt:#FEF3C7;
+  --info:#2563EB;--info-lt:#DBEAFE;
+  --nav:#FFF;--inp:#F0ECFF;
+  --shell-b:#A590E8;
+  --shadow:0 20px 60px rgba(74,31,168,.15);
+}
+body.dark{
+  --pg:#1E1646;--cream:#261D58;--card:#2E2468;
+  --b1:#3D3280;--b2:#5A4AAA;
+  --t1:#EDE8FF;--t2:#C4B8F0;--t3:#9080C8;--t4:#5A4AAA;
+  --ac:#9D7FF5;--ac-lt:#3D3280;--ac-md:#7A60D8;
+  --ok:#34D578;--ok-lt:#0D3A20;
+  --warn:#C49A3C;--warn-lt:#2A2010;
+  --info:#7DB8FA;--info-lt:#1A305A;
+  --nav:#2E2468;--inp:#261D58;
+  --shell-b:#5A4AAA;
+  --shadow:0 20px 60px rgba(0,0,0,.45);
+}
+
+body{
+  font-family:'Outfit',sans-serif;
+  background:var(--pg);
+  display:flex;flex-direction:column;align-items:center;
+  min-height:100vh;padding:20px 12px;
+  transition:background .3s;
+}
+
+/* ── PHONE SHELL ─────────────────────────────── */
+.phone{
+  width:315px;
+  border-radius:38px;
+  border:7px solid var(--shell-b);
+  overflow:hidden;
+  box-shadow:var(--shadow);
+  /* Fixed height = status bar 36px + screen 530px */
+  height:566px;
+  display:flex;flex-direction:column;
+  background:var(--cream);
+  transition:border-color .3s,box-shadow .3s,background .3s;
+}
+
+/* status bar — fixed, never scrolls */
+.sbar{
+  height:36px;flex-shrink:0;
+  background:var(--cream);
+  display:flex;align-items:center;
+  justify-content:space-between;
+  padding:0 18px;
+  border-bottom:1px solid var(--b1);
+  transition:background .3s,border-color .3s;
+}
+.sbar-t{font-size:12px;font-weight:700;color:var(--t1)}
+.sbar-r{font-size:11px;color:var(--t3)}
+
+/* screen container — clips everything */
+.screens{
+  flex:1;
+  position:relative;
+  overflow:hidden;
+}
+
+/* each screen fills the container exactly */
+.scr{
+  display:none;
+  position:absolute;inset:0;
+  flex-direction:column;
+  overflow:hidden;
+  background:var(--pg);
+  transition:background .3s;
+}
+.scr.on{display:flex}
+
+/* ── REUSABLE LAYOUT ATOMS ───────────────────── */
+
+/* top bar */
+.tbar{
+  flex-shrink:0;
+  height:48px;
+  background:var(--cream);
+  display:flex;align-items:center;
+  padding:0 14px;gap:10px;
+  border-bottom:1px solid var(--b1);
+  transition:background .3s,border-color .3s;
+}
+.tbar-title{font-size:14px;font-weight:800;color:var(--t1);flex:1}
+
+/* scrollable body — fills remaining space */
+.body{
+  flex:1;
+  overflow-y:auto;
+  padding:13px;
+  background:var(--pg);
+  transition:background .3s;
+}
+
+/* bottom nav */
+.bnav{
+  flex-shrink:0;
+  height:52px;
+  background:var(--nav);
+  border-top:1px solid var(--b1);
+  display:flex;
+  transition:background .3s,border-color .3s;
+}
+.bn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer}
+.bn-ic{font-size:16px;opacity:.25;transition:opacity .2s}
+.bn.a .bn-ic{opacity:1}
+.bn-lb{font-size:9px;font-weight:600;color:var(--t3)}
+.bn.a .bn-lb{color:var(--ac)}
+
+/* back button */
+.bk{
+  width:28px;height:28px;border-radius:50%;
+  border:1px solid var(--b2);background:var(--ac-lt);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;
+  font-size:13px;color:var(--ac);font-weight:700;
+  transition:background .3s;
+}
+
+/* message bar — always at the bottom, flex-shrink:0 */
+.mbar{
+  flex-shrink:0;
+  height:52px;
+  background:var(--nav);
+  border-top:1px solid var(--b1);
+  display:flex;align-items:center;
+  padding:0 12px;gap:8px;
+  transition:background .3s,border-color .3s;
+}
+.minp{
+  flex:1;padding:7px 12px;border-radius:20px;
+  border:1px solid var(--b1);background:var(--inp);
+  font-size:12px;color:var(--t3);
+  font-family:'Outfit',sans-serif;
+  transition:background .3s,border-color .3s;
+}
+.msend{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--ac);display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;cursor:pointer;
+  font-size:12px;color:#fff;transition:background .3s;
+}
+
+/* avatar */
+.av{
+  border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-weight:700;flex-shrink:0;
+  font-size:10px;
+}
+
+/* tags */
+.tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:600}
+.t-ok{background:var(--ok-lt);color:var(--ok)}
+.t-ac{background:var(--ac-lt);color:var(--ac)}
+.t-inf{background:var(--info-lt);color:var(--info)}
+.t-warn{background:var(--warn-lt);color:var(--warn)}
+.t-muted{background:var(--b1);color:var(--t2)}
+
+/* section label */
+.slbl{font-size:10px;font-weight:600;color:var(--t3);margin-bottom:6px;margin-top:12px}
+.slbl:first-child{margin-top:0}
+
+/* cards */
+.crd{
+  background:var(--card);border-radius:13px;
+  border:1px solid var(--b1);padding:11px 13px;
+  margin-bottom:8px;cursor:pointer;
+  transition:border-color .15s,background .3s;
+}
+.crd-name{font-size:13px;font-weight:700;color:var(--t1);margin-bottom:2px}
+.crd-sub{font-size:10px;color:var(--t3);margin-bottom:7px}
+.crd-stats{display:flex;align-items:center;gap:10px}
+
+/* nudge */
+.nudge{
+  border-radius:11px;padding:9px 12px;
+  margin-bottom:11px;cursor:pointer;
+  display:flex;align-items:center;gap:9px;
+  background:var(--warn-lt);border:1px solid var(--warn);
+}
+.nudge-t{font-size:11px;font-weight:700;color:var(--warn)}
+.nudge-s{font-size:10px;color:var(--warn);opacity:.8;margin-top:1px}
+
+/* info boxes */
+.ibox{border-radius:11px;padding:10px 12px;margin-bottom:9px}
+.ibox-ok{background:var(--ok-lt);border:1px solid var(--ok)}
+.ibox-warn{background:var(--warn-lt);border:1px solid var(--warn)}
+.ibox-ac{background:var(--ac-lt);border:1px solid var(--b2)}
+.ibox-inf{background:var(--info-lt);border:1px solid var(--info)}
+
+/* classroom header */
+.cls-hdr{
+  flex-shrink:0;
+  background:var(--ac);padding:9px 13px;
+  transition:background .3s;
+}
+.cls-hdr-name{font-size:14px;font-weight:800;color:#fff;margin-bottom:2px}
+.cls-hdr-sub{font-size:9px;color:rgba(255,255,255,.55);margin-bottom:9px}
+.cls-stats{display:flex;gap:14px;align-items:center}
+.cls-stat-n{font-size:14px;font-weight:800;color:#fff}
+
+/* corridor tabs */
+.tabs{
+  flex-shrink:0;
+  display:flex;background:var(--cream);
+  border-bottom:1px solid var(--b1);
+  transition:background .3s,border-color .3s;
+}
+.tab{
+  flex:1;padding:9px 3px;text-align:center;
+  font-size:10px;font-weight:600;color:var(--t3);cursor:pointer;
+}
+.tab.on{color:var(--ac);border-bottom:2px solid var(--ac)}
+
+/* tab content — scrollable, fills remaining space */
+.tab-body{flex:1;overflow-y:auto;padding:11px 13px;background:var(--pg);transition:background .3s}
+.tab-body.hidden{display:none}
+
+/* messages */
+.msg{display:flex;gap:6px;align-items:flex-end;margin-bottom:8px}
+.msg.me{flex-direction:row-reverse}
+.bub{max-width:185px;padding:7px 11px;font-size:12px;line-height:1.5}
+.bub.them{background:var(--card);border:1px solid var(--b1);color:var(--t1);border-radius:3px 13px 13px 13px;transition:background .3s}
+.bub.tc{background:var(--ac-lt);border:1px solid var(--b2);color:var(--t2);border-radius:3px 13px 13px 13px}
+.bub.me{background:var(--ac);color:#fff;border-radius:13px 13px 3px 13px}
+.pill{
+  text-align:center;font-size:9px;font-weight:600;
+  padding:3px 10px;border-radius:20px;
+  margin:0 auto 9px;display:table;
+  background:var(--info-lt);color:var(--info);border:1px solid var(--info);
+}
+
+/* verification steps */
+.vs{
+  background:var(--card);border-radius:11px;
+  border:1px solid var(--b1);padding:9px 12px;
+  margin-bottom:7px;display:flex;gap:9px;
+  transition:background .3s;
+}
+.vnum{
+  width:21px;height:21px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px;
+}
+
+/* teacher filing cabinet */
+.fold{border-radius:11px;border:1px solid var(--b1);overflow:hidden;margin-bottom:8px}
+.fhd{padding:9px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0}
+.frows{background:var(--card);transition:background .3s}
+.frow{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;border-top:1px solid var(--b1);cursor:pointer;
+}
+.frow:active{background:var(--ac-lt)}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* profile */
+.prof-hero{
+  flex-shrink:0;text-align:center;
+  padding:16px 14px 12px;
+  background:var(--cream);border-bottom:1px solid var(--b1);
+  transition:background .3s,border-color .3s;
+}
+.prof-av{
+  width:58px;height:58px;border-radius:50%;
+  background:var(--ac-lt);display:flex;align-items:center;justify-content:center;
+  margin:0 auto 9px;font-size:20px;font-weight:800;color:var(--ac);
+  border:2px solid var(--b2);
+}
+.stat-row{
+  flex-shrink:0;display:flex;
+  background:var(--cream);border-bottom:1px solid var(--b1);
+  transition:background .3s,border-color .3s;
+}
+.stat-item{flex:1;padding:9px;text-align:center;border-right:1px solid var(--b1)}
+.stat-item:last-child{border:none}
+.stat-n{font-size:16px;font-weight:800;color:var(--t1)}
+.stat-l{font-size:9px;color:var(--t3);margin-top:1px}
+.ps{background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:10px 12px;margin-bottom:8px;transition:background .3s}
+.ps-t{font-size:10px;font-weight:700;color:var(--t3);margin-bottom:7px}
+
+/* buttons */
+.btn-p{
+  display:block;width:100%;padding:12px;border-radius:11px;
+  background:var(--ac);color:#fff;font-size:14px;font-weight:700;
+  border:none;cursor:pointer;margin-bottom:7px;
+  font-family:'Outfit',sans-serif;transition:background .3s;
+}
+.btn-s{
+  display:block;width:100%;padding:11px;border-radius:11px;
+  background:transparent;color:var(--t1);font-size:13px;
+  border:1px solid var(--b2);cursor:pointer;margin-bottom:6px;
+  font-family:'Outfit',sans-serif;
+}
+.paid-tag{
+  display:inline-flex;align-items:center;gap:2px;
+  background:var(--warn-lt);border:1px solid var(--warn);
+  border-radius:20px;padding:2px 6px;font-size:9px;font-weight:700;color:var(--warn);
+}
+
+/* create form */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+.chip{
+  padding:5px 13px;border-radius:8px;font-size:12px;font-weight:600;
+  cursor:pointer;border:1px solid var(--b2);
+  background:var(--card);color:var(--t2);transition:all .15s;
+}
+.chip.sel{background:var(--ac-lt);border-color:var(--ac);color:var(--ac)}
+
+/* menu rows */
+.mrow{
+  display:flex;align-items:center;gap:12px;
+  padding:13px 16px;border-bottom:1px solid var(--b1);cursor:pointer;
+  background:var(--card);transition:background .3s;
+}
+.mrow:last-child{border:none}
+.mrow-ic{font-size:18px;width:24px;text-align:center}
+.mrow-t{font-size:13px;font-weight:600;color:var(--t1)}
+
+/* hint bar above phone */
+.hbar{
+  font-size:11px;font-weight:500;color:var(--t2);
+  background:var(--card);border-radius:20px;
+  padding:5px 16px;border:1px solid var(--b2);
+  display:inline-block;font-family:'Outfit',sans-serif;
+  transition:background .3s,color .3s;margin-bottom:14px;
+}
+
+/* theme toggle in menu */
+.ttrack{width:30px;height:16px;border-radius:8px;background:var(--ac);position:relative;flex-shrink:0}
+.tthumb{width:12px;height:12px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .2s}
+body.dark .tthumb{left:16px}
+</style>
+</head>
+<body>
+
+<div style="text-align:center">
+  <div class="hbar" id="crumb">Tap to explore · theme in ≡ menu</div>
+</div>
+
+<div class="phone">
+
+  <!-- STATUS BAR -->
+  <div class="sbar">
+    <span class="sbar-t">9:41</span>
+    <span class="sbar-r">●●● 100%</span>
+  </div>
+
+  <!-- ALL SCREENS LIVE HERE -->
+  <div class="screens">
+
+  <!-- ══════════════════════════════════
+       S0 — SPLASH
+  ══════════════════════════════════ -->
+  <div class="scr on" id="s0" style="background:var(--ac)">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 22px">
+      <div style="width:70px;height:70px;border-radius:20px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;margin-bottom:16px">
+        <span style="font-size:28px;font-weight:800;color:#fff">A</span>
+      </div>
+      <div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:6px">Alumini</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.6);text-align:center;margin-bottom:32px;line-height:1.8">Your class. Your people.<br>Connected forever.</div>
+      <button class="btn-p" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25)" onclick="nav('s1','Home — Priya')">Demo as Priya · Alumni</button>
+      <button class="btn-p" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);margin-bottom:6px" onclick="nav('s5','Home — Ghosh Sir')">Demo as Ghosh Sir · Teacher</button>
+      <button class="btn-s" style="border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.55);font-size:11px;margin-bottom:6px" onclick="nav('s_onboard','Role selection')">New user onboarding →</button>
+      <button class="btn-s" style="border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.55);font-size:11px" onclick="nav('sc','Create a classroom')">Create a classroom</button>
+      <div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:12px">Tap any element to navigate</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S1 — ALUMNI HOME
+  ══════════════════════════════════ -->
+  <div class="scr" id="s1">
+    <div class="tbar">
+      <div style="position:relative;cursor:pointer" onclick="nav('s7','Persona switcher')">
+        <div class="av" style="width:32px;height:32px;background:var(--ac-lt);color:var(--ac);font-size:11px;font-weight:800">PS</div>
+        <div style="position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;background:#22C55E;border:2px solid var(--cream)"></div>
+      </div>
+      <div style="margin-left:5px;flex:1">
+        <div style="font-size:14px;font-weight:800;color:var(--t1)">My classrooms</div>
+        <div style="font-size:10px;color:var(--t3)">Priya Sharma</div>
+      </div>
+      <span onclick="nav('sc','Create')" style="width:27px;height:27px;border-radius:50%;background:var(--ac);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;color:#fff;margin-right:6px">+</span>
+      <span onclick="nav('s_menu','Menu')" style="cursor:pointer;display:flex;flex-direction:column;gap:3px;padding:3px">
+        <span style="display:block;width:15px;height:2px;border-radius:2px;background:var(--t3)"></span>
+        <span style="display:block;width:11px;height:2px;border-radius:2px;background:var(--t3)"></span>
+        <span style="display:block;width:15px;height:2px;border-radius:2px;background:var(--t3)"></span>
+      </span>
+    </div>
+    <div class="body">
+      <div class="slbl">Active classrooms</div>
+      <div class="crd" onclick="nav('s2','MP Birla — Classroom')">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+          <div style="width:36px;height:36px;border-radius:9px;background:var(--ok-lt);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">🏫</div>
+          <div style="flex:1">
+            <div class="crd-name">MP Birla · Class 9A · 2012</div>
+            <div class="crd-sub">Section A</div>
+          </div>
+          <span style="color:var(--t4)">›</span>
+        </div>
+        <div class="crd-stats">
+          <span class="tag t-ok">✓</span>
+          <span style="font-size:11px;color:var(--t3)">👥 <b style="color:var(--t1)">34</b></span>
+          <span style="font-size:11px;color:var(--t3)">💬 <b style="color:var(--ac)">3</b></span>
+        </div>
+      </div>
+      <div class="crd" onclick="nav('s_locked','UC Davis — read only')">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+          <div style="width:36px;height:36px;border-radius:9px;background:var(--ac-lt);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">🎓</div>
+          <div style="flex:1">
+            <div class="crd-name">UC Davis · 2025</div>
+            <div class="crd-sub">MBA</div>
+          </div>
+          <span style="color:var(--t4)">›</span>
+        </div>
+        <div class="crd-stats">
+          <span class="tag t-warn">⏳ verify to enter</span>
+          <span style="font-size:11px;color:var(--t3)">👥 <b style="color:var(--t1)">89</b></span>
+        </div>
+      </div>
+      <div class="slbl">Suggested</div>
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:10px 12px;display:flex;align-items:center;gap:9px">
+        <div style="width:30px;height:30px;border-radius:7px;background:var(--ok-lt);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🏫</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;color:var(--t1)">KV Fort William · 2012</div>
+          <div style="font-size:10px;color:var(--t3)">12 mutual alumni</div>
+        </div>
+        <button style="padding:4px 10px;border-radius:8px;border:1px solid var(--ac);background:var(--ac-lt);color:var(--ac);font-size:10px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif">Join</button>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="bn a"><div class="bn-ic">🏠</div><div class="bn-lb">Home</div></div>
+      <div class="bn" onclick="nav('sc','Create')"><div class="bn-ic">➕</div><div class="bn-lb">Create</div></div>
+      <div class="bn"><div class="bn-ic">💬</div><div class="bn-lb">Messages</div></div>
+      <div class="bn" onclick="nav('s6','Profile')"><div class="bn-ic">👤</div><div class="bn-lb">Profile</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S2 — CLASSROOM  (3 tabs, ℹ on active only)
+  ══════════════════════════════════ -->
+  <div class="scr" id="s2">
+
+    <div style="flex-shrink:0;background:var(--ac);padding:9px 13px;display:flex;align-items:center;gap:10px;transition:background .3s">
+      <div class="bk" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.2);color:#fff;flex-shrink:0" onclick="nav('s1','Home')">←</div>
+      <div style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">🏫</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800;color:#fff;line-height:1.2">MP Birla · 9A · 2012</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.55);display:flex;gap:8px;margin-top:1px">
+          <span>👥 34</span><span>✅ 29</span><span>⏳ 5</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- tabs — text labels, ℹ only on active tab -->
+    <div style="flex-shrink:0;display:flex;background:var(--cream);border-bottom:1px solid var(--b1);transition:background .3s,border-color .3s">
+      <div id="tab-s" onclick="cls_tab('s')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:9px 3px;font-size:10px;font-weight:700;color:var(--ac);border-bottom:2px solid var(--ac);cursor:pointer">
+        Classroom
+        <span id="info-s" onclick="event.stopPropagation();nav('s2_info','Classroom · info')" style="width:16px;height:16px;border-radius:50%;background:var(--ac);color:#fff;font-size:9px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;line-height:1">ℹ</span>
+      </div>
+      <div id="tab-t" onclick="cls_tab('t')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:9px 3px;font-size:10px;font-weight:600;color:var(--t4);border-bottom:2px solid transparent;cursor:pointer">
+        Staff Room
+        <span id="info-t" onclick="event.stopPropagation();nav('s2_info','Staff Room · info')" style="display:none;width:16px;height:16px;border-radius:50%;background:var(--ac);color:#fff;font-size:9px;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;line-height:1">ℹ</span>
+      </div>
+      <div id="tab-m" onclick="cls_tab('m')" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:9px 3px;font-size:10px;font-weight:600;color:var(--t4);border-bottom:2px solid transparent;cursor:pointer">
+        Student Alley
+        <span id="info-m" onclick="event.stopPropagation();nav('s2_info','Student Alley · info')" style="display:none;width:16px;height:16px;border-radius:50%;background:var(--ac);color:#fff;font-size:9px;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;line-height:1">ℹ</span>
+      </div>
+    </div>
+
+    <!-- ── TAB: EVERYONE ── -->
+    <div id="pane-s" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div style="flex:1;overflow-y:auto;padding:11px 13px;background:var(--pg);transition:background .3s">
+        <div style="text-align:center;margin-bottom:11px">
+          <span style="font-size:9px;color:var(--t3);background:var(--b1);border-radius:20px;padding:3px 10px;display:inline-block">Class created by Rahul A. · March 2024</span>
+        </div>
+        <div class="msg">
+          <div class="av" style="width:26px;height:26px;background:var(--ok-lt);color:var(--ok)">RA</div>
+          <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Rahul A.</div><div class="bub them">Class 9A finally has a space! 🎉</div></div>
+        </div>
+        <div class="msg">
+          <div style="position:relative;flex-shrink:0">
+            <div class="av" style="width:26px;height:26px;background:var(--ac-lt);color:var(--ac)">GS</div>
+            <div style="position:absolute;bottom:0;right:0;width:7px;height:7px;border-radius:50%;background:var(--warn);border:1.5px solid var(--pg)"></div>
+          </div>
+          <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Ghosh Sir <span class="tag t-ac" style="font-size:8px">Teacher</span></div><div class="bub tc">So proud of all of you!</div></div>
+        </div>
+        <div class="msg">
+          <div class="av" style="width:26px;height:26px;background:var(--warn-lt);color:var(--warn)">SM</div>
+          <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Sneha M.</div><div class="bub them">Anyone else remember the lab incident? 😂</div></div>
+        </div>
+        <!-- event card -->
+        <div style="margin:10px 0;background:var(--card);border-radius:12px;border:1px solid var(--b2);overflow:hidden;cursor:pointer;transition:background .3s" onclick="nav('s2_info','Everyone info')">
+          <div style="background:var(--ac);padding:7px 11px;display:flex;align-items:center;gap:6px;transition:background .3s">
+            <span style="font-size:13px">🎉</span>
+            <div style="font-size:10px;font-weight:700;color:#fff">Event · Priya created</div>
+          </div>
+          <div style="padding:9px 11px">
+            <div style="font-size:13px;font-weight:800;color:var(--t1);margin-bottom:2px">15-year reunion</div>
+            <div style="font-size:10px;color:var(--t3);margin-bottom:7px">📅 June 14, 2027 · 📍 Kolkata</div>
+            <div style="display:flex;align-items:center;gap:7px">
+              <div style="display:flex">
+                <div class="av" style="width:17px;height:17px;background:var(--ok-lt);color:var(--ok);border:1.5px solid var(--card);font-size:7px">RA</div>
+                <div class="av" style="width:17px;height:17px;background:var(--warn-lt);color:var(--warn);border:1.5px solid var(--card);font-size:7px;margin-left:-5px">SM</div>
+                <div class="av" style="width:17px;height:17px;background:var(--info-lt);color:var(--info);border:1.5px solid var(--card);font-size:7px;margin-left:-5px">NR</div>
+              </div>
+              <span style="font-size:10px;color:var(--t3)">12 going</span>
+              <div style="margin-left:auto;display:flex;gap:4px">
+                <div style="padding:3px 9px;border-radius:20px;background:var(--ok-lt);color:var(--ok);font-size:9px;font-weight:700;cursor:pointer;border:1px solid var(--ok)">✓ Going</div>
+                <div style="padding:3px 9px;border-radius:20px;background:var(--b1);color:var(--t3);font-size:9px;cursor:pointer">Pass</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="msg">
+          <div class="av" style="width:26px;height:26px;background:var(--warn-lt);color:var(--warn)">SM</div>
+          <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Sneha M.</div><div class="bub them">Flying from Mumbai for this! 🙌</div></div>
+        </div>
+        <div class="msg me">
+          <div class="av" style="width:26px;height:26px;background:var(--ac);color:#fff">PS</div>
+          <div><div class="bub me">Count me in! 🎉</div></div>
+        </div>
+      </div>
+      <div class="mbar">
+        <span style="font-size:15px;color:var(--t3);cursor:pointer">📎</span>
+        <div class="minp">Write to everyone…</div>
+        <div class="msend">➤</div>
+      </div>
+    </div>
+
+    <!-- ── TAB: TEACHER LOUNGE ── -->
+    <div id="pane-t" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+      <div style="flex:1;overflow-y:auto;padding:11px 13px;background:var(--pg);transition:background .3s">
+        <div class="ibox ibox-ac"><div style="font-size:10px;color:var(--t2)">🔒 Faculty only · invisible to students</div></div>
+        <div class="msg">
+          <div class="av" style="width:26px;height:26px;background:var(--ac-lt);color:var(--ac)">GS</div>
+          <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Ghosh Sir</div><div class="bub tc">Priya's doc — can someone second?</div></div>
+        </div>
+        <div class="msg">
+          <div class="av" style="width:26px;height:26px;background:var(--ac-lt);color:var(--ac)">PM</div>
+          <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Priya Ma'am</div><div class="bub tc">Yes, I taught her. Approving.</div></div>
+        </div>
+        <div class="ibox ibox-ok"><div style="font-size:10px;color:var(--ok)">✓ Priya Sharma verified — 2 teacher vouches</div></div>
+        <!-- faculty list -->
+        <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 7px">Faculty (3)</div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--b1)">
+          <div class="av" style="width:28px;height:28px;background:var(--ac-lt);color:var(--ac)">GS</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Ghosh Sir</div><div style="font-size:10px;color:var(--t3)">Physics</div></div>
+          <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--b1)">
+          <div class="av" style="width:28px;height:28px;background:var(--ac-lt);color:var(--ac)">PM</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Priya Ma'am</div><div style="font-size:10px;color:var(--t3)">Maths</div></div>
+          <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0">
+          <div class="av" style="width:28px;height:28px;background:var(--b1);color:var(--t3)">RK</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Ramesh Sir</div><div style="font-size:10px;color:var(--warn)">⏳ verify pending</div></div>
+          <div class="dot" style="background:var(--warn);width:8px;height:8px"></div>
+        </div>
+      </div>
+      <div class="mbar">
+        <span style="font-size:15px;color:var(--t3);cursor:pointer">📎</span>
+        <div class="minp">Write to staff room…</div>
+        <div class="msend">➤</div>
+      </div>
+    </div>
+
+    <!-- ── TAB: STUDENT ALLEY ── -->
+    <div id="pane-m" style="display:none;flex:1;flex-direction:column;overflow:hidden">
+      <div style="flex:1;overflow-y:auto;padding:11px 13px;background:var(--pg);transition:background .3s">
+        <div class="ibox ibox-ok"><div style="font-size:10px;color:var(--ok)">🎒 Student Alley · no teachers here</div></div>
+        <div class="msg">
+          <div class="av" style="width:26px;height:26px;background:var(--ok-lt);color:var(--ok)">RA</div>
+          <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Rahul A.</div><div class="bub them">Anyone remember the lab explosion? 😂</div></div>
+        </div>
+        <div class="msg">
+          <div class="av" style="width:26px;height:26px;background:var(--warn-lt);color:var(--warn)">SM</div>
+          <div><div style="font-size:9px;color:var(--t3);margin-bottom:2px">Sneha M.</div><div class="bub them">LMAO yes 🔥 best day ever</div></div>
+        </div>
+        <div class="msg me">
+          <div class="av" style="width:26px;height:26px;background:var(--ac);color:#fff">PS</div>
+          <div><div class="bub me">Poor Arjun 😭</div></div>
+        </div>
+        <!-- batchmate list -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 7px">
+          <div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Batchmates (34)</div>
+          <div style="display:flex;gap:4px">
+            <div style="padding:2px 8px;border-radius:20px;background:var(--ac);color:#fff;font-size:8px;font-weight:700;cursor:pointer">All</div>
+            <div style="padding:2px 8px;border-radius:20px;border:1px solid var(--b2);color:var(--t3);font-size:8px;cursor:pointer">✓ 29</div>
+            <div style="padding:2px 8px;border-radius:20px;border:1px solid var(--b2);color:var(--t3);font-size:8px;cursor:pointer">⏳ 5</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--b1)">
+          <div class="av" style="width:28px;height:28px;background:var(--ac);color:#fff">PS</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Priya Sharma <span class="tag t-inf" style="font-size:8px">You</span></div><div style="font-size:10px;color:var(--t3)">PM · Razorpay</div></div>
+          <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--b1)">
+          <div class="av" style="width:28px;height:28px;background:var(--ok-lt);color:var(--ok)">RA</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Rahul Agarwal</div><div style="font-size:10px;color:var(--t3)">Engineer · Bangalore</div></div>
+          <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--b1)">
+          <div class="av" style="width:28px;height:28px;background:var(--warn-lt);color:var(--warn)">SM</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Sneha Mehta</div><div style="font-size:10px;color:var(--t3)">Designer · Mumbai</div></div>
+          <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:7px 0">
+          <div class="av" style="width:28px;height:28px;background:var(--b1);color:var(--t3)">AK</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Arjun Kapoor</div><div style="font-size:10px;color:var(--warn)">⏳ verify pending</div></div>
+          <button style="padding:3px 8px;border-radius:8px;border:1px solid var(--ac);background:var(--ac-lt);color:var(--ac);font-size:9px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif">Vouch</button>
+        </div>
+      </div>
+      <div class="mbar">
+        <span style="font-size:15px;color:var(--t3);cursor:pointer">📎</span>
+        <div class="minp">Write to batchmates…</div>
+        <div class="msend">➤</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S2_INFO — CLASS / TAB INFO SHEET
+  ══════════════════════════════════ -->
+  <div class="scr" id="s2_info">
+    <div style="flex-shrink:0;background:var(--ac);padding:9px 13px;display:flex;align-items:center;gap:10px;transition:background .3s">
+      <div class="bk" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.2);color:#fff" onclick="nav('s2','Classroom')">←</div>
+      <div style="font-size:14px;font-weight:800;color:#fff;flex:1" id="info-title">Everyone · info</div>
+    </div>
+    <div class="body">
+      <div style="text-align:center;padding:12px 0 14px;border-bottom:1px solid var(--b1);margin-bottom:12px">
+        <div style="width:50px;height:50px;border-radius:13px;background:var(--ok-lt);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 7px">🏫</div>
+        <div style="font-size:14px;font-weight:800;color:var(--t1)">MP Birla · Class 9A · 2012</div>
+        <div style="font-size:10px;color:var(--t3);margin-top:2px">IN-KOL-MPBIRLA-9A-2012</div>
+        <div style="display:flex;gap:5px;justify-content:center;margin-top:7px">
+          <span class="tag t-ok">✓ Institution verified</span>
+          <span style="font-size:10px;color:var(--t3);align-self:center">34 members</span>
+        </div>
+      </div>
+      <!-- quick actions — icon first -->
+      <div style="display:flex;gap:7px;margin-bottom:13px">
+        <div onclick="nav('s2_ev','Create event')" style="flex:1;background:var(--warn-lt);border:1px solid var(--warn);border-radius:10px;padding:9px 6px;text-align:center;cursor:pointer">
+          <div style="font-size:18px;margin-bottom:3px">📅</div>
+          <div style="font-size:9px;font-weight:700;color:var(--warn)">Add event</div>
+        </div>
+        <div style="flex:1;background:var(--info-lt);border:1px solid var(--info);border-radius:10px;padding:9px 6px;text-align:center;cursor:pointer">
+          <div style="font-size:18px;margin-bottom:3px">📸</div>
+          <div style="font-size:9px;font-weight:700;color:var(--info)">Media</div>
+        </div>
+        <div style="flex:1;background:var(--ac-lt);border:1px solid var(--b2);border-radius:10px;padding:9px 6px;text-align:center;cursor:pointer">
+          <div style="font-size:18px;margin-bottom:3px">🔔</div>
+          <div style="font-size:9px;font-weight:700;color:var(--ac)">Mute</div>
+        </div>
+        <div style="flex:1;background:var(--b1);border:1px solid var(--b2);border-radius:10px;padding:9px 6px;text-align:center;cursor:pointer">
+          <div style="font-size:18px;margin-bottom:3px">🚪</div>
+          <div style="font-size:9px;font-weight:700;color:var(--t2)">Leave</div>
+        </div>
+      </div>
+      <!-- upcoming events -->
+      <div class="slbl">📅 Upcoming events</div>
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);overflow:hidden;margin-bottom:10px;transition:background .3s">
+        <div style="padding:9px 11px;border-bottom:1px solid var(--b1)">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px">
+            <span style="font-size:14px">🎉</span>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">15-year reunion</div><div style="font-size:10px;color:var(--t3)">June 14, 2027 · Kolkata</div></div>
+            <span style="font-size:10px;color:var(--ok);font-weight:700">👥 12</span>
+          </div>
+          <div style="display:flex;gap:5px">
+            <div style="padding:3px 11px;border-radius:20px;background:var(--ok-lt);color:var(--ok);font-size:9px;font-weight:700;cursor:pointer;border:1px solid var(--ok)">✓ Going</div>
+            <div style="padding:3px 11px;border-radius:20px;background:var(--b1);color:var(--t3);font-size:9px;cursor:pointer">Not going</div>
+            <div style="padding:3px 11px;border-radius:20px;background:var(--b1);color:var(--t3);font-size:9px;cursor:pointer">Maybe</div>
+          </div>
+        </div>
+        <div style="padding:9px 11px">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="font-size:14px">📸</span>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Batch photo drive</div><div style="font-size:10px;color:var(--t3)">Aug 1, 2027 · Online</div></div>
+            <span style="font-size:10px;color:var(--t3)">👥 5</span>
+          </div>
+        </div>
+      </div>
+      <!-- members strip -->
+      <div class="slbl">👥 Members</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+        <div class="av" style="width:32px;height:32px;background:var(--ac);color:#fff;font-size:10px">PS</div>
+        <div class="av" style="width:32px;height:32px;background:var(--ok-lt);color:var(--ok);font-size:10px">RA</div>
+        <div class="av" style="width:32px;height:32px;background:var(--warn-lt);color:var(--warn);font-size:10px">SM</div>
+        <div class="av" style="width:32px;height:32px;background:var(--info-lt);color:var(--info);font-size:10px">NR</div>
+        <div class="av" style="width:32px;height:32px;background:var(--ac-lt);color:var(--ac);font-size:10px">GS</div>
+        <div class="av" style="width:32px;height:32px;background:var(--b1);color:var(--t3);font-size:9px">+29</div>
+      </div>
+      <div style="font-size:10px;color:var(--warn);background:var(--warn-lt);border:1px solid var(--warn);border-radius:8px;padding:6px 10px">⏳ 5 pending — vouch in Student Alley tab</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S2_EV — CREATE EVENT
+  ══════════════════════════════════ -->
+  <div class="scr" id="s2_ev">
+    <div class="tbar">
+      <div class="bk" onclick="nav('s2_info','Class info')">←</div>
+      <div class="tbar-title">Create event</div>
+    </div>
+    <div class="body">
+      <div class="slbl" style="margin-top:0">📝 Event name</div>
+      <div style="background:var(--card);border:1px solid var(--b2);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:700;color:var(--t1)">15-year reunion</div>
+      <div class="slbl">📅 Date</div>
+      <div style="background:var(--card);border:1px solid var(--b2);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--t1);display:flex;justify-content:space-between"><span>June 14, 2027</span><span>📅</span></div>
+      <div class="slbl">📍 Location</div>
+      <div style="background:var(--card);border:1px solid var(--b2);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--t1);display:flex;justify-content:space-between"><span>Kolkata</span><span>📍</span></div>
+      <div class="slbl">💬 Description</div>
+      <div style="background:var(--card);border:1px solid var(--b2);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3);min-height:55px">Add details…</div>
+      <div class="ibox ibox-ac">
+        <div style="font-size:10px;color:var(--t2);line-height:1.6">Event posts as a card in Everyone chat. Members RSVP from chat or Class info.</div>
+      </div>
+      <button class="btn-p" onclick="nav('s2','Classroom')" style="margin-top:10px">Post to class chat</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S_LOCKED — UNVERIFIED CLASSROOM
+  ══════════════════════════════════ -->
+  <div class="scr" id="s_locked">
+    <div class="cls-hdr">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div class="bk" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.2);color:#fff" onclick="nav('s1','Home')">←</div>
+        <div>
+          <div class="cls-hdr-name">UC Davis · MBA · 2025</div>
+          <div class="cls-hdr-sub">California</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <span style="font-size:11px;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:4px">👥 <b style="color:#fff;font-weight:700">89</b></span>
+        <span style="font-size:11px;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:4px">✅ <b style="color:#fff;font-weight:700">74</b></span>
+        <span style="font-size:11px;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:4px">🎉 <b style="color:#fff;font-weight:700">1yr</b></span>
+      </div>
+    </div>
+    <!-- verify banner below header -->
+    <div onclick="nav('s4','Verify UC Davis')" style="flex-shrink:0;background:var(--ac);padding:9px 14px;display:flex;align-items:center;gap:9px;cursor:pointer">
+      <span style="font-size:14px">🔒</span>
+      <div style="flex:1"><div style="font-size:11px;font-weight:700;color:#fff">Read-only mode</div><div style="font-size:10px;color:rgba(255,255,255,.65)">Verify to see names and post</div></div>
+      <span style="font-size:11px;font-weight:700;color:#fff;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:20px">Verify →</span>
+    </div>
+    <!-- redacted chat — scrollable -->
+    <div style="flex:1;overflow-y:auto;padding:11px 13px;background:var(--pg);transition:background .3s">
+      <div class="pill">Welcome to UC Davis MBA 2025 🎓</div>
+      <div class="msg">
+        <div class="av" style="width:24px;height:24px;background:var(--b1);color:var(--t4);filter:blur(2px)">AB</div>
+        <div>
+          <div style="font-size:9px;color:var(--t4);margin-bottom:2px;filter:blur(3px);user-select:none">J*** S.</div>
+          <div class="bub them" style="filter:blur(3px);user-select:none">Anyone going to the mixer tonight?</div>
+        </div>
+      </div>
+      <div class="msg">
+        <div class="av" style="width:24px;height:24px;background:var(--b1);color:var(--t4);filter:blur(2px)">MR</div>
+        <div>
+          <div style="font-size:9px;color:var(--t4);margin-bottom:2px;filter:blur(3px);user-select:none">M*** R.</div>
+          <div class="bub them" style="filter:blur(3px);user-select:none">Yes! See you all there 🙌</div>
+        </div>
+      </div>
+      <div class="msg">
+        <div class="av" style="width:24px;height:24px;background:var(--b1);color:var(--t4);filter:blur(2px)">KP</div>
+        <div>
+          <div style="font-size:9px;color:var(--t4);margin-bottom:2px;filter:blur(3px);user-select:none">K*** P.</div>
+          <div class="bub them" style="filter:blur(3px);user-select:none">Study group for finals tomorrow?</div>
+        </div>
+      </div>
+      <div class="msg">
+        <div class="av" style="width:24px;height:24px;background:var(--b1);color:var(--t4);filter:blur(2px)">TS</div>
+        <div>
+          <div style="font-size:9px;color:var(--t4);margin-bottom:2px;filter:blur(3px);user-select:none">T*** S.</div>
+          <div class="bub them" style="filter:blur(3px);user-select:none">Room 204 at 6pm works for me!</div>
+        </div>
+      </div>
+      <div onclick="nav('s4','Verify')" style="background:var(--card);border:1.5px dashed var(--ac);border-radius:11px;padding:12px;text-align:center;cursor:pointer;margin-top:6px;transition:background .3s">
+        <div style="font-size:18px;margin-bottom:5px">👀</div>
+        <div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:3px">74 batchmates are talking</div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:9px">Verify to see who and join the conversation</div>
+        <div style="display:inline-block;background:var(--ac);color:#fff;font-size:11px;font-weight:700;padding:6px 18px;border-radius:20px">Verify now</div>
+      </div>
+    </div>
+    <!-- no message bar here — can't post until verified -->
+  </div>
+
+  <!-- ══════════════════════════════════
+       S4 — VERIFICATION
+  ══════════════════════════════════ -->
+  <div class="scr" id="s4">
+    <div class="tbar">
+      <div class="bk" onclick="nav('s_locked','UC Davis')">←</div>
+      <div class="tbar-title">Verify membership</div>
+    </div>
+    <div class="body">
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:9px 12px;display:flex;align-items:center;gap:8px;margin-bottom:11px">
+        <div style="width:30px;height:30px;border-radius:7px;background:var(--ac-lt);display:flex;align-items:center;justify-content:center;font-size:14px">🎓</div>
+        <div><div style="font-size:12px;font-weight:700;color:var(--t1)">UC Davis · MBA · 2025</div><div style="font-size:10px;color:var(--t3)">Any one method unlocks full access</div></div>
+      </div>
+      <div class="vs" style="border-color:var(--ok);background:var(--ok-lt)">
+        <div class="vnum" style="background:var(--ok-lt);color:var(--ok)">✓</div>
+        <div><div style="font-size:11px;font-weight:700;color:var(--ok)">Institutional email</div><div style="font-size:10px;color:var(--ok);opacity:.8">priya@gsm.ucdavis.edu · one-time code · permanent record</div></div>
+      </div>
+      <div class="vs" style="border-color:var(--ac-md)">
+        <div class="vnum" style="background:var(--ac-lt);color:var(--ac)">2</div>
+        <div style="flex:1">
+          <div style="font-size:11px;font-weight:700;color:var(--t1)">Peer vouching</div>
+          <div style="font-size:10px;color:var(--t3);margin-bottom:4px">2 of 3pts · teachers count 1.5×</div>
+          <div style="display:flex;gap:3px;align-items:center">
+            <div class="av" style="width:17px;height:17px;background:var(--ok-lt);color:var(--ok);border:2px solid var(--ok)">RA</div>
+            <div class="av" style="width:17px;height:17px;background:var(--warn-lt);color:var(--warn);border:2px solid var(--warn)">SM</div>
+            <div class="av" style="width:17px;height:17px;background:var(--b1);color:var(--t3);border:1px dashed var(--b2)">?</div>
+            <span style="font-size:9px;color:var(--t3);margin-left:2px">or 1 teacher</span>
+          </div>
+        </div>
+      </div>
+      <div class="vs"><div class="vnum" style="background:var(--b1);color:var(--t3)">3</div><div><div style="font-size:11px;font-weight:700;color:var(--t1)">Upload document</div><div style="font-size:10px;color:var(--t3)">Degree cert or transcript · deleted after 30 days</div></div></div>
+      <div class="vs"><div class="vnum" style="background:#E8F0F9;color:#0077B5;font-size:9px;font-weight:800">in</div><div><div style="font-size:11px;font-weight:700;color:var(--t1)">LinkedIn import</div><div style="font-size:10px;color:var(--t3)">Auto-matches institution and year</div></div></div>
+      <div class="vs"><div class="vnum" style="background:var(--b1);color:var(--t3)">5</div><div><div style="font-size:11px;font-weight:700;color:var(--t1)">Personal institution code</div><div style="font-size:10px;color:var(--t3)">Unique, name-tied, single-use · expires 90 days</div></div></div>
+      <div class="vs"><div class="vnum" style="background:var(--b1);color:var(--t3)">6</div><div><div style="font-size:11px;font-weight:700;color:var(--t1)">Batch code</div><div style="font-size:10px;color:var(--t3)">Capped to class size · burns when full batch redeems</div></div></div>
+      <div class="ibox ibox-warn" style="margin-top:4px">
+        <div style="font-size:10px;font-weight:700;color:var(--warn);margin-bottom:4px">Teachers need verification too</div>
+        <div style="font-size:10px;color:var(--warn);opacity:.85;line-height:1.6">5+ student vouches from your class = verified teacher. Or upload appointment letter / school ID.</div>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="bn" onclick="nav('s1','Home')"><div class="bn-ic">🏠</div><div class="bn-lb">Home</div></div>
+      <div class="bn" onclick="nav('sc','Create')"><div class="bn-ic">➕</div><div class="bn-lb">Create</div></div>
+      <div class="bn"><div class="bn-ic">💬</div><div class="bn-lb">Messages</div></div>
+      <div class="bn" onclick="nav('s6','Profile')"><div class="bn-ic">👤</div><div class="bn-lb">Profile</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       SC — CREATE CLASSROOM
+  ══════════════════════════════════ -->
+  <div class="scr" id="sc">
+    <div class="tbar">
+      <div class="bk" onclick="nav('s1','Home')">←</div>
+      <div class="tbar-title">Create a classroom</div>
+    </div>
+    <div class="body">
+      <div class="ibox ibox-warn" style="display:flex;align-items:center;gap:7px">
+        <span style="font-size:14px">🔍</span>
+        <div style="font-size:10px;color:var(--warn);line-height:1.5">We search for existing classrooms first — duplicate prevention is automatic.</div>
+      </div>
+      <div class="slbl" style="margin-top:10px">Institution type</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px">
+        <div style="padding:11px;border-radius:11px;border:2px solid var(--ac);background:var(--ac-lt);text-align:center;cursor:pointer">
+          <div style="font-size:18px;margin-bottom:3px">🏫</div>
+          <div style="font-size:11px;font-weight:700;color:var(--ac)">School</div>
+        </div>
+        <div style="padding:11px;border-radius:11px;border:1px solid var(--b1);background:var(--card);text-align:center;cursor:pointer">
+          <div style="font-size:18px;margin-bottom:3px">🎓</div>
+          <div style="font-size:11px;font-weight:600;color:var(--t3)">College / Uni</div>
+        </div>
+      </div>
+      <div class="slbl">Institution</div>
+      <div class="ibox ibox-ok" style="display:flex;align-items:center;gap:7px;margin-bottom:4px">
+        <span style="font-size:13px">🏫</span>
+        <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--ok)">MP Birla School, Kolkata</div><div style="font-size:10px;color:var(--ok);opacity:.75">Matched · UDISE database</div></div>
+        <span class="tag t-ok" style="font-size:8px">Found</span>
+      </div>
+      <div class="slbl">Has sections?</div>
+      <div style="display:flex;gap:6px;margin-bottom:11px">
+        <div style="flex:1;padding:7px;border-radius:9px;border:2px solid var(--ac);background:var(--ac-lt);text-align:center;font-size:11px;font-weight:700;color:var(--ac);cursor:pointer">Yes — A, B, C…</div>
+        <div style="flex:1;padding:7px;border-radius:9px;border:1px solid var(--b1);background:var(--card);text-align:center;font-size:11px;color:var(--t3);cursor:pointer">No sections</div>
+      </div>
+      <div class="slbl">Section</div>
+      <div class="chips">
+        <div class="chip sel">A</div><div class="chip">B</div><div class="chip">C</div><div class="chip">D</div><div class="chip">E</div>
+      </div>
+      <div class="slbl">Year passed out</div>
+      <div style="background:var(--card);border:1px solid var(--b2);border-radius:9px;padding:9px 12px;margin-bottom:11px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:14px;font-weight:800;color:var(--t1)">2012</span>
+        <span style="font-size:10px;color:var(--t3)">Tap to change</span>
+      </div>
+      <div class="ibox ibox-ok">
+        <div style="font-size:9px;font-weight:700;color:var(--ok);margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px">Global classroom ID</div>
+        <div style="font-size:13px;font-weight:800;color:var(--t1);letter-spacing:.3px">IN-KOL-MPBIRLA-A-2012</div>
+        <div style="font-size:10px;color:var(--ok);margin-top:2px">✓ No duplicate found</div>
+      </div>
+      <button class="btn-p" onclick="nav('s2','MP Birla — Classroom')">Create classroom</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S5 — TEACHER HOME
+  ══════════════════════════════════ -->
+  <div class="scr" id="s5">
+    <div class="tbar">
+      <div style="position:relative;cursor:pointer" onclick="nav('s7','Persona switcher')">
+        <div class="av" style="width:32px;height:32px;background:var(--ac-lt);color:var(--ac);font-size:11px;font-weight:800">GS</div>
+        <div style="position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;background:var(--warn);border:2px solid var(--cream);display:flex;align-items:center;justify-content:center;font-size:6px;color:#fff">✏</div>
+      </div>
+      <div style="margin-left:5px;flex:1">
+        <div style="font-size:14px;font-weight:800;color:var(--t1)">My classes</div>
+        <div style="font-size:10px;color:var(--t3)">Ghosh Sir · Teacher</div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="nudge">
+        <span style="font-size:15px">⏳</span>
+        <div style="flex:1">
+          <div class="nudge-t">Verify Class 9A · 2026</div>
+          <div class="nudge-s">Students vouch for you · or upload appointment letter</div>
+        </div>
+        <span style="color:var(--warn);font-weight:700">›</span>
+      </div>
+      <div style="background:var(--ac);border-radius:11px;padding:9px 13px;margin-bottom:9px;display:flex;gap:12px;align-items:center">
+        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:13px">👥</span><span style="font-size:13px;font-weight:800;color:#fff">2,100+</span></div>
+        <div style="width:1px;height:14px;background:rgba(255,255,255,.2)"></div>
+        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:13px">🏫</span><span style="font-size:13px;font-weight:800;color:#fff">3</span></div>
+        <div style="width:1px;height:14px;background:rgba(255,255,255,.2)"></div>
+        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:13px">📚</span><span style="font-size:13px;font-weight:800;color:#fff">62</span></div>
+        <div style="width:1px;height:14px;background:rgba(255,255,255,.2)"></div>
+        <div style="display:flex;align-items:center;gap:4px"><span style="font-size:13px">⏱</span><span style="font-size:13px;font-weight:800;color:#fff">32yr</span></div>
+      </div>
+      <div class="fold">
+        <div class="fhd" style="background:var(--ac-lt)" onclick="toggleFold(this)">
+          <span style="font-size:14px">🏫</span>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--ac)">MP Birla School</div><div style="font-size:10px;color:var(--ac);opacity:.65">32 classes</div></div>
+          <span style="color:var(--ac);font-size:13px">∨</span>
+        </div>
+        <div class="frows">
+          <div class="frow" onclick="nav('s2','Classroom')"><div class="dot" style="background:#22C55E"></div><div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Class 9 · Sec A · 2026</div></div><span style="font-size:10px;color:var(--t3);margin-right:5px">👥 34</span><div class="dot" style="background:#22C55E;width:8px;height:8px"></div></div>
+          <div class="frow"><div class="dot" style="background:#22C55E"></div><div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Class 9 · Sec B · 2026</div></div><span style="font-size:10px;color:var(--t3);margin-right:5px">👥 31</span><div class="dot" style="background:#22C55E;width:8px;height:8px"></div></div>
+          <div class="frow"><div class="dot" style="background:var(--b2)"></div><div style="flex:1"><div style="font-size:12px;color:var(--t3)">Class 11 · Sec A · 2024</div></div><div class="dot" style="background:var(--b2);width:8px;height:8px"></div></div>
+          <div style="padding:7px 12px;border-top:1px solid var(--b1);text-align:center;cursor:pointer;background:var(--card)"><span style="font-size:10px;color:var(--ac);font-weight:600">Show all 32 classes →</span></div>
+        </div>
+      </div>
+      <div class="fold">
+        <div class="fhd" style="background:var(--info-lt)" onclick="toggleFold(this)">
+          <span style="font-size:14px">🏫</span>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--info)">KV Fort William</div><div style="font-size:10px;color:var(--info);opacity:.65">18 classes</div></div>
+          <span style="color:var(--info);font-size:13px">›</span>
+        </div>
+        <div class="frows" style="display:none">
+          <div class="frow"><div class="dot" style="background:var(--b2)"></div><div style="flex:1"><div style="font-size:12px;color:var(--t3)">Class 9 · Sec B · 2018</div></div><div class="dot" style="background:var(--b2);width:8px;height:8px"></div></div>
+        </div>
+      </div>
+      <div class="fold">
+        <div class="fhd" style="background:var(--ok-lt)" onclick="toggleFold(this)">
+          <span style="font-size:14px">🎓</span>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--ok)">St. Xavier's College</div><div style="font-size:10px;color:var(--ok);opacity:.65">12 classes</div></div>
+          <span style="color:var(--ok);font-size:13px">›</span>
+        </div>
+        <div class="frows" style="display:none">
+          <div class="frow"><div class="dot" style="background:#22C55E"></div><div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Physics Hons · 2025</div></div><div class="dot" style="background:#22C55E;width:8px;height:8px"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="bn" onclick="nav('s1','Home')"><div class="bn-ic">🏠</div><div class="bn-lb">Home</div></div>
+      <div class="bn a"><div class="bn-ic">📚</div><div class="bn-lb">Classes</div></div>
+      <div class="bn"><div class="bn-ic">💬</div><div class="bn-lb">Messages</div></div>
+      <div class="bn" onclick="nav('s6','Profile')"><div class="bn-ic">👤</div><div class="bn-lb">Profile</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S6 — PROFILE
+  ══════════════════════════════════ -->
+  <div class="scr" id="s6">
+    <div class="tbar">
+      <div class="bk" onclick="nav('s1','Home')">←</div>
+      <div class="tbar-title">Profile</div>
+      <span style="font-size:15px;color:var(--t3);cursor:pointer">✏️</span>
+    </div>
+    <div class="prof-hero">
+      <div class="prof-av">PS</div>
+      <div style="font-size:15px;font-weight:800;color:var(--t1)">Priya Sharma</div>
+      <div style="font-size:10px;color:var(--t3);margin-top:2px">Mumbai</div>
+      <div style="display:flex;gap:4px;justify-content:center;margin-top:7px">
+        <span class="tag t-inf">Alumni</span>
+        <span class="tag t-ok">✓ Verified</span>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-item"><div style="font-size:16px;margin-bottom:2px">🏫</div><div class="stat-n">2</div></div>
+      <div class="stat-item"><div style="font-size:16px;margin-bottom:2px">🤝</div><div class="stat-n">47</div></div>
+      <div class="stat-item"><div style="font-size:16px;margin-bottom:2px">⚡</div><div class="stat-n">100%</div></div>
+    </div>
+    <div class="body">
+      <div class="ps">
+        <div class="ps-t">Current role <span style="font-size:9px;color:var(--t4);font-weight:400;text-transform:none">· self-reported</span></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:7px;background:var(--info-lt);display:flex;align-items:center;justify-content:center;font-size:13px">💼</div>
+          <div><div style="font-size:12px;font-weight:700;color:var(--t1)">Senior Product Manager</div><div style="font-size:10px;color:var(--t3)">Razorpay · Mumbai</div></div>
+        </div>
+      </div>
+      <div class="ps">
+        <div class="ps-t">Education <span style="font-size:9px;color:var(--ok);font-weight:400;text-transform:none">· verified</span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;cursor:pointer" onclick="nav('s2','Classroom')">
+          <div style="width:28px;height:28px;border-radius:7px;background:var(--ok-lt);display:flex;align-items:center;justify-content:center;font-size:13px">🏫</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">MP Birla · Class 9A · 2012</div></div>
+          <span class="tag t-ok" style="font-size:8px">✓</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="nav('s_locked','UC Davis')">
+          <div style="width:28px;height:28px;border-radius:7px;background:var(--ac-lt);display:flex;align-items:center;justify-content:center;font-size:13px">🎓</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">UC Davis · MBA · 2025</div></div>
+          <span class="tag t-warn" style="font-size:8px">⏳</span>
+        </div>
+      </div>
+      <div style="background:var(--warn-lt);border:1px solid var(--warn);border-radius:11px;padding:10px 12px;margin-bottom:8px;cursor:pointer" onclick="nav('sp','Premium')">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+          <span style="font-size:14px">📍</span>
+          <div style="font-size:12px;font-weight:700;color:var(--t1)">Where Are They Now</div>
+          <span class="paid-tag">★ Premium</span>
+        </div>
+        <div style="font-size:10px;color:var(--t3)">See where your 34 classmates live and work</div>
+      </div>
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:9px 12px;display:flex;align-items:center;gap:8px;cursor:pointer" onclick="nav('s7','Persona switcher')">
+        <span style="font-size:15px">⇄</span>
+        <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Teacher persona</div><div style="font-size:10px;color:var(--t3)">62 classes · 3 schools</div></div>
+        <span style="color:var(--t4)">›</span>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="bn" onclick="nav('s1','Home')"><div class="bn-ic">🏠</div><div class="bn-lb">Home</div></div>
+      <div class="bn" onclick="nav('sc','Create')"><div class="bn-ic">➕</div><div class="bn-lb">Create</div></div>
+      <div class="bn"><div class="bn-ic">💬</div><div class="bn-lb">Messages</div></div>
+      <div class="bn a"><div class="bn-ic">👤</div><div class="bn-lb">Profile</div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S7 — PERSONA SWITCHER (dynamic)
+  ══════════════════════════════════ -->
+  <div class="scr" id="s7">
+    <div class="tbar">
+      <div class="bk" onclick="nav('s6','Profile')">←</div>
+      <div class="tbar-title">Switch persona</div>
+    </div>
+    <div class="body">
+      <!-- account strip -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0 14px;border-bottom:1px solid var(--b1);margin-bottom:14px">
+        <div class="prof-av" style="width:42px;height:42px;font-size:14px;margin:0">PS</div>
+        <div>
+          <div style="font-size:13px;font-weight:800;color:var(--t1)">Priya Sharma</div>
+          <div style="font-size:10px;color:var(--t3)">One account · 3 personas</div>
+        </div>
+      </div>
+
+      <!-- persona list — dynamic, column not grid -->
+      <!-- ACTIVE persona -->
+      <div onclick="nav('s1','Home')" style="background:var(--ac-lt);border:2px solid var(--ac);border-radius:13px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:8px">
+        <div style="width:38px;height:38px;border-radius:10px;background:var(--ac);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🎓</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:800;color:var(--ac)">Alumni</div>
+          <div style="font-size:10px;color:var(--ac);opacity:.8;margin-top:1px">MP Birla · UC Davis · 2 classrooms</div>
+        </div>
+        <div style="background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;flex-shrink:0">Active</div>
+      </div>
+
+      <!-- Teacher persona -->
+      <div onclick="nav('s5','Teacher')" style="background:var(--card);border:1px solid var(--b2);border-radius:13px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:8px;transition:background .3s">
+        <div style="width:38px;height:38px;border-radius:10px;background:var(--warn-lt);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">✏️</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:800;color:var(--t1)">Teacher</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:1px">62 classes · 3 schools · 2,100+ students</div>
+        </div>
+        <div style="color:var(--t4);font-size:13px">›</div>
+      </div>
+
+      <!-- School Admin persona -->
+      <div onclick="nav('s_admin','Admin dashboard')" style="background:var(--card);border:1px solid var(--b2);border-radius:13px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:14px;transition:background .3s">
+        <div style="width:38px;height:38px;border-radius:10px;background:var(--info-lt);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🏫</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:800;color:var(--t1)">School Admin</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:1px">MP Birla School · Kolkata · Partner ✓</div>
+        </div>
+        <div style="color:var(--t4);font-size:13px">›</div>
+      </div>
+
+      <!-- add persona -->
+      <div style="border:1.5px dashed var(--b2);border-radius:13px;padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:14px">
+        <div style="width:38px;height:38px;border-radius:10px;background:var(--b1);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;color:var(--t3)">＋</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:var(--t3)">Add a persona</div>
+          <div style="font-size:10px;color:var(--t4);margin-top:1px">Student at another institution, or admin of another school</div>
+        </div>
+      </div>
+
+      <div class="ibox ibox-inf">
+        <div style="font-size:10px;color:var(--info);line-height:1.7">Each persona has its own feed, classrooms and notifications. Same name and photo everywhere — only your role context changes.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       SP — PREMIUM
+  ══════════════════════════════════ -->
+  <div class="scr" id="sp">
+    <div class="tbar">
+      <div class="bk" onclick="nav('s6','Profile')">←</div>
+      <div class="tbar-title">Premium features</div>
+    </div>
+    <div class="body">
+      <div style="background:var(--ac);border-radius:13px;padding:14px;margin-bottom:13px;text-align:center">
+        <div style="font-size:10px;color:rgba(255,255,255,.6);margin-bottom:3px">Individual plan</div>
+        <div style="font-size:20px;font-weight:800;color:#fff">₹99 <span style="font-size:11px;opacity:.6;font-weight:400">/ month</span></div>
+        <button style="margin-top:10px;padding:6px 20px;border-radius:20px;background:#fff;color:var(--ac);font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:'Outfit',sans-serif">Unlock</button>
+      </div>
+      <div class="crd" style="opacity:.7"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:17px">📍</span><div style="flex:1"><div class="crd-name">Where Are They Now</div><div style="font-size:10px;color:var(--t3)">City, job and company for your whole class</div></div><span class="paid-tag">★</span></div></div>
+      <div class="crd" style="opacity:.7"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:17px">📊</span><div style="flex:1"><div class="crd-name">Career paths</div><div style="font-size:10px;color:var(--t3)">What fields did your batch go into?</div></div><span class="paid-tag">★</span></div></div>
+      <div class="crd" style="opacity:.7"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:17px">🎉</span><div style="flex:1"><div class="crd-name">Reunion planner</div><div style="font-size:10px;color:var(--t3)">RSVPs, polls, photo albums</div></div><span class="paid-tag">★</span></div></div>
+      <div class="crd" style="opacity:.7"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:17px">📸</span><div style="flex:1"><div class="crd-name">Memory capsule</div><div style="font-size:10px;color:var(--t3)">Anniversary highlights from your batch</div></div><span class="paid-tag">★</span></div></div>
+      <div class="crd" style="opacity:.7"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:17px">📁</span><div style="flex:1"><div class="crd-name">Extra storage</div><div style="font-size:10px;color:var(--t3)">2GB vs 200MB on free</div></div><span class="paid-tag">★</span></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S_MENU — HAMBURGER MENU
+  ══════════════════════════════════ -->
+  <div class="scr" id="s_menu">
+    <div style="flex-shrink:0;background:var(--ac);padding:12px 14px;display:flex;align-items:center;gap:9px">
+      <div class="bk" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.2);color:#fff" onclick="nav('s1','Home')">←</div>
+      <div style="font-size:14px;font-weight:800;color:#fff">Menu</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;background:var(--card)">
+      <div style="display:flex;align-items:center;gap:11px;padding:13px 15px;border-bottom:1px solid var(--b1)">
+        <div class="av" style="width:40px;height:40px;background:var(--ac-lt);color:var(--ac);font-size:13px;font-weight:800">PS</div>
+        <div><div style="font-size:13px;font-weight:800;color:var(--t1)">Priya Sharma</div><div style="font-size:10px;color:var(--t3)">Alumni · Mumbai</div></div>
+      </div>
+      <div class="mrow" onclick="nav('s1','Home')"><span class="mrow-ic">🏠</span><span class="mrow-t">My classrooms</span><span style="margin-left:auto;color:var(--t4)">›</span></div>
+      <div class="mrow" onclick="nav('s4','Verify')"><span class="mrow-ic">✅</span><span class="mrow-t">Verification</span><span style="margin-left:auto;color:var(--t4)">›</span></div>
+      <div class="mrow" onclick="nav('s6','Profile')"><span class="mrow-ic">👤</span><span class="mrow-t">Profile</span><span style="margin-left:auto;color:var(--t4)">›</span></div>
+      <div class="mrow" onclick="nav('s7','Persona')"><span class="mrow-ic">⇄</span><span class="mrow-t">Switch persona</span><span style="margin-left:auto;color:var(--t4)">›</span></div>
+      <div class="mrow" onclick="nav('sp','Premium')"><span class="mrow-ic">⭐</span><span class="mrow-t">Premium features</span><span class="paid-tag" style="margin-left:auto">★</span></div>
+      <div class="mrow" onclick="nav('sc','Create')"><span class="mrow-ic">➕</span><span class="mrow-t">Create classroom</span><span style="margin-left:auto;color:var(--t4)">›</span></div>
+      <div class="mrow"><span class="mrow-ic">🔔</span><span class="mrow-t">Notifications</span><span style="margin-left:auto;background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px">3</span></div>
+      <div class="mrow" onclick="toggleTheme()">
+        <span class="mrow-ic" id="theme-ic">🌙</span>
+        <span class="mrow-t" id="theme-lbl">Dark mode</span>
+        <div style="margin-left:auto"><div class="ttrack"><div class="tthumb"></div></div></div>
+      </div>
+      <div class="mrow"><span class="mrow-ic">⚙️</span><span class="mrow-t">Settings</span><span style="margin-left:auto;color:var(--t4)">›</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S_ADMIN — SCHOOL ADMIN DASHBOARD
+  ══════════════════════════════════ -->
+  <div class="scr" id="s_admin">
+    <!-- header -->
+    <div style="flex-shrink:0;background:var(--ac);padding:9px 13px;display:flex;align-items:center;gap:10px">
+      <div style="width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏫</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800;color:#fff">MP Birla School</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.6)">Admin · Kolkata · Partner ✓</div>
+      </div>
+      <div style="font-size:10px;font-weight:700;background:rgba(255,255,255,.2);color:#fff;padding:3px 9px;border-radius:20px">⚙️</div>
+    </div>
+
+    <!-- admin tab bar -->
+    <div style="flex-shrink:0;display:flex;background:var(--cream);border-bottom:1px solid var(--b1);transition:background .3s">
+      <div id="adm-tab-ov" onclick="adm_tab('ov')" style="flex:1;padding:8px 3px;text-align:center;font-size:10px;font-weight:700;color:var(--ac);border-bottom:2px solid var(--ac);cursor:pointer">Overview</div>
+      <div id="adm-tab-vf" onclick="adm_tab('vf')" style="flex:1;padding:8px 3px;text-align:center;font-size:10px;font-weight:600;color:var(--t4);border-bottom:2px solid transparent;cursor:pointer">Verify</div>
+      <div id="adm-tab-cd" onclick="adm_tab('cd')" style="flex:1;padding:8px 3px;text-align:center;font-size:10px;font-weight:600;color:var(--t4);border-bottom:2px solid transparent;cursor:pointer">Codes</div>
+      <div id="adm-tab-an" onclick="adm_tab('an')" style="flex:1;padding:8px 3px;text-align:center;font-size:10px;font-weight:600;color:var(--t4);border-bottom:2px solid transparent;cursor:pointer">Stats</div>
+      <div id="adm-tab-tm" onclick="adm_tab('tm')" style="flex:1;padding:8px 3px;text-align:center;font-size:10px;font-weight:600;color:var(--t4);border-bottom:2px solid transparent;cursor:pointer">Admins</div>
+    </div>
+
+    <!-- OVERVIEW PANE -->
+    <div id="adm-pane-ov" style="flex:1;overflow-y:auto;padding:12px 13px;background:var(--pg);transition:background .3s">
+      <!-- institution stats -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px">
+        <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:11px 12px;transition:background .3s">
+          <div style="font-size:22px;font-weight:800;color:var(--t1)">62</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:1px">📚 Classrooms</div>
+        </div>
+        <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:11px 12px;transition:background .3s">
+          <div style="font-size:22px;font-weight:800;color:var(--t1)">1,840</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:1px">👥 Alumni</div>
+        </div>
+        <div style="background:var(--warn-lt);border-radius:11px;border:1px solid var(--warn);padding:11px 12px">
+          <div style="font-size:22px;font-weight:800;color:var(--warn)">14</div>
+          <div style="font-size:10px;color:var(--warn);margin-top:1px">⏳ Pending verify</div>
+        </div>
+        <div style="background:var(--ok-lt);border-radius:11px;border:1px solid var(--ok);padding:11px 12px">
+          <div style="font-size:22px;font-weight:800;color:var(--ok)">94%</div>
+          <div style="font-size:10px;color:var(--ok);margin-top:1px">✅ Verified rate</div>
+        </div>
+      </div>
+
+      <!-- classrooms — collapsed by year -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+        <div class="slbl" style="margin:0">Classrooms · 62 total</div>
+      </div>
+
+      <!-- 2026 — expanded by default -->
+      <div class="fold" style="margin-bottom:7px">
+        <div class="fhd" style="background:var(--ac-lt)" onclick="toggleFold(this)">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--ac)">Batch of 2026</div>
+            <div style="font-size:10px;color:var(--ac);opacity:.7">12 classrooms · 380 students</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:var(--ac);margin-right:8px;cursor:pointer;background:var(--ac);color:#fff;padding:2px 8px;border-radius:20px" onclick="event.stopPropagation()">+ Add</span>
+          <span style="color:var(--ac);font-size:13px">∨</span>
+        </div>
+        <div class="frows">
+          <div class="frow">
+            <div class="dot" style="background:#22C55E"></div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Class 9 · Sec A</div><div style="font-size:10px;color:var(--t3)">👥 34 · ✅ 29 · ⏳ 5</div></div>
+            <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+          </div>
+          <div class="frow">
+            <div class="dot" style="background:#22C55E"></div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Class 9 · Sec B</div><div style="font-size:10px;color:var(--t3)">👥 31 · ✅ 28 · ⏳ 3</div></div>
+            <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+          </div>
+          <div class="frow">
+            <div class="dot" style="background:#22C55E"></div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Class 10 · Sec A</div><div style="font-size:10px;color:var(--t3)">👥 38 · ✅ 35 · ⏳ 3</div></div>
+            <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+          </div>
+          <div style="padding:7px 12px;border-top:1px solid var(--b1);text-align:center;cursor:pointer;background:var(--card)">
+            <span style="font-size:10px;color:var(--ac);font-weight:600">Show all 12 classes in 2026 →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2025 — collapsed -->
+      <div class="fold" style="margin-bottom:7px">
+        <div class="fhd" style="background:var(--b1)" onclick="toggleFold(this)">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t2)">Batch of 2025</div>
+            <div style="font-size:10px;color:var(--t3)">12 classrooms · 362 students</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;background:var(--ac-lt);color:var(--ac);padding:2px 8px;border-radius:20px;margin-right:8px;cursor:pointer" onclick="event.stopPropagation()">+ Add</span>
+          <span style="color:var(--t3);font-size:13px">›</span>
+        </div>
+        <div class="frows" style="display:none">
+          <div class="frow">
+            <div class="dot" style="background:var(--b2)"></div>
+            <div style="flex:1"><div style="font-size:12px;color:var(--t3)">Class 9 · Sec A</div><div style="font-size:10px;color:var(--t4)">👥 33 · ✅ 33</div></div>
+            <div class="dot" style="background:var(--b2);width:8px;height:8px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2024 — collapsed -->
+      <div class="fold" style="margin-bottom:9px">
+        <div class="fhd" style="background:var(--b1)" onclick="toggleFold(this)">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t2)">Batch of 2024</div>
+            <div style="font-size:10px;color:var(--t3)">11 classrooms · 341 students</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;background:var(--ac-lt);color:var(--ac);padding:2px 8px;border-radius:20px;margin-right:8px;cursor:pointer" onclick="event.stopPropagation()">+ Add</span>
+          <span style="color:var(--t3);font-size:13px">›</span>
+        </div>
+        <div class="frows" style="display:none">
+          <div class="frow">
+            <div class="dot" style="background:var(--b2)"></div>
+            <div style="flex:1"><div style="font-size:12px;color:var(--t3)">Class 9 · Sec A</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- bulk import -->
+      <div style="background:var(--info-lt);border:1px solid var(--info);border-radius:11px;padding:11px 12px;display:flex;align-items:center;gap:9px;cursor:pointer">
+        <span style="font-size:20px">📥</span>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;color:var(--info)">Bulk import students</div>
+          <div style="font-size:10px;color:var(--info);opacity:.8">Upload CSV · auto-creates classrooms + codes</div>
+        </div>
+        <span style="color:var(--info)">›</span>
+      </div>
+    </div>
+
+    <!-- VERIFY PANE -->
+    <div id="adm-pane-vf" style="display:none;flex:1;overflow-y:auto;padding:12px 13px;background:var(--pg);transition:background .3s">
+      <div class="ibox ibox-warn"><div style="font-size:10px;color:var(--warn)">14 document submissions awaiting review · documents auto-delete in 30 days</div></div>
+      <!-- pending cards -->
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:11px 12px;margin-bottom:8px;transition:background .3s">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+          <div class="av" style="width:32px;height:32px;background:var(--ac-lt);color:var(--ac)">AK</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t1)">Arjun Kapoor</div>
+            <div style="font-size:10px;color:var(--t3)">Class 9A · 2012 · Transcript uploaded</div>
+          </div>
+          <div style="font-size:9px;color:var(--t3)">2d ago</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <div style="flex:1;padding:7px;border-radius:9px;background:var(--ok-lt);border:1px solid var(--ok);text-align:center;font-size:11px;font-weight:700;color:var(--ok);cursor:pointer">✓ Approve</div>
+          <div style="flex:1;padding:7px;border-radius:9px;background:var(--b1);border:1px solid var(--b2);text-align:center;font-size:11px;font-weight:600;color:var(--t3);cursor:pointer">View doc</div>
+          <div style="flex:1;padding:7px;border-radius:9px;background:var(--warn-lt);border:1px solid var(--warn);text-align:center;font-size:11px;font-weight:600;color:var(--warn);cursor:pointer">✗ Reject</div>
+        </div>
+      </div>
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:11px 12px;margin-bottom:8px;transition:background .3s">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+          <div class="av" style="width:32px;height:32px;background:var(--info-lt);color:var(--info)">NR</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t1)">Neha Rao</div>
+            <div style="font-size:10px;color:var(--t3)">Class 10B · 2014 · Student ID uploaded</div>
+          </div>
+          <div style="font-size:9px;color:var(--t3)">5d ago</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <div style="flex:1;padding:7px;border-radius:9px;background:var(--ok-lt);border:1px solid var(--ok);text-align:center;font-size:11px;font-weight:700;color:var(--ok);cursor:pointer">✓ Approve</div>
+          <div style="flex:1;padding:7px;border-radius:9px;background:var(--b1);border:1px solid var(--b2);text-align:center;font-size:11px;font-weight:600;color:var(--t3);cursor:pointer">View doc</div>
+          <div style="flex:1;padding:7px;border-radius:9px;background:var(--warn-lt);border:1px solid var(--warn);text-align:center;font-size:11px;font-weight:600;color:var(--warn);cursor:pointer">✗ Reject</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CODES PANE -->
+    <div id="adm-pane-cd" style="display:none;flex:1;overflow-y:auto;padding:12px 13px;background:var(--pg);transition:background .3s">
+      <div class="ibox ibox-ac"><div style="font-size:10px;color:var(--t2);line-height:1.6">Personal codes are name-tied and single-use. Batch codes are capped to class size and burn when full.</div></div>
+
+      <!-- generate personal codes -->
+      <div class="slbl">Personal codes</div>
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:11px 12px;margin-bottom:9px;transition:background .3s">
+        <div style="font-size:11px;font-weight:700;color:var(--t1);margin-bottom:8px">Generate for a student</div>
+        <div style="background:var(--inp);border:1px solid var(--b2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--t3);margin-bottom:7px">Student name…</div>
+        <div style="display:flex;gap:6px;margin-bottom:7px">
+          <div style="background:var(--inp);border:1px solid var(--b2);border-radius:8px;padding:8px 11px;font-size:12px;color:var(--t3);flex:1">Class + year…</div>
+        </div>
+        <div style="background:var(--ac);border-radius:9px;padding:8px;text-align:center;font-size:11px;font-weight:700;color:#fff;cursor:pointer">Generate code</div>
+      </div>
+
+      <!-- active codes -->
+      <div class="slbl">Batch codes active</div>
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);overflow:hidden;transition:background .3s">
+        <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--b1)">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t1);font-family:monospace;letter-spacing:.5px">IN-2026-A7K2</div>
+            <div style="font-size:10px;color:var(--t3)">Class 9A · 2026 · 12/34 redeemed</div>
+          </div>
+          <div style="width:40px;height:5px;border-radius:3px;background:var(--b1);overflow:hidden"><div style="width:35%;height:100%;background:var(--ac);border-radius:3px"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;padding:9px 12px">
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t1);font-family:monospace;letter-spacing:.5px">IN-2025-P9M1</div>
+            <div style="font-size:10px;color:var(--t3)">Class 10B · 2025 · 31/38 redeemed</div>
+          </div>
+          <div style="width:40px;height:5px;border-radius:3px;background:var(--b1);overflow:hidden"><div style="width:82%;height:100%;background:var(--ok);border-radius:3px"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS PANE -->
+    <div id="adm-pane-an" style="display:none;flex:1;overflow-y:auto;padding:12px 13px;background:var(--pg);transition:background .3s">
+      <!-- engagement bar chart placeholder -->
+      <div class="slbl" style="margin-top:0">Monthly active alumni</div>
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:12px;margin-bottom:9px;transition:background .3s">
+        <div style="display:flex;align-items:flex-end;gap:5px;height:70px;margin-bottom:6px">
+          <div style="flex:1;background:var(--ac-lt);border-radius:4px 4px 0 0;height:40%"></div>
+          <div style="flex:1;background:var(--ac-lt);border-radius:4px 4px 0 0;height:55%"></div>
+          <div style="flex:1;background:var(--ac-lt);border-radius:4px 4px 0 0;height:45%"></div>
+          <div style="flex:1;background:var(--ac-lt);border-radius:4px 4px 0 0;height:70%"></div>
+          <div style="flex:1;background:var(--ac-lt);border-radius:4px 4px 0 0;height:60%"></div>
+          <div style="flex:1;background:var(--ac);border-radius:4px 4px 0 0;height:85%"></div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <div style="flex:1;font-size:8px;color:var(--t4);text-align:center">Feb</div>
+          <div style="flex:1;font-size:8px;color:var(--t4);text-align:center">Mar</div>
+          <div style="flex:1;font-size:8px;color:var(--t4);text-align:center">Apr</div>
+          <div style="flex:1;font-size:8px;color:var(--t4);text-align:center">May</div>
+          <div style="flex:1;font-size:8px;color:var(--t4);text-align:center">Jun</div>
+          <div style="flex:1;font-size:8px;color:var(--t4);text-align:center">Jul</div>
+        </div>
+      </div>
+      <!-- top stats -->
+      <div class="slbl">Top classrooms by activity</div>
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);overflow:hidden;transition:background .3s">
+        <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--b1)">
+          <div style="font-size:11px;font-weight:800;color:var(--t4);width:16px">1</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Class 9A · 2012</div><div style="font-size:10px;color:var(--t3)">34 active · 12 msgs today</div></div>
+          <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--b1)">
+          <div style="font-size:11px;font-weight:800;color:var(--t4);width:16px">2</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Class 12B · 2019</div><div style="font-size:10px;color:var(--t3)">41 active · 8 msgs today</div></div>
+          <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;padding:9px 12px">
+          <div style="font-size:11px;font-weight:800;color:var(--t4);width:16px">3</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Class 10A · 2015</div><div style="font-size:10px;color:var(--t3)">29 active · 5 msgs today</div></div>
+          <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMINS PANE -->
+    <div id="adm-pane-tm" style="display:none;flex:1;overflow-y:auto;padding:12px 13px;background:var(--pg);transition:background .3s">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--t1)">School admins</div>
+          <div style="font-size:10px;color:var(--t3)">3 of 5 slots used</div>
+        </div>
+        <div style="background:var(--ac);color:#fff;font-size:10px;font-weight:700;padding:5px 12px;border-radius:20px;cursor:pointer">+ Invite</div>
+      </div>
+
+      <!-- slot usage bar -->
+      <div style="background:var(--b1);border-radius:4px;height:5px;margin-bottom:12px;overflow:hidden">
+        <div style="width:60%;height:100%;background:var(--ac);border-radius:4px"></div>
+      </div>
+
+      <!-- current admins -->
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);overflow:hidden;margin-bottom:9px;transition:background .3s">
+
+        <!-- primary admin — cannot be removed -->
+        <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;border-bottom:1px solid var(--b1)">
+          <div class="av" style="width:32px;height:32px;background:var(--ac-lt);color:var(--ac)">PS</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t1)">Priya Sharma</div>
+            <div style="font-size:10px;color:var(--t3)">priya@mpbirla.edu · Primary admin</div>
+          </div>
+          <span class="tag t-ac" style="font-size:8px">Primary</span>
+        </div>
+
+        <!-- admin 2 -->
+        <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;border-bottom:1px solid var(--b1)">
+          <div class="av" style="width:32px;height:32px;background:var(--ok-lt);color:var(--ok)">RK</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t1)">Ravi Kumar</div>
+            <div style="font-size:10px;color:var(--t3)">ravi@mpbirla.edu · Admin</div>
+          </div>
+          <div style="font-size:18px;color:var(--t4);cursor:pointer;padding:0 2px">···</div>
+        </div>
+
+        <!-- admin 3 — pending invite -->
+        <div style="display:flex;align-items:center;gap:9px;padding:10px 12px">
+          <div class="av" style="width:32px;height:32px;background:var(--warn-lt);color:var(--warn)">?</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--t1)">Invite pending</div>
+            <div style="font-size:10px;color:var(--t3)">anjali@mpbirla.edu · sent 2 days ago</div>
+          </div>
+          <span class="tag t-warn" style="font-size:8px">⏳ pending</span>
+        </div>
+      </div>
+
+      <!-- empty slots -->
+      <div style="background:var(--card);border-radius:11px;border:1.5px dashed var(--b2);padding:11px 12px;margin-bottom:9px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:background .3s" onclick="">
+        <div style="width:32px;height:32px;border-radius:50%;border:1.5px dashed var(--b2);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--t4);flex-shrink:0">+</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600;color:var(--t3)">Add another admin</div>
+          <div style="font-size:10px;color:var(--t4)">2 slots remaining · max 5</div>
+        </div>
+      </div>
+
+      <!-- rules note -->
+      <div class="ibox ibox-ac">
+        <div style="font-size:10px;color:var(--t2);line-height:1.7">
+          <b>Primary admin</b> cannot be removed — transfer ownership first if needed.<br>
+          Admins can approve verifications, issue codes, and manage classrooms.<br>
+          Only the primary admin can add or remove other admins.
+        </div>
+      </div>
+
+      <!-- three-dot actions menu hint -->
+      <div style="font-size:10px;color:var(--t4);text-align:center;margin-top:6px">Tap ··· on any admin to remove or change role</div>
+    </div>
+  </div>
+  <div class="scr" id="s_search">
+    <div class="tbar">
+      <div class="bk" onclick="nav('s5','Teacher home')">←</div>
+      <div class="tbar-title">Find a student</div>
+    </div>
+    <!-- search bar -->
+    <div style="flex-shrink:0;padding:10px 13px;background:var(--cream);border-bottom:1px solid var(--b1);transition:background .3s,border-color .3s">
+      <div style="background:var(--card);border:1.5px solid var(--ac);border-radius:11px;padding:9px 13px;display:flex;align-items:center;gap:8px;transition:background .3s">
+        <span style="font-size:15px;color:var(--t3)">🔍</span>
+        <div style="flex:1;font-size:13px;color:var(--t1);font-weight:500">Priya Sharma</div>
+        <span style="font-size:12px;color:var(--t4);cursor:pointer">✕</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <div style="padding:4px 10px;border-radius:20px;background:var(--ac);color:#fff;font-size:9px;font-weight:700;cursor:pointer">All schools</div>
+        <div style="padding:4px 10px;border-radius:20px;border:1px solid var(--b2);color:var(--t3);font-size:9px;cursor:pointer">MP Birla</div>
+        <div style="padding:4px 10px;border-radius:20px;border:1px solid var(--b2);color:var(--t3);font-size:9px;cursor:pointer">KV Fort William</div>
+      </div>
+    </div>
+    <!-- results -->
+    <div style="flex:1;overflow-y:auto;padding:11px 13px;background:var(--pg);transition:background .3s">
+      <div style="font-size:10px;color:var(--t3);margin-bottom:10px">3 students found across your classes</div>
+
+      <!-- result card -->
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:11px 12px;margin-bottom:8px;cursor:pointer;transition:background .3s">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+          <div class="av" style="width:36px;height:36px;background:var(--ac-lt);color:var(--ac);font-size:12px;font-weight:800">PS</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800;color:var(--t1)">Priya Sharma</div>
+            <div style="font-size:10px;color:var(--t3)">MP Birla · Class 9A · 2012</div>
+          </div>
+          <span class="tag t-ok" style="font-size:8px">✓ verified</span>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <span style="font-size:10px;color:var(--t3);background:var(--b1);padding:2px 8px;border-radius:20px">PM · Razorpay</span>
+          <span style="font-size:10px;color:var(--t3);background:var(--b1);padding:2px 8px;border-radius:20px">Mumbai</span>
+        </div>
+        <div style="margin-top:9px;display:flex;gap:6px">
+          <div style="flex:1;padding:6px;border-radius:9px;background:var(--ac-lt);border:1px solid var(--b2);text-align:center;font-size:10px;font-weight:700;color:var(--ac);cursor:pointer">✉ Message</div>
+          <div style="flex:1;padding:6px;border-radius:9px;background:var(--b1);border:1px solid var(--b2);text-align:center;font-size:10px;font-weight:600;color:var(--t2);cursor:pointer">📄 Recommend</div>
+        </div>
+      </div>
+
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:11px 12px;margin-bottom:8px;cursor:pointer;transition:background .3s">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+          <div class="av" style="width:36px;height:36px;background:var(--ok-lt);color:var(--ok);font-size:12px;font-weight:800">PS</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800;color:var(--t1)">Priya Sen</div>
+            <div style="font-size:10px;color:var(--t3)">MP Birla · Class 11A · 2018</div>
+          </div>
+          <span class="tag t-ok" style="font-size:8px">✓ verified</span>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
+          <span style="font-size:10px;color:var(--t3);background:var(--b1);padding:2px 8px;border-radius:20px">Doctor · AIIMS</span>
+          <span style="font-size:10px;color:var(--t3);background:var(--b1);padding:2px 8px;border-radius:20px">Delhi</span>
+        </div>
+        <div style="margin-top:9px;display:flex;gap:6px">
+          <div style="flex:1;padding:6px;border-radius:9px;background:var(--ac-lt);border:1px solid var(--b2);text-align:center;font-size:10px;font-weight:700;color:var(--ac);cursor:pointer">✉ Message</div>
+          <div style="flex:1;padding:6px;border-radius:9px;background:var(--b1);border:1px solid var(--b2);text-align:center;font-size:10px;font-weight:600;color:var(--t2);cursor:pointer">📄 Recommend</div>
+        </div>
+      </div>
+
+      <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:11px 12px;cursor:pointer;transition:background .3s">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+          <div class="av" style="width:36px;height:36px;background:var(--warn-lt);color:var(--warn);font-size:12px;font-weight:800">PD</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800;color:var(--t1)">Priya Das</div>
+            <div style="font-size:10px;color:var(--t3)">KV Fort William · Class 9B · 2018</div>
+          </div>
+          <span class="tag t-warn" style="font-size:8px">⏳ pending</span>
+        </div>
+        <div style="font-size:10px;color:var(--t3);background:var(--warn-lt);border:1px solid var(--warn);border-radius:8px;padding:5px 9px">Not yet verified — vouch to unlock full profile</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S_WATN — WHERE ARE THEY NOW
+  ══════════════════════════════════ -->
+  <div class="scr" id="s_watn">
+    <div class="tbar">
+      <div class="bk" onclick="nav('s6','Profile')">←</div>
+      <div class="tbar-title">Where Are They Now</div>
+      <span class="paid-tag" style="font-size:9px">★ Premium</span>
+    </div>
+    <div style="flex:1;overflow-y:auto;background:var(--pg);transition:background .3s">
+      <!-- class identity strip -->
+      <div style="background:var(--card);padding:11px 13px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:9px;transition:background .3s">
+        <span style="font-size:18px">🏫</span>
+        <div style="flex:1"><div style="font-size:12px;font-weight:800;color:var(--t1)">MP Birla · Class 9A · 2012</div><div style="font-size:10px;color:var(--t3)">34 batchmates · 29 opted in</div></div>
+        <span style="font-size:10px;color:var(--ac);font-weight:600;cursor:pointer">Switch class</span>
+      </div>
+
+      <!-- city breakdown -->
+      <div style="padding:12px 13px">
+        <div class="slbl" style="margin-top:0">Where they live</div>
+        <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);padding:11px 12px;margin-bottom:9px;transition:background .3s">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--t3);width:80px">Mumbai</div>
+            <div style="flex:1;height:7px;border-radius:4px;background:var(--b1);overflow:hidden"><div style="width:38%;height:100%;background:var(--ac);border-radius:4px"></div></div>
+            <div style="font-size:11px;font-weight:700;color:var(--t1);width:24px;text-align:right">11</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--t3);width:80px">Bangalore</div>
+            <div style="flex:1;height:7px;border-radius:4px;background:var(--b1);overflow:hidden"><div style="width:24%;height:100%;background:var(--ac);border-radius:4px"></div></div>
+            <div style="font-size:11px;font-weight:700;color:var(--t1);width:24px;text-align:right">7</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">
+            <div style="font-size:11px;color:var(--t3);width:80px">Kolkata</div>
+            <div style="flex:1;height:7px;border-radius:4px;background:var(--b1);overflow:hidden"><div style="width:17%;height:100%;background:var(--ac);border-radius:4px"></div></div>
+            <div style="font-size:11px;font-weight:700;color:var(--t1);width:24px;text-align:right">5</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px">
+            <div style="font-size:11px;color:var(--t3);width:80px">Abroad</div>
+            <div style="flex:1;height:7px;border-radius:4px;background:var(--b1);overflow:hidden"><div style="width:20%;height:100%;background:var(--ac-md);border-radius:4px"></div></div>
+            <div style="font-size:11px;font-weight:700;color:var(--t1);width:24px;text-align:right">6</div>
+          </div>
+        </div>
+
+        <!-- field breakdown -->
+        <div class="slbl">What they do</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">
+          <span style="padding:5px 11px;border-radius:20px;background:var(--ac-lt);border:1px solid var(--b2);font-size:10px;font-weight:600;color:var(--ac)">💻 Tech · 9</span>
+          <span style="padding:5px 11px;border-radius:20px;background:var(--ok-lt);border:1px solid var(--ok);font-size:10px;font-weight:600;color:var(--ok)">🏥 Medicine · 5</span>
+          <span style="padding:5px 11px;border-radius:20px;background:var(--info-lt);border:1px solid var(--info);font-size:10px;font-weight:600;color:var(--info)">💼 Finance · 6</span>
+          <span style="padding:5px 11px;border-radius:20px;background:var(--warn-lt);border:1px solid var(--warn);font-size:10px;font-weight:600;color:var(--warn)">🎨 Design · 3</span>
+          <span style="padding:5px 11px;border-radius:20px;background:var(--b1);border:1px solid var(--b2);font-size:10px;font-weight:600;color:var(--t2)">Other · 6</span>
+        </div>
+
+        <!-- batchmate cards -->
+        <div class="slbl">Your batchmates today</div>
+        <div style="background:var(--card);border-radius:11px;border:1px solid var(--b1);overflow:hidden;transition:background .3s">
+          <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--b1)">
+            <div class="av" style="width:30px;height:30px;background:var(--ac-lt);color:var(--ac)">RA</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Rahul Agarwal</div><div style="font-size:10px;color:var(--t3)">SDE · Google · Bangalore</div></div>
+            <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--b1)">
+            <div class="av" style="width:30px;height:30px;background:var(--warn-lt);color:var(--warn)">SM</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Sneha Mehta</div><div style="font-size:10px;color:var(--t3)">UX Designer · Zomato · Mumbai</div></div>
+            <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--b1)">
+            <div class="av" style="width:30px;height:30px;background:var(--info-lt);color:var(--info)">NR</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Neha Rao</div><div style="font-size:10px;color:var(--t3)">Cardiologist · AIIMS · Delhi</div></div>
+            <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;padding:9px 12px">
+            <div class="av" style="width:30px;height:30px;background:var(--ok-lt);color:var(--ok)">AK</div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--t1)">Arjun Kapoor</div><div style="font-size:10px;color:var(--t3)">Founder · Stealth · Singapore</div></div>
+            <div class="dot" style="background:#22C55E;width:8px;height:8px"></div>
+          </div>
+        </div>
+
+        <!-- opt-in note -->
+        <div style="margin-top:9px;background:var(--b1);border-radius:9px;padding:9px 11px;font-size:10px;color:var(--t3);line-height:1.6">5 batchmates haven't opted in yet · visible only to verified classmates · you can opt out anytime in Settings</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       S_ONBOARD — ROLE SELECTION
+  ══════════════════════════════════ -->
+  <div class="scr" id="s_onboard" style="background:var(--cream);transition:background .3s">
+    <div style="flex:1;display:flex;flex-direction:column;padding:24px 20px">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="width:52px;height:52px;border-radius:14px;background:var(--ac-lt);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 10px">🎓</div>
+        <div style="font-size:17px;font-weight:800;color:var(--t1)">Welcome to Alumini</div>
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">How do you want to use the app?</div>
+      </div>
+
+      <!-- role cards -->
+      <div style="display:flex;flex-direction:column;gap:9px;margin-bottom:20px">
+        <div onclick="nav('s1','Home — Alumni')" style="background:var(--card);border:1.5px solid var(--b2);border-radius:13px;padding:13px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .2s">
+          <div style="width:40px;height:40px;border-radius:10px;background:var(--ac-lt);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🎓</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800;color:var(--t1)">Student / Alumni</div>
+            <div style="font-size:10px;color:var(--t3);margin-top:2px">Find your batch, connect with classmates</div>
+          </div>
+          <span style="color:var(--t4)">›</span>
+        </div>
+
+        <div onclick="nav('s5','Teacher home')" style="background:var(--card);border:1.5px solid var(--b2);border-radius:13px;padding:13px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .2s">
+          <div style="width:40px;height:40px;border-radius:10px;background:var(--warn-lt);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">✏️</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800;color:var(--t1)">Teacher / Faculty</div>
+            <div style="font-size:10px;color:var(--t3);margin-top:2px">Manage your classes, stay in touch with students</div>
+          </div>
+          <span style="color:var(--t4)">›</span>
+        </div>
+
+        <div onclick="nav('s_admin','Admin dashboard')" style="background:var(--card);border:1.5px solid var(--b2);border-radius:13px;padding:13px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .2s">
+          <div style="width:40px;height:40px;border-radius:10px;background:var(--info-lt);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🏫</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800;color:var(--t1)">School / Institution Admin</div>
+            <div style="font-size:10px;color:var(--t3);margin-top:2px">Manage classrooms, verify students, issue codes</div>
+          </div>
+          <span style="color:var(--t4)">›</span>
+        </div>
+      </div>
+
+      <!-- admin claim note -->
+      <div class="ibox ibox-inf">
+        <div style="font-size:10px;color:var(--info);line-height:1.7">
+          <b>School admins:</b> After selecting this role, you'll verify ownership via institutional email or document. The first admin per institution is approved by the Alumini team — usually within 24 hours.
+        </div>
+      </div>
+
+      <div style="margin-top:auto;text-align:center">
+        <div style="font-size:10px;color:var(--t4)">You can switch roles or add a second persona anytime from your profile.</div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- end .screens -->
+</div><!-- end .phone -->
+
+<div style="text-align:center;margin-top:13px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap">
+  <button onclick="nav('s0','Start')" style="padding:5px 14px;border-radius:20px;border:1px solid var(--b2);background:var(--card);font-size:10px;color:var(--t2);cursor:pointer;font-family:'Outfit',sans-serif">↺ Restart</button>
+  <button onclick="nav('s_onboard','Onboarding')" style="padding:5px 14px;border-radius:20px;border:1px solid var(--ac-md);background:var(--ac-lt);font-size:10px;color:var(--ac);cursor:pointer;font-family:'Outfit',sans-serif">👤 Onboarding</button>
+  <button onclick="nav('s_admin','School admin')" style="padding:5px 14px;border-radius:20px;border:1px solid var(--info);background:var(--info-lt);font-size:10px;color:var(--info);cursor:pointer;font-family:'Outfit',sans-serif">🏫 Admin view</button>
+  <button onclick="nav('s_search','Teacher search')" style="padding:5px 14px;border-radius:20px;border:1px solid var(--ok);background:var(--ok-lt);font-size:10px;color:var(--ok);cursor:pointer;font-family:'Outfit',sans-serif">🔍 Teacher search</button>
+  <button onclick="nav('s_watn','Where Are They Now')" style="padding:5px 14px;border-radius:20px;border:1px solid var(--warn);background:var(--warn-lt);font-size:10px;color:var(--warn);cursor:pointer;font-family:'Outfit',sans-serif">📍 Where Are They Now</button>
+</div>
+<div style="text-align:center;margin-top:8px;font-size:10px;color:var(--t3);font-family:'Outfit',sans-serif">Alumini v4 · Outfit · Midnight Purple</div>
+
+<script>
+var isDark=false;
+
+function toggleTheme(){
+  isDark=!isDark;
+  document.body.classList.toggle('dark',isDark);
+  var ic=document.getElementById('theme-ic');
+  var lb=document.getElementById('theme-lbl');
+  if(ic) ic.textContent=isDark?'☀️':'🌙';
+  if(lb) lb.textContent=isDark?'Light mode':'Dark mode';
+}
+
+function nav(id,label){
+  document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on')});
+  var el=document.getElementById(id);
+  if(el) el.classList.add('on');
+  var h=document.getElementById('crumb');
+  if(h) h.textContent=label||id;
+  // scroll body/tab areas back to top
+  if(el){
+    el.querySelectorAll('.body,.tab-body').forEach(function(b){b.scrollTop=0});
+    var fw=el.querySelector('[style*="overflow-y:auto"]');
+    if(fw) fw.scrollTop=0;
+  }
+}
+
+function cls_tab(t){
+  var tabs={s:'🌐',t:'🔒',m:'🎒'};
+  ['s','t','m'].forEach(function(x){
+    var tab=document.getElementById('tab-'+x);
+    var pane=document.getElementById('pane-'+x);
+    var info=document.getElementById('info-'+x);
+    var isActive=(x===t);
+    if(pane){pane.style.display=isActive?'flex':'none';}
+    if(info){info.style.display=isActive?'inline-flex':'none';}
+    if(tab){
+      tab.style.color=isActive?'var(--ac)':'var(--t4)';
+      tab.style.borderBottom=isActive?'2px solid var(--ac)':'2px solid transparent';
+    }
+  });
+}
+
+function adm_tab(t){
+  ['ov','vf','cd','an','tm'].forEach(function(x){
+    var tab=document.getElementById('adm-tab-'+x);
+    var pane=document.getElementById('adm-pane-'+x);
+    var isActive=(x===t);
+    if(tab){tab.style.color=isActive?'var(--ac)':'var(--t4)';tab.style.borderBottom=isActive?'2px solid var(--ac)':'2px solid transparent';tab.style.fontWeight=isActive?'700':'600';}
+    if(pane) pane.style.display=isActive?'block':'none';
+  });
+}
+
+function toggleFold(hd){
+  var rows=hd.nextElementSibling;
+  if(rows){
+    rows.style.display=(rows.style.display==='none'||rows.style.display==='')?'block':'none';
+  }
+}
+</script>
+</body>
+</html>

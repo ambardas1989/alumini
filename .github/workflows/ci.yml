@@ -1,0 +1,106 @@
+name: CI
+
+# Runs on every pull request and push to main/dev branches
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+jobs:
+  # ── Backend: lint, typecheck, test ──────────────────────────────────────────
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck --workspace=apps/backend
+
+      - name: Lint
+        run: npm run lint --workspace=apps/backend
+
+      - name: Unit tests
+        run: npm run test:coverage --workspace=apps/backend
+        env:
+          # Test environment — no real credentials needed for unit tests
+          NODE_ENV: test
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key
+          JWT_SECRET: test-jwt-secret-minimum-32-characters-long
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          flags: backend
+
+  # ── Web: lint, typecheck, build ─────────────────────────────────────────────
+  web:
+    name: Web CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck --workspace=apps/web
+
+      - name: Build
+        run: npm run build --workspace=apps/web
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          NEXT_PUBLIC_API_URL: http://localhost:3001/v1
+
+  # ── Shared packages ──────────────────────────────────────────────────────────
+  packages:
+    name: Shared packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck config package
+        working-directory: packages/config
+        run: npx tsc --noEmit
+
+      - name: Typecheck types package
+        working-directory: packages/types
+        run: npx tsc --noEmit
+
+      - name: Test utils
+        working-directory: packages/utils
+        run: npx jest --if-present

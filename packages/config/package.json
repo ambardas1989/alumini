@@ -1,0 +1,16 @@
+{
+  "name": "@alumini/config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "exports": {
+    "./brand": "./brand.ts",
+    "./app": "./app.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}
