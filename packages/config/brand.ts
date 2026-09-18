@@ -99,6 +99,9 @@ export const brand = {
       warningLight: '#2A2010',
       info:         '#7DB8FA',
       infoLight:    '#1A305A',
+      /** Softened red — the light-mode #DC2626 reads too harsh against a dark purple background */
+      error:        '#EF5350',
+      errorLight:   '#3A1515',
     },
   },
 

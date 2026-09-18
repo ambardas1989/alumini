@@ -102,8 +102,15 @@
   --color-text-primary: #ede8ff;
   --color-text-secondary: #c4b8f0;
   --color-text-muted: #9080c8;
+  --color-success: #34d578;
+  --color-success-light: #0d3a20;
   --color-warning: #c49a3c;
   --color-warning-light: #2a2010;
+  --color-info: #7db8fa;
+  --color-info-light: #1a305a;
+  /* Softened red — brand.ts's light-mode #DC2626 reads too harsh against this dark purple background */
+  --color-error: #ef5350;
+  --color-error-light: #3a1515;
 }
 
 html[dir='rtl'] {
