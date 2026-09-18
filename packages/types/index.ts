@@ -85,6 +85,7 @@ export enum AuditEventType {
   AUTH_PASSWORD_CHANGED   = 'auth.password.changed',
   AUTH_SESSION_INVALIDATED= 'auth.session.invalidated',
   AUTH_LOGOUT             = 'auth.logout',
+  AUTH_TOKEN_REFRESHED    = 'auth.token.refreshed',
 
   // Persona
   PERSONA_SWITCHED        = 'persona.switched',

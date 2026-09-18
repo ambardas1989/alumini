@@ -61,8 +61,33 @@ export const appConfig = {
   /** Maximum concurrent sessions (devices) per user account */
   SESSION_MAX_DEVICES: 5,
 
-  /** JWT access token expiry in days */
+  /**
+   * Refresh token / session expiry in days (SPEC.md §4.3 — "JWT tokens with
+   * 7-day expiry"). The access token itself is much shorter-lived — see
+   * JWT_ACCESS_EXPIRY_MINUTES — the refresh token is what actually lasts 7 days.
+   */
   JWT_EXPIRY_DAYS: 7,
+
+  /**
+   * Access token lifetime in minutes. Kept short on purpose — it's the
+   * credential sent on every request, so a leak is only dangerous for a
+   * few minutes. Clients use POST /auth/refresh to get a new one.
+   */
+  JWT_ACCESS_EXPIRY_MINUTES: 15,
+
+  /**
+   * How long a pending MFA token stays valid. Issued after a password/Google
+   * login succeeds (or a signup completes) but before the MFA code is
+   * entered — it can only be used against /auth/mfa/* endpoints, never
+   * against a protected resource.
+   */
+  MFA_PENDING_TOKEN_EXPIRY_MINUTES: 10,
+
+  /** Digit length of SMS OTP codes sent for MFA fallback */
+  SMS_OTP_LENGTH: 6,
+
+  /** How long an SMS OTP code stays valid before expiring */
+  SMS_OTP_EXPIRY_MINUTES: 5,
 
   /**
    * Whether MFA is mandatory for all users.
