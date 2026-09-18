@@ -240,6 +240,15 @@ export const appConfig = {
   /** Enable teacher cross-classroom student search */
   FEATURE_TEACHER_SEARCH: true,
 
+  // ── Admin portal ─────────────────────────────────────────────────────────
+
+  /**
+   * How long a signed Supabase Storage URL for a verification document
+   * stays valid (SPEC.md §18.3 — "Signed URLs generated on-demand for
+   * admin review only (1hr expiry)").
+   */
+  DOCUMENT_SIGNED_URL_EXPIRY_SECONDS: 3600,
+
 } as const;
 
 export type AppConfig = typeof appConfig;

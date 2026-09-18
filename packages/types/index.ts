@@ -123,6 +123,7 @@ export enum AuditEventType {
   // Admin actions
   ADMIN_VERIFICATION_APPROVED = 'admin.verification.approved',
   ADMIN_VERIFICATION_REJECTED = 'admin.verification.rejected',
+  ADMIN_VERIFICATION_DOCUMENT_ACCESSED = 'admin.verification.document_accessed',
   ADMIN_BULK_IMPORT           = 'admin.bulk_import',
 
   // Messages
