@@ -1,0 +1,40 @@
+.card {
+  display: block;
+  background: var(--color-surface);
+  border-radius: 13px;
+  border: 1px solid var(--color-border);
+  padding: 13px 15px;
+  margin-bottom: 10px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.card:hover {
+  border-color: var(--color-primary-mid);
+}
+
+.institution {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-bottom: 3px;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stat {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}

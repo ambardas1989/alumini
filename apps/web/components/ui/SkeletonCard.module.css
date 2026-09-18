@@ -1,0 +1,53 @@
+.card {
+  background: var(--color-surface);
+  border-radius: 13px;
+  border: 1px solid var(--color-border);
+  padding: 13px 15px;
+  margin-bottom: 10px;
+}
+
+.bar {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-primary-light) 50%, var(--color-border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.sub {
+  width: 40%;
+  height: 9px;
+  margin-bottom: 8px;
+}
+
+.title {
+  width: 65%;
+  height: 14px;
+  margin-bottom: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stat {
+  width: 90px;
+  height: 11px;
+}
+
+.badge {
+  width: 60px;
+  height: 18px;
+  border-radius: 20px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

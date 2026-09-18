@@ -1,0 +1,39 @@
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-primary);
+  white-space: nowrap;
+}
+
+.verified {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.pending {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.rejected {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.teacher {
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
+.admin {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.student {
+  background: var(--color-border);
+  color: var(--color-text-secondary);
+}
