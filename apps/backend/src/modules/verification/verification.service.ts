@@ -3,15 +3,37 @@
  *
  * Methods:
  * 1. Institutional email OTP (secondary address, permanent record)
- * 2. Peer vouching (3pts, teachers = 1.5pts)
+ * 2. Peer vouching (3pts, teachers = 1.5pts; teacher VOUCHEES use a
+ *    separate count-based threshold — see addVouch())
  * 3. Document upload (admin reviews, auto-deleted 30 days)
  * 4. LinkedIn graduation import
  * 5. Personal institution code (name-tied, single-use)
- * 6. Batch code (capped to class size)
+ * 6. Batch code (capped to class size, redeemed via an atomic SQL RPC)
  *
  * IMPORTANT: All verification state changes write to audit_logs.
  * Document storage paths are NEVER returned to clients.
  * Signed URLs are generated on-demand for admin review only.
+ *
+ * SECURITY FIXES FROM THE ORIGINAL SCAFFOLD REVIEW (all addressed here):
+ * #1 confirmEmailOtp() used to accept ANY code (`const isValid = true`).
+ *    Real hashed/expiring/attempt-limited OTP storage now backs it —
+ *    see verification_email_otps in 004_verification_module.sql and the
+ *    hashOtp()/generateNumericCode() helpers below.
+ * #2 redeemCode() used a check-then-update pattern for BATCH codes, which
+ *    is a TOCTOU race: two concurrent requests could both read
+ *    redemption_count < max_redemptions before either write landed. It now
+ *    calls the redeem_batch_code() SECURITY DEFINER SQL function
+ *    (001_initial_schema.sql), which holds a row lock for the whole
+ *    check-and-increment.
+ * #3 adminApproveDocument()/adminRejectDocument() never checked that the
+ *    calling admin actually administers the classroom the verification
+ *    belongs to — any authenticated caller passing a valid verificationId
+ *    could approve/reject it. assertClassroomAdmin() now guards both.
+ *
+ * Also fixed: addVouch() used to store the voucher's full_name in the
+ * vouches jsonb column — SPEC.md §19.5 (right-to-erasure) and
+ * 001_initial_schema.sql's own column comment both say user_id + role
+ * only, joined from profiles at read time. That's now what happens.
  */
 
 import {
@@ -23,11 +45,13 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createHash, randomInt } from 'crypto';
 import { AuditService } from '../audit/audit.service';
 import {
   AuditEventType,
   VerificationMethod,
   PersonaType,
+  MemberRole,
 } from '@alumini/types';
 import {
   calculateVouchPoints,
@@ -97,13 +121,43 @@ export class VerificationService {
       );
     }
 
-    // Generate a 6-digit OTP and store it (expires in 15 minutes)
-    // In production: store OTP hash in a temp table, send via Resend
-    // For now: emit event for notification module to handle
+    // Invalidate any still-outstanding OTP for this (user, classroom) pair
+    // first — otherwise a user who requests a code twice would have two
+    // simultaneously-valid codes, and only the newest one was actually
+    // delivered to them.
+    await this.supabase
+      .from('verification_email_otps')
+      .update({ consumed: true })
+      .eq('user_id', userId)
+      .eq('classroom_id', classroomId)
+      .eq('consumed', false);
+
+    const code = this.generateNumericCode(appConfig.EMAIL_OTP_LENGTH);
+    const expiresAt = new Date(Date.now() + appConfig.EMAIL_OTP_EXPIRY_MINUTES * 60_000);
+
+    const { error: otpError } = await this.supabase.from('verification_email_otps').insert({
+      user_id:             userId,
+      classroom_id:        classroomId,
+      institutional_email: institutionalEmail,
+      code_hash:           this.hashOtp(code),
+      expires_at:          expiresAt.toISOString(),
+    });
+
+    if (otpError) {
+      this.logger.error('Failed to store email OTP', { error: otpError, userId, classroomId });
+      throw new BadRequestException('Failed to start email verification. Please try again.');
+    }
+
+    // Delivery (Resend credentials/templates) belongs to the notification
+    // module — this module only generates and stores the OTP, then hands
+    // off the plaintext code for sending. Same pattern as
+    // AuthService.initiateSmsChallenge().
     this.eventEmitter.emit('verification.email.initiate', {
       userId,
       institutionalEmail,
       classroomId,
+      code,
+      expiresAt,
     });
 
     await this.audit.log({
@@ -123,6 +177,10 @@ export class VerificationService {
    * Step 2: User confirms the OTP sent to their institutional email.
    * On success: membership becomes verified.
    * The verification record is permanent — even after the email expires.
+   *
+   * SECURITY (fixes issue #1 — see module header): validates against the
+   * hashed, expiring, attempt-limited row created by
+   * initiateEmailVerification(). Never compares against a hardcoded value.
    */
   async confirmEmailOtp(
     userId: string,
@@ -130,15 +188,53 @@ export class VerificationService {
     otp: string,
     req?: Request,
   ): Promise<{ verified: boolean }> {
-    // In production: validate OTP from temp table, check expiry
-    // This is a placeholder — full OTP flow implemented in notification module
+    const { data: otpRow } = await this.supabase
+      .from('verification_email_otps')
+      .select('id, code_hash, attempts, expires_at')
+      .eq('user_id', userId)
+      .eq('classroom_id', classroomId)
+      .eq('consumed', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    // For now: emit event and return success (real implementation stores/checks OTP)
-    const isValid = true; // Replace with: await this.validateOtp(userId, classroomId, otp)
+    if (!otpRow) {
+      throw new BadRequestException('No pending verification code found. Please request a new one.');
+    }
+
+    if (isExpired(otpRow.expires_at)) {
+      await this.supabase.from('verification_email_otps').update({ consumed: true }).eq('id', otpRow.id);
+      throw new BadRequestException('This code has expired. Please request a new one.');
+    }
+
+    if (otpRow.attempts >= appConfig.EMAIL_OTP_MAX_ATTEMPTS) {
+      // Should already be consumed by the branch below, but guards against
+      // a row that was exhausted by a previous request in the same window.
+      throw new BadRequestException('Too many incorrect attempts. Please request a new code.');
+    }
+
+    const isValid = otpRow.code_hash === this.hashOtp(otp);
 
     if (!isValid) {
-      throw new BadRequestException('Invalid or expired verification code');
+      const attempts = otpRow.attempts + 1;
+      const exhausted = attempts >= appConfig.EMAIL_OTP_MAX_ATTEMPTS;
+
+      // Brute-force protection: once exhausted, this row can never be used
+      // again — even if the caller's next guess would have been correct.
+      await this.supabase
+        .from('verification_email_otps')
+        .update({ attempts, consumed: exhausted })
+        .eq('id', otpRow.id);
+
+      throw new BadRequestException(
+        exhausted
+          ? 'Too many incorrect attempts. Please request a new code.'
+          : 'Incorrect verification code.',
+      );
     }
+
+    // Correct code — single use.
+    await this.supabase.from('verification_email_otps').update({ consumed: true }).eq('id', otpRow.id);
 
     await this.approveVerification(
       userId,
@@ -159,7 +255,19 @@ export class VerificationService {
    * - Voucher must be verified in this classroom
    * - Voucher cannot vouch for themselves
    * - Each voucher can only vouch once per vouchee per classroom
-   * - Points accumulate until threshold is met → auto-verified
+   * - Threshold depends on the VOUCHEE's role (SPEC.md §8.2/§8.3):
+   *     student/other → point-based: VOUCH_POINTS_REQUIRED, student=1pt,
+   *       teacher=1.5pt (calculateVouchPoints/isVouchThresholdMet)
+   *     teacher        → count-based: TEACHER_STUDENT_VOUCHES_REQUIRED
+   *       vouches specifically FROM STUDENTS in this classroom (a
+   *       teacher-vouching-for-a-teacher does not count toward this —
+   *       SPEC.md §8.2 only credits student vouches for the teacher path)
+   *
+   * PRIVACY (SPEC.md §19.5, fixes the full_name issue flagged in review):
+   * vouches jsonb stores {user_id, role, vouched_at} ONLY. Never full_name
+   * — display names are joined from profiles at read time by whatever
+   * calls that later, so a right-to-erasure request doesn't need to hunt
+   * through jsonb blobs across every classroom a user ever vouched in.
    *
    * @param voucherId - ID of the verified user doing the vouching
    * @param voucheeId - ID of the unverified user being vouched for
@@ -190,6 +298,19 @@ export class VerificationService {
       );
     }
 
+    // The vouchee's role decides which threshold applies below — fetched
+    // once, up front, whether or not a verification record already exists.
+    const { data: voucheeMembership } = await this.supabase
+      .from('memberships')
+      .select('id, role')
+      .eq('user_id', voucheeId)
+      .eq('classroom_id', classroomId)
+      .maybeSingle();
+
+    if (!voucheeMembership) {
+      throw new NotFoundException('The person you are vouching for has not joined this classroom');
+    }
+
     // Get or create the peer_vouch verification record for the vouchee
     let { data: verification } = await this.supabase
       .from('verifications')
@@ -201,22 +322,10 @@ export class VerificationService {
       .maybeSingle();
 
     if (!verification) {
-      // Create new verification record for this vouchee in this classroom
-      const { data: membership } = await this.supabase
-        .from('memberships')
-        .select('id')
-        .eq('user_id', voucheeId)
-        .eq('classroom_id', classroomId)
-        .single();
-
-      if (!membership) {
-        throw new NotFoundException('The person you are vouching for has not joined this classroom');
-      }
-
       const { data: newVerification } = await this.supabase
         .from('verifications')
         .insert({
-          membership_id: membership.id,
+          membership_id: voucheeMembership.id,
           user_id:       voucheeId,
           classroom_id:  classroomId,
           method:        VerificationMethod.PEER_VOUCH,
@@ -242,34 +351,42 @@ export class VerificationService {
       );
     }
 
-    // Get voucher's profile for the vouch record
-    const { data: voucherProfile } = await this.supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', voucherId)
-      .single();
-
-    // Append the new vouch
+    // Append the new vouch — user_id + role only, see the privacy note above.
     const newVouch = {
-      user_id:   voucherId,
-      full_name: voucherProfile?.full_name ?? 'Unknown', // Stored for audit display
-      role:      voucherMembership.role,
+      user_id:    voucherId,
+      role:       voucherMembership.role,
       vouched_at: new Date().toISOString(),
     };
 
     const updatedVouches = [...existingVouches, newVouch];
-    const totalPoints = calculateVouchPoints(
-      updatedVouches.map((v) => ({ role: v.role })),
-    );
-    const verified = isVouchThresholdMet(
-      updatedVouches.map((v) => ({ role: v.role })),
-    );
+    const isTeacherVouchee = voucheeMembership.role === MemberRole.TEACHER;
+
+    let totalPoints = 0;
+    let verified: boolean;
+    let required: number;
+
+    if (isTeacherVouchee) {
+      const studentVouchCount = updatedVouches.filter(
+        (v) => v.role === MemberRole.STUDENT,
+      ).length;
+      // vouch_points is repurposed as "qualifying vouch count" for teacher
+      // vouchees — same column, different meaning depending on the
+      // vouchee's role. Documented here since it's not obvious from the
+      // column name alone.
+      totalPoints = studentVouchCount;
+      required = appConfig.TEACHER_STUDENT_VOUCHES_REQUIRED;
+      verified = studentVouchCount >= required;
+    } else {
+      totalPoints = calculateVouchPoints(updatedVouches.map((v) => ({ role: v.role })));
+      required = appConfig.VOUCH_POINTS_REQUIRED;
+      verified = isVouchThresholdMet(updatedVouches.map((v) => ({ role: v.role })));
+    }
 
     // Update the verification record
     await this.supabase
       .from('verifications')
       .update({
-        vouches:     updatedVouches,
+        vouches:      updatedVouches,
         vouch_points: totalPoints,
       })
       .eq('id', verification.id);
@@ -286,7 +403,7 @@ export class VerificationService {
 
     return {
       vouchPoints: totalPoints,
-      required:    appConfig.VOUCH_POINTS_REQUIRED,
+      required,
       isVerified:  verified,
     };
   }
@@ -362,6 +479,13 @@ export class VerificationService {
    * Admin approves a document verification.
    * Requires MFA re-challenge (enforced in controller guard).
    *
+   * SECURITY (fixes issue #3 — see module header): fetches the
+   * verification's classroom first, THEN verifies `adminId` actually
+   * administers THAT SPECIFIC classroom via assertClassroomAdmin() —
+   * before this fix, any authenticated caller who guessed/enumerated a
+   * valid verificationId could approve it regardless of which classroom
+   * (or none) they administered.
+   *
    * @param adminId - ID of the admin approving
    * @param verificationId - ID of the verification record
    */
@@ -379,6 +503,8 @@ export class VerificationService {
     if (!verification) {
       throw new NotFoundException('Verification record not found');
     }
+
+    await this.assertClassroomAdmin(adminId, verification.classroom_id);
 
     if (verification.status !== 'pending') {
       throw new BadRequestException(
@@ -427,6 +553,11 @@ export class VerificationService {
 
   /**
    * Admin rejects a document verification with a reason.
+   *
+   * SECURITY (fixes issue #3 — see module header and
+   * adminApproveDocument()'s comment for the full reasoning): same
+   * assertClassroomAdmin() ownership check, applied before the
+   * status/existence check reveals anything about the record.
    */
   async adminRejectDocument(
     adminId: string,
@@ -440,7 +571,13 @@ export class VerificationService {
       .eq('id', verificationId)
       .single();
 
-    if (!verification || verification.status !== 'pending') {
+    if (!verification) {
+      throw new NotFoundException('Verification record not found');
+    }
+
+    await this.assertClassroomAdmin(adminId, verification.classroom_id);
+
+    if (verification.status !== 'pending') {
       throw new BadRequestException('Verification not found or already processed');
     }
 
@@ -475,6 +612,84 @@ export class VerificationService {
     });
   }
 
+  // ── Method 4: LinkedIn Import ──────────────────────────────────────────────
+
+  /**
+   * Verifies via LinkedIn education history. Requires the caller to have
+   * already connected + verified LinkedIn (profiles.linkedin_verified —
+   * that OAuth handshake itself is out of this module's scope; it's a
+   * prerequisite this method checks, not one it performs). Auto-approves
+   * on a match between the classroom's institution and the caller's
+   * LinkedIn education entries.
+   *
+   * ASSUMPTION: profiles.linkedin_education's shape isn't specified
+   * anywhere in SPEC.md — it's typed `jsonb` with no documented schema.
+   * This assumes an array of entries shaped like
+   * `{ schoolName: string, startYear?: number, endYear?: number }`, which
+   * is the conventional shape LinkedIn's own education data takes. A
+   * match requires the school name to correspond to this classroom's
+   * institution AND the start or end year to equal the classroom's
+   * batch_year.
+   */
+  async verifyViaLinkedin(
+    userId: string,
+    classroomId: string,
+    req?: Request,
+  ): Promise<{ verified: boolean }> {
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('linkedin_verified, linkedin_education')
+      .eq('id', userId)
+      .single();
+
+    if (!profile?.linkedin_verified) {
+      throw new BadRequestException(
+        'Connect and verify LinkedIn before using it to verify your classroom membership',
+      );
+    }
+
+    const { data: classroom } = await this.supabase
+      .from('classrooms')
+      .select('batch_year, institution:institutions(name, slug)')
+      .eq('id', classroomId)
+      .single();
+
+    if (!classroom) {
+      throw new NotFoundException('Classroom not found');
+    }
+
+    const institution = classroom.institution as any;
+    const institutionName = (institution?.name ?? '').toLowerCase();
+    const institutionSlug = (institution?.slug ?? '').toLowerCase();
+
+    const educationEntries: Array<{ schoolName?: string; startYear?: number; endYear?: number }> =
+      Array.isArray(profile.linkedin_education) ? profile.linkedin_education : [];
+
+    const match = educationEntries.some((entry) => {
+      const schoolName = (entry.schoolName ?? '').toLowerCase();
+      const nameMatches =
+        (!!schoolName && schoolName === institutionName) ||
+        (!!institutionSlug && schoolName.includes(institutionSlug));
+      const yearMatches =
+        entry.endYear === classroom.batch_year || entry.startYear === classroom.batch_year;
+      return nameMatches && yearMatches;
+    });
+
+    if (!match) {
+      throw new BadRequestException(
+        'No matching institution and graduation year found in your LinkedIn education history',
+      );
+    }
+
+    // Auto-approve — approveVerification() writes the VERIFICATION_APPROVED
+    // audit entry; there is no separate "submitted" phase to log here since
+    // the match check and the approval happen in the same request, the
+    // same pattern addVouch() already follows for its auto-approve path.
+    await this.approveVerification(userId, classroomId, VerificationMethod.LINKEDIN, req);
+
+    return { verified: true };
+  }
+
   // ── Method 5 & 6: Institution Codes ───────────────────────────────────────
 
   /**
@@ -484,8 +699,15 @@ export class VerificationService {
    * - Code format is correct
    * - Code exists and belongs to this classroom
    * - Code is not expired
-   * - For personal codes: not already redeemed
-   * - For batch codes: under redemption cap
+   * - For personal codes: not already redeemed (check-then-update — safe,
+   *   since a personal code is tied to one specific person; there is no
+   *   meaningful concurrent-redemption race to close)
+   * - For batch codes: redeemed via the redeem_batch_code() SQL RPC
+   *   (SECURITY — fixes issue #2, see module header). The check-then-update
+   *   pattern this replaced was a real race: two concurrent requests could
+   *   both read redemption_count < max_redemptions before either write
+   *   landed, over-redeeming the code past its cap. The RPC holds a row
+   *   lock for the whole check-and-increment instead.
    */
   async redeemCode(
     userId: string,
@@ -509,45 +731,54 @@ export class VerificationService {
       throw new BadRequestException('Invalid code or code not valid for this classroom');
     }
 
-    // Check expiry
+    // Friendly pre-check — the RPC re-validates expiry itself for the
+    // batch path (authoritatively, under its row lock), but personal codes
+    // don't go through the RPC at all, so this is the only expiry guard
+    // they get.
     if (isExpired(codeRecord.expires_at)) {
       throw new BadRequestException('This code has expired');
     }
 
-    // Personal code: can only be redeemed once
-    if (codeRecord.type === 'personal' && codeRecord.is_redeemed) {
-      throw new BadRequestException('This code has already been redeemed');
+    if (codeRecord.type === 'personal') {
+      if (codeRecord.is_redeemed) {
+        throw new BadRequestException('This code has already been redeemed');
+      }
+
+      const { error: updateError } = await this.supabase
+        .from('institution_codes')
+        .update({
+          is_redeemed:      true,
+          redeemed_by:      userId,
+          redeemed_at:      new Date().toISOString(),
+          redemption_count: 1,
+        })
+        .eq('id', codeRecord.id);
+
+      if (updateError) {
+        this.logger.error('Failed to redeem personal code', { error: updateError, classroomId });
+        throw new BadRequestException('Failed to redeem this code. Please try again.');
+      }
+    } else {
+      const { data: redeemed, error: rpcError } = await this.supabase.rpc('redeem_batch_code', {
+        p_code:         code.toUpperCase(),
+        p_classroom_id: classroomId,
+        p_user_id:      userId,
+      });
+
+      if (rpcError) {
+        this.logger.error('redeem_batch_code RPC failed', { error: rpcError, classroomId });
+        throw new BadRequestException('Failed to redeem this code. Please try again.');
+      }
+
+      // The function returns NULL (not an error) when the code was already
+      // fully redeemed, expired, or not found under lock — i.e. it lost a
+      // race, or the pre-check above was stale by the time the RPC ran.
+      if (!redeemed) {
+        throw new BadRequestException(
+          'This code has expired or reached its maximum redemption limit',
+        );
+      }
     }
-
-    // Batch code: check redemption cap
-    if (
-      codeRecord.type === 'batch' &&
-      codeRecord.redemption_count >= codeRecord.max_redemptions
-    ) {
-      throw new BadRequestException(
-        'This code has reached its maximum redemption limit',
-      );
-    }
-
-    // Mark code as redeemed
-    const updateData =
-      codeRecord.type === 'personal'
-        ? {
-            is_redeemed:  true,
-            redeemed_by:  userId,
-            redeemed_at:  new Date().toISOString(),
-            redemption_count: 1,
-          }
-        : {
-            redemption_count: codeRecord.redemption_count + 1,
-            redeemed_by:      userId,
-            redeemed_at:      new Date().toISOString(),
-          };
-
-    await this.supabase
-      .from('institution_codes')
-      .update(updateData)
-      .eq('id', codeRecord.id);
 
     const method =
       codeRecord.type === 'personal'
@@ -571,6 +802,61 @@ export class VerificationService {
     });
 
     return { verified: true };
+  }
+
+  // ── Verification status ──────────────────────────────────────────────────
+
+  /**
+   * Verification status for one membership, including the most recent
+   * verification attempt's detail (method, status, timestamps, rejection
+   * reason if any). SPEC.md §8.4: "Multiple attempts with different
+   * methods are allowed — only one needs to succeed", so this surfaces the
+   * latest attempt rather than assuming there's exactly one.
+   *
+   * Distinct from MembershipService.getVerificationStatus() (identity/
+   * membership module), which only reads the bare
+   * memberships.verification_status field — this reads the richer
+   * `verifications` table this module owns, which membership.module.ts
+   * deliberately does not touch.
+   *
+   * SECURITY: this can return a rejection_reason, which may contain
+   * sensitive review notes — not something to leave world-readable behind
+   * a guessable UUID. `requesterId` must be either the membership's own
+   * user, or a verified admin of that classroom. This exact gap (an
+   * endpoint that took an id with no ownership check) is what issue #3
+   * was about elsewhere in this module; applying the same standard here
+   * even though the task didn't separately call this endpoint out.
+   */
+  async getStatusByMembership(requesterId: string, membershipId: string) {
+    const { data: membership } = await this.supabase
+      .from('memberships')
+      .select('id, user_id, classroom_id, role, verification_status, verification_method, verified_at')
+      .eq('id', membershipId)
+      .maybeSingle();
+
+    if (!membership) {
+      throw new NotFoundException('Membership not found');
+    }
+
+    if (membership.user_id !== requesterId) {
+      await this.assertClassroomAdmin(requesterId, membership.classroom_id);
+    }
+
+    const { data: latestAttempt } = await this.supabase
+      .from('verifications')
+      .select('method, status, vouch_points, reviewed_at, rejection_reason, created_at')
+      .eq('membership_id', membershipId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return {
+      membershipId,
+      verificationStatus: membership.verification_status,
+      verificationMethod: membership.verification_method,
+      verifiedAt:          membership.verified_at,
+      latestAttempt:       latestAttempt ?? null,
+    };
   }
 
   // ── Internal: Approve Verification ───────────────────────────────────────
@@ -623,5 +909,52 @@ export class VerificationService {
       metadata: { method, classroom_id: classroomId },
       req,
     });
+  }
+
+  // ── Internal: Admin ownership check ──────────────────────────────────────
+
+  /**
+   * SECURITY (fixes issue #3 — see module header). Throws unless `adminId`
+   * holds a verified 'admin' membership in `classroomId` specifically —
+   * being an admin of some OTHER classroom, or even a school_admin persona
+   * at the institution, is not sufficient. Classroom-level review authority
+   * is scoped per classroom (SPEC.md §7.2's hierarchy keeps "classroom
+   * admin" distinct from school_admin), matching the same check
+   * ClassroomService.updateClassroom() already applies to its own
+   * admin-only action.
+   */
+  private async assertClassroomAdmin(adminId: string, classroomId: string): Promise<void> {
+    const { data } = await this.supabase
+      .from('memberships')
+      .select('id')
+      .eq('user_id', adminId)
+      .eq('classroom_id', classroomId)
+      .eq('role', 'admin')
+      .eq('verification_status', 'verified')
+      .maybeSingle();
+
+    if (!data) {
+      throw new ForbiddenException('Only a verified admin of this classroom can review verification requests');
+    }
+  }
+
+  // ── Internal: OTP helpers ────────────────────────────────────────────────
+  //
+  // Deliberately NOT in @alumini/utils: that package is imported by the
+  // web and mobile apps too (per its own header comment), and Node's
+  // `crypto` module isn't safe to bundle into a browser/React Native build.
+  // AuthService has the identical pair of private helpers for the exact
+  // same reason (SMS OTPs there, email OTPs here) — this is the second
+  // module solving the same narrow problem, not a missed opportunity to
+  // share code across a runtime boundary that can't actually share it.
+
+  /** One-way hash for OTP codes — never store or compare the raw code. */
+  private hashOtp(code: string): string {
+    return createHash('sha256').update(code).digest('hex');
+  }
+
+  private generateNumericCode(length: number): string {
+    const max = 10 ** length;
+    return randomInt(0, max).toString().padStart(length, '0');
   }
 }

@@ -42,6 +42,19 @@ export const appConfig = {
    */
   TEACHER_STUDENT_VOUCHES_REQUIRED: 5,
 
+  /** Digit length of the institutional-email OTP code (Method 1) */
+  EMAIL_OTP_LENGTH: 6,
+
+  /** How long an institutional-email OTP stays valid before expiring */
+  EMAIL_OTP_EXPIRY_MINUTES: 15,
+
+  /**
+   * Max incorrect attempts against a single OTP before it is invalidated
+   * (brute-force protection). Exceeding this consumes the OTP even if the
+   * correct code is entered afterwards — the caller must request a new one.
+   */
+  EMAIL_OTP_MAX_ATTEMPTS: 3,
+
   // ── Institution Admin ─────────────────────────────────────────────────────
 
   /**
