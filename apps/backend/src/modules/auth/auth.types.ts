@@ -59,7 +59,12 @@ export interface MfaRequiredResponse {
 }
 
 export interface MfaSetupTotpResponse {
-  method: MfaMethod.TOTP;
+  // Narrows to the single literal, not the whole MfaMethod union — written
+  // as the raw string literal type rather than `MfaMethod.TOTP` because
+  // MfaMethod is now a const object + union type (Node's native TS
+  // stripping doesn't support real `enum`, see packages/types/index.ts),
+  // and dotting into a single member's TYPE only works for real enums.
+  method: 'totp';
   /** data: URL — render directly in an <img> tag for the authenticator app to scan */
   qrCodeDataUrl: string;
   /** Same secret encoded in the QR code, for manual entry */
@@ -67,7 +72,7 @@ export interface MfaSetupTotpResponse {
 }
 
 export interface MfaSetupSmsResponse {
-  method: MfaMethod.SMS;
+  method: 'sms'; // see MfaSetupTotpResponse's comment on why not MfaMethod.SMS
   /** Masked, e.g. +91******3210 — never echo the full number back */
   phone: string;
   expiresInSeconds: number;

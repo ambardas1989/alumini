@@ -5,134 +5,165 @@
  */
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
+//
+// Plain `as const` objects, not `enum` — Render runs on Node.js versions
+// whose native TypeScript support (type-stripping, no real compile step)
+// rejects `enum`/`const enum` outright ("TypeScript enum is not supported
+// in strip-only mode"). This pattern is a drop-in replacement for every
+// existing call site: `export const X = {...} as const` gives the same
+// `X.MEMBER` value access a real enum gave, and the paired
+// `export type X = (typeof X)[keyof typeof X]` gives the same union-type
+// behavior (`role: X`, function params typed `X`, etc.) — TypeScript
+// merges a const and a type of the same name into one importable name,
+// exactly like `enum X` did. No call site elsewhere in this codebase
+// needed to change for this.
+//
+// One thing this pattern does NOT replicate: referencing a single enum
+// MEMBER as its own type (`type T = SomeEnum.MEMBER`, for narrowing to one
+// specific member rather than the whole union) doesn't work the same way
+// for a const object. Nothing in this codebase does that — confirmed by
+// grep across apps/backend/src before this conversion — but flagging it
+// here in case future code reaches for it.
 
-export enum PersonaType {
-  ALUMNI   = 'alumni',
-  TEACHER  = 'teacher',
-  SCHOOL_ADMIN = 'school_admin',
-}
+export const PersonaType = {
+  ALUMNI: 'alumni',
+  TEACHER: 'teacher',
+  SCHOOL_ADMIN: 'school_admin',
+} as const;
+export type PersonaType = (typeof PersonaType)[keyof typeof PersonaType];
 
-export enum PersonaStatus {
-  ACTIVE            = 'active',
-  PENDING_APPROVAL  = 'pending_approval',
-  SUSPENDED         = 'suspended',
-}
+export const PersonaStatus = {
+  ACTIVE: 'active',
+  PENDING_APPROVAL: 'pending_approval',
+  SUSPENDED: 'suspended',
+} as const;
+export type PersonaStatus = (typeof PersonaStatus)[keyof typeof PersonaStatus];
 
-export enum InstitutionType {
-  SCHOOL     = 'school',
-  COLLEGE    = 'college',
-  UNIVERSITY = 'university',
-}
+export const InstitutionType = {
+  SCHOOL: 'school',
+  COLLEGE: 'college',
+  UNIVERSITY: 'university',
+} as const;
+export type InstitutionType = (typeof InstitutionType)[keyof typeof InstitutionType];
 
-export enum MemberRole {
-  STUDENT = 'student',
-  TEACHER = 'teacher',
-  ADMIN   = 'admin',
-}
+export const MemberRole = {
+  STUDENT: 'student',
+  TEACHER: 'teacher',
+  ADMIN: 'admin',
+} as const;
+export type MemberRole = (typeof MemberRole)[keyof typeof MemberRole];
 
-export enum VerificationStatus {
-  PENDING  = 'pending',
-  VERIFIED = 'verified',
-  REJECTED = 'rejected',
-}
+export const VerificationStatus = {
+  PENDING: 'pending',
+  VERIFIED: 'verified',
+  REJECTED: 'rejected',
+} as const;
+export type VerificationStatus = (typeof VerificationStatus)[keyof typeof VerificationStatus];
 
-export enum VerificationMethod {
-  EMAIL         = 'email',
-  PEER_VOUCH    = 'peer_vouch',
-  DOCUMENT      = 'document',
-  LINKEDIN      = 'linkedin',
-  PERSONAL_CODE = 'personal_code',
-  BATCH_CODE    = 'batch_code',
-}
+export const VerificationMethod = {
+  EMAIL: 'email',
+  PEER_VOUCH: 'peer_vouch',
+  DOCUMENT: 'document',
+  LINKEDIN: 'linkedin',
+  PERSONAL_CODE: 'personal_code',
+  BATCH_CODE: 'batch_code',
+} as const;
+export type VerificationMethod = (typeof VerificationMethod)[keyof typeof VerificationMethod];
 
-export enum ChannelType {
-  CLASSROOM    = 'classroom',
-  STAFF_ROOM   = 'staff_room',
-  STUDENT_ALLEY = 'student_alley',
-}
+export const ChannelType = {
+  CLASSROOM: 'classroom',
+  STAFF_ROOM: 'staff_room',
+  STUDENT_ALLEY: 'student_alley',
+} as const;
+export type ChannelType = (typeof ChannelType)[keyof typeof ChannelType];
 
-export enum MessageType {
-  TEXT        = 'text',
-  EVENT_CARD  = 'event_card',
-  SYSTEM      = 'system',
-  ATTACHMENT  = 'attachment',
-}
+export const MessageType = {
+  TEXT: 'text',
+  EVENT_CARD: 'event_card',
+  SYSTEM: 'system',
+  ATTACHMENT: 'attachment',
+} as const;
+export type MessageType = (typeof MessageType)[keyof typeof MessageType];
 
-export enum RsvpStatus {
-  GOING     = 'going',
-  NOT_GOING = 'not_going',
-  MAYBE     = 'maybe',
-}
+export const RsvpStatus = {
+  GOING: 'going',
+  NOT_GOING: 'not_going',
+  MAYBE: 'maybe',
+} as const;
+export type RsvpStatus = (typeof RsvpStatus)[keyof typeof RsvpStatus];
 
-export enum CodeType {
-  PERSONAL = 'personal',
-  BATCH    = 'batch',
-}
+export const CodeType = {
+  PERSONAL: 'personal',
+  BATCH: 'batch',
+} as const;
+export type CodeType = (typeof CodeType)[keyof typeof CodeType];
 
-export enum MfaMethod {
-  TOTP = 'totp',
-  SMS  = 'sms',
-}
+export const MfaMethod = {
+  TOTP: 'totp',
+  SMS: 'sms',
+} as const;
+export type MfaMethod = (typeof MfaMethod)[keyof typeof MfaMethod];
 
-export enum AuditEventType {
+export const AuditEventType = {
   // Auth
-  AUTH_LOGIN_SUCCESS      = 'auth.login.success',
-  AUTH_LOGIN_FAILURE      = 'auth.login.failure',
-  AUTH_MFA_SETUP          = 'auth.mfa.setup',
-  AUTH_MFA_SUCCESS        = 'auth.mfa.success',
-  AUTH_MFA_FAILURE        = 'auth.mfa.failure',
-  AUTH_MFA_CHALLENGE      = 'auth.mfa.challenge',
-  AUTH_PASSWORD_CHANGED   = 'auth.password.changed',
-  AUTH_SESSION_INVALIDATED= 'auth.session.invalidated',
-  AUTH_LOGOUT             = 'auth.logout',
-  AUTH_TOKEN_REFRESHED    = 'auth.token.refreshed',
+  AUTH_LOGIN_SUCCESS: 'auth.login.success',
+  AUTH_LOGIN_FAILURE: 'auth.login.failure',
+  AUTH_MFA_SETUP: 'auth.mfa.setup',
+  AUTH_MFA_SUCCESS: 'auth.mfa.success',
+  AUTH_MFA_FAILURE: 'auth.mfa.failure',
+  AUTH_MFA_CHALLENGE: 'auth.mfa.challenge',
+  AUTH_PASSWORD_CHANGED: 'auth.password.changed',
+  AUTH_SESSION_INVALIDATED: 'auth.session.invalidated',
+  AUTH_LOGOUT: 'auth.logout',
+  AUTH_TOKEN_REFRESHED: 'auth.token.refreshed',
 
   // Persona
-  PERSONA_SWITCHED        = 'persona.switched',
-  PERSONA_ADDED           = 'persona.added',
-  PERSONA_REMOVED         = 'persona.removed',
+  PERSONA_SWITCHED: 'persona.switched',
+  PERSONA_ADDED: 'persona.added',
+  PERSONA_REMOVED: 'persona.removed',
 
   // Verification
-  VERIFICATION_SUBMITTED  = 'verification.submitted',
-  VERIFICATION_APPROVED   = 'verification.approved',
-  VERIFICATION_REJECTED   = 'verification.rejected',
-  VERIFICATION_EXPIRED    = 'verification.expired',
+  VERIFICATION_SUBMITTED: 'verification.submitted',
+  VERIFICATION_APPROVED: 'verification.approved',
+  VERIFICATION_REJECTED: 'verification.rejected',
+  VERIFICATION_EXPIRED: 'verification.expired',
 
   // Classroom
-  CLASSROOM_CREATED       = 'classroom.created',
-  CLASSROOM_JOINED        = 'classroom.joined',
-  CLASSROOM_LEFT          = 'classroom.left',
-  CLASSROOM_SETTINGS_UPDATED = 'classroom.settings.updated',
-  CLASSROOM_ADMIN_PROMOTED = 'classroom.admin.promoted',
-  CLASSROOM_ADMIN_DEMOTED  = 'classroom.admin.demoted',
+  CLASSROOM_CREATED: 'classroom.created',
+  CLASSROOM_JOINED: 'classroom.joined',
+  CLASSROOM_LEFT: 'classroom.left',
+  CLASSROOM_SETTINGS_UPDATED: 'classroom.settings.updated',
+  CLASSROOM_ADMIN_PROMOTED: 'classroom.admin.promoted',
+  CLASSROOM_ADMIN_DEMOTED: 'classroom.admin.demoted',
 
   // Institution
-  INSTITUTION_CLAIMED     = 'institution.claimed',
-  INSTITUTION_CLAIM_APPROVED = 'institution.claim.approved',
-  INSTITUTION_CLAIM_REJECTED = 'institution.claim.rejected',
-  INSTITUTION_ADMIN_INVITED  = 'institution.admin.invited',
-  INSTITUTION_ADMIN_ACCEPTED = 'institution.admin.accepted',
-  INSTITUTION_ADMIN_REMOVED  = 'institution.admin.removed',
-  INSTITUTION_ADMIN_TRANSFERRED = 'institution.admin.transferred',
+  INSTITUTION_CLAIMED: 'institution.claimed',
+  INSTITUTION_CLAIM_APPROVED: 'institution.claim.approved',
+  INSTITUTION_CLAIM_REJECTED: 'institution.claim.rejected',
+  INSTITUTION_ADMIN_INVITED: 'institution.admin.invited',
+  INSTITUTION_ADMIN_ACCEPTED: 'institution.admin.accepted',
+  INSTITUTION_ADMIN_REMOVED: 'institution.admin.removed',
+  INSTITUTION_ADMIN_TRANSFERRED: 'institution.admin.transferred',
 
   // Codes
-  CODE_GENERATED          = 'code.generated',
-  CODE_REDEEMED           = 'code.redeemed',
-  CODE_EXPIRED            = 'code.expired',
+  CODE_GENERATED: 'code.generated',
+  CODE_REDEEMED: 'code.redeemed',
+  CODE_EXPIRED: 'code.expired',
 
   // Admin actions
-  ADMIN_VERIFICATION_APPROVED = 'admin.verification.approved',
-  ADMIN_VERIFICATION_REJECTED = 'admin.verification.rejected',
-  ADMIN_VERIFICATION_DOCUMENT_ACCESSED = 'admin.verification.document_accessed',
-  ADMIN_BULK_IMPORT           = 'admin.bulk_import',
+  ADMIN_VERIFICATION_APPROVED: 'admin.verification.approved',
+  ADMIN_VERIFICATION_REJECTED: 'admin.verification.rejected',
+  ADMIN_VERIFICATION_DOCUMENT_ACCESSED: 'admin.verification.document_accessed',
+  ADMIN_BULK_IMPORT: 'admin.bulk_import',
 
   // Messages
-  MESSAGE_DELETED         = 'message.deleted',
+  MESSAGE_DELETED: 'message.deleted',
 
   // Events
-  EVENT_CREATED           = 'event.created',
-  EVENT_DELETED           = 'event.deleted',
-}
+  EVENT_CREATED: 'event.created',
+  EVENT_DELETED: 'event.deleted',
+} as const;
+export type AuditEventType = (typeof AuditEventType)[keyof typeof AuditEventType];
 
 // ── Core Entity Types ─────────────────────────────────────────────────────────
 
