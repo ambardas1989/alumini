@@ -268,32 +268,4 @@ export class ClassroomService {
 
     return Object.values(byInstitution);
   }
-
-  /**
-   * Search institutions for autocomplete during classroom creation.
-   * Uses trigram index for fuzzy matching.
-   *
-   * @param query - Partial institution name (min 2 chars enforced in controller)
-   * @param countryCode - Optional filter to narrow results
-   */
-  async searchInstitutions(query: string, countryCode?: string) {
-    let queryBuilder = this.supabase
-      .from('institutions')
-      .select('id, name, slug, type, city_code, country_code, email_domain')
-      .ilike('name', `%${query}%`)
-      .limit(10);
-
-    if (countryCode) {
-      queryBuilder = queryBuilder.eq('country_code', countryCode.toUpperCase());
-    }
-
-    const { data, error } = await queryBuilder;
-
-    if (error) {
-      this.logger.error('Institution search failed', { error, query });
-      return [];
-    }
-
-    return data ?? [];
-  }
 }

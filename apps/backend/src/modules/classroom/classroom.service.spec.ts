@@ -26,8 +26,6 @@ const mockSingle = jest.fn();
 const mockInsert = jest.fn();
 const mockSelect = jest.fn();
 const mockEq = jest.fn();
-const mockIlike = jest.fn();
-const mockLimit = jest.fn();
 
 // Each chained call returns 'this' so the chain resolves correctly.
 // mockInsert needs to return an object with .select() for the insert().select().single() chain.
@@ -41,8 +39,6 @@ jest.mock('@supabase/supabase-js', () => ({
       select: mockSelect.mockReturnThis(),
       insert: jest.fn(() => mockInsertChain),
       eq: mockEq.mockReturnThis(),
-      ilike: mockIlike.mockReturnThis(),
-      limit: mockLimit.mockReturnThis(),
       update: jest.fn().mockReturnThis(),
       single: mockSingle,
       maybeSingle: mockMaybeSingle,
@@ -247,38 +243,6 @@ describe('ClassroomService', () => {
       await expect(
         service.getByGlobalId('XX-NOTREAL-999'),
       ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  // ── searchInstitutions ───────────────────────────────────────────────────
-
-  describe('searchInstitutions()', () => {
-    it('should return matching institutions', async () => {
-      const mockInstitutions = [mockInstitution];
-      // ilike returns 'this', limit resolves the chain
-      mockIlike.mockReturnThis();
-      mockLimit.mockResolvedValue({ data: mockInstitutions, error: null });
-
-      const results = await service.searchInstitutions('birla');
-      expect(results).toHaveLength(1);
-    });
-
-    it('should return empty array on Supabase error', async () => {
-      mockIlike.mockReturnThis();
-      mockLimit.mockResolvedValue({ data: null, error: { message: 'Query failed' } });
-
-      const results = await service.searchInstitutions('birla');
-      expect(results).toEqual([]);
-    });
-
-    it('should filter by country code when provided', async () => {
-      mockIlike.mockReturnThis();
-      mockEq.mockReturnThis();
-      mockLimit.mockResolvedValue({ data: [], error: null });
-
-      await service.searchInstitutions('iit', 'IN');
-
-      expect(mockEq).toHaveBeenCalledWith('country_code', 'IN');
     });
   });
 });

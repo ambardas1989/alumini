@@ -6,9 +6,10 @@
  * supabase/migrations/002_auth_module.sql). No other module touches these
  * tables directly (SPEC.md §15.3 — "Each module owns its database tables").
  *
- * JwtAuthGuard and AuthTokenGuard are exported so future modules can guard
- * their own routes (e.g. the MFA re-challenge required before sensitive
- * admin actions per SPEC.md §11.2) without re-implementing token verification.
+ * JwtAuthGuard, AuthTokenGuard, and MfaChallengeGuard are exported so other
+ * modules can guard their own routes (e.g. the MFA re-challenge required
+ * before sensitive admin actions per SPEC.md §11.2/§6.2 — see the
+ * institution module) without re-implementing token or MFA verification.
  */
 
 import { Module } from '@nestjs/common';
@@ -21,6 +22,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthTokenGuard } from './guards/auth-token.guard';
+import { MfaChallengeGuard } from './guards/mfa-challenge.guard';
 
 @Module({
   imports: [
@@ -31,7 +33,7 @@ import { AuthTokenGuard } from './guards/auth-token.guard';
     JwtModule.register({}),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, JwtAuthGuard, AuthTokenGuard],
-  exports: [AuthService, JwtAuthGuard, AuthTokenGuard, JwtModule],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, JwtAuthGuard, AuthTokenGuard, MfaChallengeGuard],
+  exports: [AuthService, JwtAuthGuard, AuthTokenGuard, MfaChallengeGuard, JwtModule],
 })
 export class AuthModule {}
