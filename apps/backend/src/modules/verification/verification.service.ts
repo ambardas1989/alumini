@@ -919,16 +919,30 @@ export class VerificationService {
 
   /**
    * SECURITY (fixes issue #3 — see module header). Throws unless `adminId`
-   * holds a verified 'admin' membership in `classroomId` specifically —
-   * being an admin of some OTHER classroom, or even a school_admin persona
-   * at the institution, is not sufficient. Classroom-level review authority
-   * is scoped per classroom (SPEC.md §7.2's hierarchy keeps "classroom
-   * admin" distinct from school_admin), matching the same check
-   * ClassroomService.updateClassroom() already applies to its own
-   * admin-only action.
+   * holds a verified 'admin' membership in `classroomId` specifically, OR
+   * (see UPDATE below) is an active school_admin for that classroom's
+   * institution. Being an admin of some OTHER classroom is still not
+   * sufficient either way — this remains scoped per classroom/institution,
+   * matching the same check ClassroomService.updateClassroom() applies to
+   * its own admin-only action.
+   *
+   * UPDATE — authorization gap fix (found wiring up the admin module):
+   * this originally rejected a school_admin persona outright ("even a
+   * school_admin persona at the institution, is not sufficient"), on the
+   * reasoning that classroom-level review authority is distinct from
+   * institution-level admin status. That turned out to be wrong per
+   * SPEC.md §7.2, which grants a school admin access to "all classrooms in
+   * their institution" — but the database never auto-creates a classroom-
+   * level admin membership row for them (only classroom CREATORS get
+   * that), so a legitimate school admin who'd never personally joined the
+   * classroom got ForbiddenException here, including via AdminModule's
+   * delegated approve/reject calls. Fixed by checking classroom membership
+   * FIRST (unchanged — a classroom admin's access is untouched) and, only
+   * if that fails, falling back to a verified/active school_admin persona
+   * for the classroom's own institution.
    */
   private async assertClassroomAdmin(adminId: string, classroomId: string): Promise<void> {
-    const { data } = await this.supabase
+    const { data: classroomMembership } = await this.supabase
       .from('memberships')
       .select('id')
       .eq('user_id', adminId)
@@ -937,9 +951,34 @@ export class VerificationService {
       .eq('verification_status', 'verified')
       .maybeSingle();
 
-    if (!data) {
-      throw new ForbiddenException('Only a verified admin of this classroom can review verification requests');
+    if (classroomMembership) {
+      return;
     }
+
+    const { data: classroom } = await this.supabase
+      .from('classrooms')
+      .select('institution_id')
+      .eq('id', classroomId)
+      .maybeSingle();
+
+    if (classroom) {
+      const { data: schoolAdminPersona } = await this.supabase
+        .from('personas')
+        .select('id')
+        .eq('user_id', adminId)
+        .eq('institution_id', classroom.institution_id)
+        .eq('type', PersonaType.SCHOOL_ADMIN)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (schoolAdminPersona) {
+        return;
+      }
+    }
+
+    throw new ForbiddenException(
+      'Only a verified admin of this classroom, or an active school admin of its institution, can review verification requests',
+    );
   }
 
   // ── Internal: OTP helpers ────────────────────────────────────────────────

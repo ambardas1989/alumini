@@ -438,10 +438,39 @@ describe('VerificationService', () => {
           error: null,
         }),
         memberships: chain({ data: null, error: null }), // not an admin there
+        // classrooms/personas default to { data: null, error: null } —
+        // the school_admin fallback below also finds nothing, so this
+        // still throws even after the authorization-gap fix.
       });
 
       await expect(service.adminApproveDocument('not-this-classrooms-admin', 'verification-1')).rejects.toThrow(
         ForbiddenException,
+      );
+    });
+
+    it('approves for a school_admin persona holder who is NOT a classroom member (authorization gap fix)', async () => {
+      mockTables({
+        verifications: chain(
+          {
+            data: { user_id: 'applicant-1', classroom_id: 'class-1', status: 'pending', document_storage_path: 'p/doc' },
+            error: null,
+          },
+          { data: null, error: null }, // status update
+        ),
+        memberships: chain(
+          { data: null, error: null }, // assertClassroomAdmin's membership check — no membership row at all
+          { data: null, error: null }, // approveVerification's membership update
+        ),
+        classrooms: chain({ data: { institution_id: 'inst-1' }, error: null }),
+        personas: chain({ data: { id: 'school-admin-persona' }, error: null }), // active school_admin at inst-1
+      });
+
+      await expect(
+        service.adminApproveDocument('school-admin-1', 'verification-1'),
+      ).resolves.not.toThrow();
+
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: AuditEventType.ADMIN_VERIFICATION_APPROVED }),
       );
     });
 
