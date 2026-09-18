@@ -1,0 +1,82 @@
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--color-cream);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topBarTitle {
+  flex: 1;
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.bellIcon {
+  color: var(--color-text-muted);
+  display: flex;
+  min-width: var(--min-touch-target);
+  min-height: var(--min-touch-target);
+  align-items: center;
+  justify-content: center;
+}
+
+.welcomeBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--color-primary-light);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+
+.welcomeBanner p {
+  flex: 1;
+}
+
+.dismissButton {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nudgeBanner {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.nudgeAction {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-align: start;
+  justify-content: flex-start;
+}
+
+.nudgeDismiss {
+  flex-shrink: 0;
+  padding-inline: 12px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.sectionLabel {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-block-end: 10px;
+}

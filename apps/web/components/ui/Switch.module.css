@@ -1,0 +1,63 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 10px;
+}
+
+.text {
+  flex: 1;
+}
+
+.label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.description {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-block-start: 2px;
+}
+
+/* Sized taller than a typical compact toggle (usually ~28px) so the whole
+   visible track already clears the 44px touch-target floor itself, rather
+   than relying on invisible hit-slop padding around a smaller graphic. */
+.track {
+  flex-shrink: 0;
+  width: 64px;
+  min-width: 64px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: 22px;
+  background: var(--color-border);
+  position: relative;
+  padding-inline: 4px;
+}
+
+.trackOn {
+  background: var(--color-primary);
+}
+
+.track:disabled {
+  opacity: 0.5;
+}
+
+.thumb {
+  position: absolute;
+  top: 4px;
+  inset-inline-start: 4px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: inset-inline-start 0.15s ease;
+}
+
+.trackOn .thumb {
+  inset-inline-start: 24px;
+}

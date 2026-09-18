@@ -1,0 +1,24 @@
+.fab {
+  position: fixed;
+  /* Above BottomNav (60px min-height + its own safe-area padding) plus a
+     visual gap — not pixel-exact on every device, but keeps clear of the
+     nav across the range of safe-area insets in practice. */
+  inset-block-end: calc(60px + var(--safe-area-bottom) + 16px);
+  inset-inline-end: 16px;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(74, 31, 168, 0.35);
+  z-index: 90;
+}
+
+.fab:hover {
+  background: var(--color-primary-mid);
+}

@@ -35,13 +35,18 @@ const REQUEST_TIMEOUT_MS = 10_000;
  * callers never see a raw fetch/DOMException. `errorCode` is a
  * packages/types ErrorCode value when the backend provided one (see
  * AllExceptionsFilter), null for network/timeout failures or responses
- * with no structured code.
+ * with no structured code. `payload` is the full decoded JSON body — most
+ * callers only need `errorCode`/`message`, but a few error responses carry
+ * extra fields beyond those (e.g. classroom creation's 409 conflict body
+ * includes existingClassroomId/globalId/memberCount — see
+ * ClassroomService.createClassroom() on the backend).
  */
 export class ApiError extends Error {
   constructor(
     public statusCode: number,
     public errorCode: string | null,
     message: string,
+    public payload?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -133,7 +138,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const payload: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new ApiError(response.status, extractErrorCode(payload), extractMessage(payload));
+    throw new ApiError(response.status, extractErrorCode(payload), extractMessage(payload), payload);
   }
 
   return payload as T;
@@ -310,6 +315,21 @@ export interface CreateClassroomData {
   hasStaffRoom?: boolean;
   hasStudentAlley?: boolean;
   requireVerification?: boolean;
+}
+
+/**
+ * Shape of the 409 response body when the classroom already exists — see
+ * ClassroomService.createClassroom()'s ConflictException on the backend.
+ * Read this off `ApiError.payload` (cast, since `payload` is `unknown`)
+ * when `createClassroom()` throws with `statusCode === 409`.
+ */
+export interface ClassroomConflictPayload {
+  message: string;
+  error: string;
+  existingClassroomId: string;
+  globalId: string;
+  memberCount: number;
+  action: 'JOIN_INSTEAD';
 }
 
 export function createClassroom(data: CreateClassroomData): Promise<Classroom> {

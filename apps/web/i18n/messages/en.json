@@ -14,7 +14,9 @@
     "showPassword": "Show password",
     "hidePassword": "Hide password",
     "dismissNotification": "Dismiss notification",
-    "goBack": "Go back"
+    "goBack": "Go back",
+    "dismiss": "Dismiss",
+    "change": "Change"
   },
   "nav": {
     "primaryLabel": "Primary",
@@ -136,13 +138,57 @@
   },
   "home": {
     "title": "My classrooms",
-    "verificationBanner": "Verify your membership to post and read messages",
+    "welcomeBanner": "Some bonds never graduate. Find your batch below.",
+    "verificationNudge": "Complete verification to post and read messages →",
     "activeClassrooms": "Active classrooms",
     "suggestedForYou": "Suggested for you",
+    "createClassroomFab": "Create a classroom",
     "empty": {
       "title": "No classrooms yet",
-      "description": "Find your batch to get started",
+      "description": "Find your batch and reconnect with your people",
       "cta": "Find my batch"
+    },
+    "suggested": {
+      "joinButton": "Join",
+      "mutualAlumni": "{count, plural, one {# mutual alumni} other {# mutual alumni}}"
+    }
+  },
+  "classroomCreate": {
+    "title": "Create a classroom",
+    "typeSchool": "School",
+    "typeCollege": "College",
+    "typeUniversity": "University",
+    "institutionSearchLabel": "Institution",
+    "institutionSearchPlaceholder": "Search for your institution",
+    "notFound": "Not found? We'll add it",
+    "notFoundToast": "We don't have this one yet — tell us at {email} and we'll add it.",
+    "gradeLabel": "Grade",
+    "gradePlaceholder": "Select grade",
+    "sectionLabel": "Section",
+    "sectionPlaceholder": "Select section",
+    "sectionOther": "Other",
+    "sectionOtherPlaceholder": "Enter section",
+    "batchYearLabel": "Batch year",
+    "batchYearError": "Enter a year between {min} and {max}",
+    "programLabel": "Program",
+    "programPlaceholder": "e.g. MBA, B.Tech, MBBS",
+    "globalIdLabel": "Your classroom's unique ID",
+    "globalIdHintSchool": "e.g. IN-KOL-MPBIRLA-9A-2012",
+    "globalIdHintCollege": "e.g. US-UCDAVIS-MBA-2025",
+    "staffRoomLabel": "Staff Room",
+    "staffRoomDescription": "Private channel for teachers only",
+    "studentAlleyLabel": "Student Alley",
+    "studentAlleyDescription": "Private channel for students only",
+    "requireVerificationLabel": "Require verification",
+    "requireVerificationDescription": "Members must verify before posting",
+    "createButton": "Create classroom",
+    "creating": "Creating your classroom...",
+    "successToast": "Classroom created!",
+    "conflict": {
+      "title": "This classroom already exists",
+      "message": "{count, plural, one {# member is} other {# members are}} already here.",
+      "joinButton": "Join this classroom",
+      "cancelButton": "Cancel"
     }
   },
   "classroom": {
