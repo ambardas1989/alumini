@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslations } from '@/lib/useTranslations';
 import Wordmark from '@/components/Wordmark';
 import styles from './AuthLayout.module.css';
@@ -36,65 +36,21 @@ const FEATURES: FeatureDef[] = [
   { key: 'forever', icon: <HeartIcon /> },
 ];
 
-const ROTATE_INTERVAL_MS = 4000;
-
 /**
  * Split-screen shell for every auth page (login, signup, mfa,
  * forgot-password, reset-password). Deliberately NOT built on AppShell —
  * AppShell's `.app-shell` caps width at --app-max-width (480px) to keep a
  * "phone app on desktop" feel everywhere else in this app, which is exactly
  * what a wide desktop split-screen needs to break out of.
+ *
+ * No rotation state anymore — an earlier pass had the three feature cards
+ * auto-rotating on a timer (useState/useEffect/setInterval); removed in
+ * favor of showing all three stacked at once. Still 'use client' purely
+ * because useTranslations() is a hook.
  */
 export function AuthLayout({ tagline, subTagline, children }: AuthLayoutProps) {
   const t = useTranslations('auth.stats');
   const tFeatures = useTranslations('auth.features');
-
-  const [activeFeature, setActiveFeature] = useState(0);
-  // matchMedia can't be read during SSR (no `window`) — start `false` and
-  // correct it on mount, same pattern as this app's other client-only
-  // browser-API reads (see lib/useTheme.ts).
-  const [reducedMotion, setReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReducedMotion(query.matches);
-    const handleChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
-    query.addEventListener('change', handleChange);
-    return () => query.removeEventListener('change', handleChange);
-  }, []);
-
-  // Ref, not state, for the interval id — restarting the timer on a manual
-  // dot click shouldn't itself be a re-render-triggering piece of state.
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    // "Respect prefers-reduced-motion: show all three stacked, no
-    // animation" — handled by the CSS media query below switching the
-    // cards to a static stacked layout; skipping the rotation timer here
-    // too so nothing pointlessly re-renders every 4s once no one can see
-    // the effect of it anyway.
-    if (reducedMotion) return;
-
-    intervalRef.current = setInterval(() => {
-      setActiveFeature((i) => (i + 1) % FEATURES.length);
-    }, ROTATE_INTERVAL_MS);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [reducedMotion]);
-
-  const jumpToFeature = (index: number) => {
-    setActiveFeature(index);
-    // Restart the auto-rotate countdown from a manual pick, so it doesn't
-    // advance again a moment later.
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (!reducedMotion) {
-      intervalRef.current = setInterval(() => {
-        setActiveFeature((i) => (i + 1) % FEATURES.length);
-      }, ROTATE_INTERVAL_MS);
-    }
-  };
 
   return (
     <div className={styles.wrap}>
@@ -107,39 +63,19 @@ export function AuthLayout({ tagline, subTagline, children }: AuthLayoutProps) {
           <p className={styles.tagline}>{tagline}</p>
           <p className={styles.subTagline}>{subTagline}</p>
 
-          <div className={`${styles.cardStack} ${reducedMotion ? styles.cardStackStatic : ''}`}>
-            {FEATURES.map((feature, index) => (
-              <div
-                key={feature.key}
-                className={`${styles.featureCard} ${
-                  reducedMotion || index === activeFeature ? styles.featureCardActive : ''
-                }`}
-                aria-hidden={!reducedMotion && index !== activeFeature}
-              >
+          <div className={styles.cardStack}>
+            {FEATURES.map((feature) => (
+              <div key={feature.key} className={styles.featureCard}>
                 <span className={styles.featureIcon} aria-hidden="true">
                   {feature.icon}
                 </span>
-                <p className={styles.featureTitle}>{tFeatures(`${feature.key}.title`)}</p>
-                <p className={styles.featureBody}>{tFeatures(`${feature.key}.body`)}</p>
+                <span className={styles.featureText}>
+                  <p className={styles.featureTitle}>{tFeatures(`${feature.key}.title`)}</p>
+                  <p className={styles.featureBody}>{tFeatures(`${feature.key}.body`)}</p>
+                </span>
               </div>
             ))}
           </div>
-
-          {!reducedMotion && (
-            <div className={styles.dots} role="tablist" aria-label={tFeatures('dotsLabel')}>
-              {FEATURES.map((feature, index) => (
-                <button
-                  key={feature.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={index === activeFeature}
-                  aria-label={tFeatures('dotLabel', { number: index + 1 })}
-                  className={`${styles.dot} ${index === activeFeature ? styles.dotActive : ''}`}
-                  onClick={() => jumpToFeature(index)}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
         <div className={styles.stats}>
@@ -161,15 +97,14 @@ export function AuthLayout({ tagline, subTagline, children }: AuthLayoutProps) {
 /**
  * Small line icons matching Tabler's visual style (24px viewBox,
  * stroke-based, rounded caps) — hand-rolled rather than adding the
- * @tabler/icons package or its webfont CDN for six decorative, one-off
- * icons total (three here, three more below for the stat pills' old
- * icon set); every other icon in this app (BottomNav, home page's
- * bell/plus, GoogleIcon, ...) is already a local inline SVG, so this
- * matches the established convention.
+ * @tabler/icons package or its webfont CDN for three decorative, one-off
+ * icons; every other icon in this app (BottomNav, home page's bell/plus,
+ * GoogleIcon, ...) is already a local inline SVG, so this matches the
+ * established convention.
  */
 const ICON_PROPS = {
-  width: 28,
-  height: 28,
+  width: 24,
+  height: 24,
   viewBox: '0 0 24 24',
   fill: 'none',
   stroke: 'currentColor',

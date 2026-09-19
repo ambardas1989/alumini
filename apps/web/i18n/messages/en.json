@@ -153,8 +153,6 @@
       }
     },
     "features": {
-      "dotsLabel": "Feature highlights",
-      "dotLabel": "Show feature {number}",
       "verified": {
         "title": "Private and verified",
         "body": "Every member verified before they can post. Your batch stays trusted."

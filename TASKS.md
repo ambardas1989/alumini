@@ -77,7 +77,16 @@ Push immediately — this is blocking login.
 
 ---
 
-## TASK 00A — Wordmark cleanup and auth panel layout fix [PENDING]
+## TASK 00A — Wordmark cleanup and auth panel layout fix [DONE]
+
+Wordmark: replaced with the plain-text version (no cap/SVG), using
+your exact code with one swap (var(--color-primary) instead of the
+literal hex for the light variant, since that token already exists).
+AuthLayout: 60/40 desktop split (55/45 tablet), carousel/animation
+state removed entirely (no useState/useEffect/setInterval, no dots),
+all three feature cards always stacked and visible, card layout
+changed to icon-left/text-right per the new spec. Removed the now-
+orphaned dotsLabel/dotLabel i18n keys. next build passes (17 routes).
 
 Two visual fixes on the auth screens (login, signup, MFA, forgot-password,
 reset-password). Both are visible in production right now.
