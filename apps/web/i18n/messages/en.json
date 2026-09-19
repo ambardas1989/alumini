@@ -151,6 +151,22 @@
         "passwordTooShort": "At least 8 characters required",
         "passwordMismatch": "Passwords do not match"
       }
+    },
+    "features": {
+      "dotsLabel": "Feature highlights",
+      "dotLabel": "Show feature {number}",
+      "verified": {
+        "title": "Private and verified",
+        "body": "Every member verified before they can post. Your batch stays trusted."
+      },
+      "channels": {
+        "title": "Three private channels",
+        "body": "Classroom, Staff Room, and Student Alley. Each with its own privacy rules."
+      },
+      "forever": {
+        "title": "Your batch, forever",
+        "body": "Reunions, memories, and real connections. Long after graduation."
+      }
     }
   },
   "onboarding": {

@@ -32,11 +32,13 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  gap: 28px;
   max-width: 480px;
 }
 
 .tagline {
-  font-size: 36px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 38px;
   font-style: italic;
   font-weight: 600;
   color: #fff;
@@ -46,49 +48,128 @@
 .subTagline {
   margin-block-start: 12px;
   font-size: 16px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ── Animated feature cards ───────────────────────────────────────────── */
+.cardStack {
+  position: relative;
+  min-height: 170px;
+}
+
+.featureCard {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.featureCardActive {
+  opacity: 1;
+}
+
+.featureIcon {
+  display: flex;
+  color: #fff;
+}
+
+.featureTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.featureBody {
+  font-size: 13px;
+  line-height: 1.5;
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* Reduced motion: every card shown at once, in normal document flow —
+   no absolute stacking, no crossfade. .cardStackStatic/.featureCard's own
+   opacity-1 default-when-static below are set from JS's own matchMedia
+   check; the @media block further down is a second, CSS-only guarantee of
+   the same outcome regardless of JS timing. */
+.cardStackStatic {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardStackStatic .featureCard {
+  position: static;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardStack {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .featureCard {
+    position: static;
+    opacity: 1;
+  }
+}
+
+.dots {
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 0;
+  /* Larger tap target than the visible dot itself, without inflating the
+     dot's own size — matches --min-touch-target's intent without pulling
+     in the global rule (this button sits on the dark left panel, not the
+     app-wide light-surface button style). */
+  position: relative;
+}
+.dot::before {
+  content: '';
+  position: absolute;
+  inset: -12px;
+}
+
+.dotActive {
+  width: 8px;
+  height: 8px;
+  background: #fff;
+}
+
+/* ── Stat pills ────────────────────────────────────────────────────────── */
 .stats {
   position: relative;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
-.statCard {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
+.statPill {
+  padding: 8px 16px;
   background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-}
-
-.statIcon {
-  display: flex;
+  border-radius: 99px;
   color: #fff;
-  flex-shrink: 0;
-}
-
-.statText {
-  display: flex;
-  flex-direction: column;
-}
-
-.statNumber {
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1.2;
-}
-
-.statLabel {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .rightPanel {
@@ -103,25 +184,38 @@
 .rightInner {
   width: 100%;
   max-width: 420px;
+  margin: auto;
 }
 
-/* ── Desktop split ─────────────────────────────────────────────────────── */
+/* ── Tablet: 60/40 split ──────────────────────────────────────────────── */
 @media (min-width: 768px) {
   .wrap {
     flex-direction: row;
   }
 
   .leftPanel {
-    flex: 0 0 55%;
+    flex: 0 0 60%;
     justify-content: space-between;
   }
 
   .rightPanel {
-    flex: 0 0 45%;
+    flex: 0 0 40%;
   }
 }
 
-/* ── Mobile: compact fixed-height header, no stat cards ─────────────────── */
+/* ── Desktop: 75/25 split ─────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .leftPanel {
+    flex: 3;
+  }
+
+  .rightPanel {
+    flex: 1;
+    min-width: 420px;
+  }
+}
+
+/* ── Mobile: compact fixed-height header, no cards or stat pills ────────── */
 @media (max-width: 767px) {
   .leftPanel {
     height: 200px;
@@ -132,6 +226,7 @@
   .center {
     align-items: center;
     text-align: center;
+    gap: 4px;
   }
 
   .tagline {
@@ -142,6 +237,8 @@
     font-size: 13px;
   }
 
+  .cardStack,
+  .dots,
   .stats {
     display: none;
   }
