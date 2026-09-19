@@ -83,3 +83,26 @@
   font-weight: 600;
   text-decoration: none;
 }
+
+.footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-block-start: 8px;
+}
+
+.footer a {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: var(--color-primary);
+}
+
+.footerSeparator {
+  font-size: var(--text-xs);
+  color: var(--color-border);
+}

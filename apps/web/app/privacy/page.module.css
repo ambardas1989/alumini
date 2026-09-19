@@ -1,0 +1,29 @@
+.title {
+  font-size: var(--text-3xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.lastUpdated {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-block-start: 6px;
+  margin-block-end: 32px;
+}
+
+.section {
+  margin-block-end: 28px;
+}
+
+.sectionTitle {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-block-end: 8px;
+}
+
+.sectionBody {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}

@@ -17,7 +17,11 @@
     "goBack": "Go back",
     "dismiss": "Dismiss",
     "change": "Change",
-    "close": "Close"
+    "close": "Close",
+    "backToHome": "← Back to home",
+    "termsLink": "Terms",
+    "privacyLink": "Privacy",
+    "contactLink": "Contact"
   },
   "nav": {
     "primaryLabel": "Primary",
@@ -87,7 +91,11 @@
         "invalidEmail": "Enter a valid email address"
       },
       "subTagline": "Join thousands of alumni already connected",
-      "googleButton": "Sign up with Google"
+      "googleButton": "Sign up with Google",
+      "agreementPrefix": "By creating an account you agree to our",
+      "agreementTerms": "Terms of Service",
+      "agreementAnd": "and",
+      "agreementPrivacy": "Privacy Policy"
     },
     "mfa": {
       "setupTitle": "Secure your account",
@@ -716,5 +724,71 @@
     "switchPersona": "Switch persona",
     "helpSupport": "Help & Support",
     "signOut": "Sign out"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: September 2026",
+    "footerTerms": "Terms of Service",
+    "sections": {
+      "collect": {
+        "title": "What we collect",
+        "body": "Name, email address, profile photo (from Google if you use Google sign-in), classroom memberships, messages you send, and verification documents (auto-deleted after 30 days)."
+      },
+      "use": {
+        "title": "How we use it",
+        "body": "To connect you with your alumni network and verify your membership in classrooms. We never use your data for advertising."
+      },
+      "never": {
+        "title": "What we never do",
+        "body": "We never sell your personal data. We never show ads. We never share your data with third parties except to operate the service (Supabase for database, Google for sign-in)."
+      },
+      "protect": {
+        "title": "How we protect it",
+        "body": "All data is encrypted in transit and at rest. Row-level security means you only see data you are permitted to see. Verification documents are automatically deleted after 30 days."
+      },
+      "rights": {
+        "title": "Your rights",
+        "body": "You can request a copy of your data, correct it, or delete your account at any time. Email hello@alumtribe.com."
+      },
+      "contact": {
+        "title": "Contact",
+        "body": "hello@alumtribe.com | alumtribe.com"
+      }
+    }
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "lastUpdated": "Last updated: September 2026",
+    "footerPrivacy": "Privacy Policy",
+    "sections": {
+      "what": {
+        "title": "What AlumTribe is",
+        "body": "A private verified network for school and college alumni."
+      },
+      "who": {
+        "title": "Who can use it",
+        "body": "You must be a genuine alumni, student, or teacher of the institution you are joining. Fake accounts or joining classrooms you were not part of is not allowed."
+      },
+      "verification": {
+        "title": "Verification",
+        "body": "We require verification before you can post. Providing false verification documents is grounds for permanent removal."
+      },
+      "conduct": {
+        "title": "Conduct",
+        "body": "No spam, harassment, hate speech, or illegal content. Keep conversations respectful. Admins can remove content and suspend accounts that violate these rules."
+      },
+      "ourRights": {
+        "title": "Our rights",
+        "body": "We can remove content or suspend accounts that violate these terms. We will always try to notify you first."
+      },
+      "liability": {
+        "title": "Limitation of liability",
+        "body": "AlumTribe is provided as-is. We are not liable for content posted by users."
+      },
+      "contact": {
+        "title": "Contact",
+        "body": "hello@alumtribe.com"
+      }
+    }
   }
 }

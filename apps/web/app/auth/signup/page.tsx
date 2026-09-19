@@ -178,6 +178,12 @@ export default function SignupPage() {
         </Button>
       </form>
 
+      {/* "open in same tab" per spec — plain Link, no target="_blank" */}
+      <p className={styles.agreement}>
+        {t('agreementPrefix')} <Link href="/terms">{t('agreementTerms')}</Link> {t('agreementAnd')}{' '}
+        <Link href="/privacy">{t('agreementPrivacy')}</Link>
+      </p>
+
       <p className={styles.loginLink}>
         <Link href="/auth/login">{t('loginLink')}</Link>
       </p>

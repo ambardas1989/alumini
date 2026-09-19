@@ -126,6 +126,14 @@ export default function LoginPage() {
         <p className={styles.signupLink}>
           <Link href="/auth/signup">{t('signupLink')}</Link>
         </p>
+
+        <p className={styles.footer}>
+          <Link href="/terms">{tCommon('termsLink')}</Link>
+          <span className={styles.footerSeparator}>|</span>
+          <Link href="/privacy">{tCommon('privacyLink')}</Link>
+          <span className={styles.footerSeparator}>|</span>
+          <Link href="/contact">{tCommon('contactLink')}</Link>
+        </p>
       </div>
     </AuthLayout>
   );

@@ -433,7 +433,16 @@ Commit: "docs: environment variables reference"
 
 ---
 
-## TASK 06 — Privacy Policy and Terms of Service pages [PENDING]
+## TASK 06 — Privacy Policy and Terms of Service pages [DONE]
+
+Built a shared StaticPageLayout component (Wordmark sm + back link,
+centered 720px column, optional footer links) since privacy/terms/
+contact all share the same shell. Terms reuses privacy's own
+page.module.css directly (identical styling, no point duplicating
+the file). Signup page now has the terms/privacy agreement line
+below the submit button (plain Link, no target="_blank" — "open in
+same tab" per spec). Login page footer now has Terms | Privacy |
+Contact. next build passes (19 routes, /privacy and /terms new).
 
 Legally required before real users sign up.
 
