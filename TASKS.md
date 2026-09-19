@@ -591,7 +591,15 @@ Commit: "feat: contact and support page"
 
 ---
 
-## TASK 08 — 404 and error pages [PENDING]
+## TASK 08 — 404 and error pages [DONE]
+
+Both built as specified. error.tsx sits at the app root — per Next.js's
+error-boundary convention it wraps everything below the root layout,
+so layout.tsx's providers (including next-intl's) stay intact and
+useTranslations() works inside it; only a crash in the root layout
+itself would bypass it (that's global-error.tsx's job, out of scope
+here). next build passes (20 routes + the not-found/error boundaries,
+which don't show as routes themselves).
 
 Steps:
 
