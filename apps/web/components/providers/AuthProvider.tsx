@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession();
     setUser(null);
     if (typeof window !== 'undefined') {
-      window.location.href = '/auth/login';
+      window.location.href = '/auth/login?message=signed_out';
     }
   }, []);
 

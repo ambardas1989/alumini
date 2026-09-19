@@ -709,5 +709,12 @@
   "mfaChallenge": {
     "codeLabel": "6-digit code",
     "maxAttempts": "Too many incorrect attempts. Please try again later."
+  },
+  "userMenu": {
+    "menuLabel": "User menu",
+    "viewProfile": "View profile",
+    "switchPersona": "Switch persona",
+    "helpSupport": "Help & Support",
+    "signOut": "Sign out"
   }
 }

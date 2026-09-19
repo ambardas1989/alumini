@@ -210,7 +210,22 @@ Commit: "fix: remove cap from wordmark, 60/40 auth panel, stacked cards"
 
 ---
 
-## TASK 01 — Logout button [PENDING]
+## TASK 01 — Logout button [DONE]
+
+AppShell.tsx has no top nav bar to add a dropdown to — it renders no
+header content by design (its own doc comment: every screen's header
+differs too much to templatize there), and every screen with an
+avatar already builds its own top bar locally. Built a reusable
+UserMenu component instead (avatar trigger + dropdown: View profile,
+Switch persona [preserves what the avatar used to link straight to],
+Help & Support, Sign out) and wired it into home and teacher home's
+top bars, replacing their plain avatar links. Reused AuthProvider's
+existing logout() (added ?message=signed_out to its redirect) instead
+of a new lib/auth.ts signOut() helper — it already did everything
+step 2 asked for. Login page's signed_out banner and profile page's
+own Sign out button (with confirmation modal) already existed from
+an earlier session — no changes needed there. Help & Support links to
+/contact, which doesn't exist until TASK 07 later in this run.
 
 Backend endpoint already exists: POST /v1/auth/logout
 It invalidates the session. The UI just needs to call it.

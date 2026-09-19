@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -11,7 +10,7 @@ import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useTranslations } from '@/lib/useTranslations';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { Avatar } from '@/components/ui/Avatar';
+import { UserMenu } from '@/components/UserMenu';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -130,9 +129,7 @@ export default function TeacherHomePage() {
   return (
     <AppShell showNav={false}>
       <div className={styles.topBar}>
-        <Link href="/persona" aria-label={t('title')}>
-          <Avatar avatarUrl={user?.avatarUrl} fullName={user?.fullName ?? ''} size="sm" />
-        </Link>
+        <UserMenu />
         <h1 className={styles.topBarTitle}>{t('title')}</h1>
         <button type="button" className={styles.searchButton} aria-label={t('search.title')} onClick={() => setSearchOpen(true)}>
           <SearchIcon />

@@ -2,16 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import type { Classroom, Institution, VerificationStatus } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useTranslations } from '@/lib/useTranslations';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageContainer } from '@/components/layout/PageContainer';
-import { Avatar } from '@/components/ui/Avatar';
+import { UserMenu } from '@/components/UserMenu';
 import { Button } from '@/components/ui/Button';
 import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
@@ -43,7 +41,6 @@ function flatten(
 
 export default function HomePage() {
   const router = useRouter();
-  const { user } = useAuth();
   const { ready } = useRequireAuth();
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
@@ -95,9 +92,7 @@ export default function HomePage() {
   return (
     <AppShell>
       <div className={styles.topBar}>
-        <Link href="/persona" aria-label={t('title')}>
-          <Avatar avatarUrl={user?.avatarUrl} fullName={user?.fullName ?? ''} size="sm" />
-        </Link>
+        <UserMenu />
         <h1 className={styles.topBarTitle}>{t('title')}</h1>
         {/* Placeholder — no notifications screen exists yet, so this is
             decorative rather than a fake-functional button. */}
