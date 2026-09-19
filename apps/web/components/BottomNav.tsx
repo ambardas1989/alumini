@@ -35,7 +35,10 @@ const TABS: Tab[] = [
     ),
   },
   {
-    href: '/classrooms',
+    // Was '/classrooms' — that route doesn't exist anywhere in this app
+    // (only /classroom/create and /classroom/[globalId], singular). Every
+    // tap on "Classes" 404'd.
+    href: '/classroom/create',
     labelKey: 'classes',
     icon: (
       <svg {...ICON_PROPS}>
@@ -72,7 +75,15 @@ export function BottomNav() {
   return (
     <nav className={styles.nav} aria-label={t('primaryLabel')}>
       {TABS.map((tab) => {
-        const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
+        // "Classes" should read active on any /classroom/* route (the
+        // detail view /classroom/[globalId] isn't under /classroom/create,
+        // so a plain startsWith(tab.href) alone would miss it).
+        const active =
+          tab.href === '/'
+            ? pathname === '/'
+            : tab.labelKey === 'classes'
+              ? pathname.startsWith('/classroom')
+              : pathname.startsWith(tab.href);
         return (
           <Link
             key={tab.href}

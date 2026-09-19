@@ -707,7 +707,26 @@ Commit: "fix: loading, error, and empty states across all pages"
 
 ---
 
-## TASK 10 — AppShell nav bar completeness [PENDING]
+## TASK 10 — AppShell nav bar completeness [DONE]
+
+Found and fixed a real bug: BottomNav's "Classes" tab linked to
+/classrooms, which doesn't exist anywhere in this app (only
+/classroom/create and /classroom/[globalId], singular) — every tap
+404'd. Pointed it at /classroom/create per the task's own suggestion,
+and fixed the active-tab match so /classroom/[globalId] also
+highlights "Classes" (it isn't under /classroom/create's own path).
+Safe-area bottom padding, active-route highlighting, and
+avatar-shows-initials-with-no-photo were all already correct.
+
+Two items from the spec don't match this app's actual shipped design
+and weren't changed: (1) "Wordmark top-left, avatar top-right" — the
+pages that have a top bar (home, teacher) already ship
+avatar-left/title-center/icon-right, a deliberate, already-reviewed
+layout; restructuring it wasn't in scope for a nav *completeness* fix.
+(2) Persona-switcher/teacher/admin as bottom-nav tabs — not added,
+since a 4-icon mobile tab bar getting 2-3 more conditional items is
+worse UX, and all three are already one tap away via UserMenu's
+"Switch persona" (built in TASK 01).
 
 Review the main app navigation and make sure it works
 end to end for a logged-in user.
