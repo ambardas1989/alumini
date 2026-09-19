@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useTranslations } from '@/lib/useTranslations';
-import { Wordmark } from '@/components/Wordmark';
+import Wordmark from '@/components/Wordmark';
 import styles from './AuthLayout.module.css';
 
 interface AuthLayoutProps {
@@ -41,7 +41,7 @@ export function AuthLayout({ tagline, subTagline, children }: AuthLayoutProps) {
       <div className={styles.leftPanel}>
         <div className={styles.dotOverlay} aria-hidden="true" />
 
-        <Wordmark inverse />
+        <Wordmark size="md" variant="dark" />
 
         <div className={styles.center}>
           <p className={styles.tagline}>{tagline}</p>
