@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "next build && node -e \"require('fs').cpSync('.next/static', '.next/standalone/apps/web/.next/static', {recursive:true})\"",
+    "start": "node .next/standalone/apps/web/server.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -9,6 +9,10 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Node-hosted deploy (Render) rather than a serverless/edge platform —
+  // standalone traces the exact runtime deps into .next/standalone so the
+  // deployed footprint doesn't need the full monorepo node_modules.
+  output: 'standalone',
   // packages/* ship raw .ts with no build step (same convention apps/backend
   // and apps/mobile rely on) — Next only runs its TS/JS loader over the app
   // directory and whatever's listed here, so workspace packages need to be
