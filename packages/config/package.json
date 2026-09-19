@@ -2,12 +2,12 @@
   "name": "@alumini/config",
   "version": "0.1.0",
   "private": true,
-  "main": "./index.ts",
   "exports": {
-    "./brand": "./brand.ts",
-    "./app": "./app.ts"
+    "./brand": "./dist/brand.js",
+    "./app": "./dist/app.js"
   },
   "scripts": {
+    "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

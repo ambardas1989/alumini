@@ -2,8 +2,10 @@
   "name": "@alumini/utils",
   "version": "0.1.0",
   "private": true,
-  "main": "./index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
+    "build": "tsc",
     "test": "jest",
     "typecheck": "tsc --noEmit"
   },
