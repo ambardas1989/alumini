@@ -261,6 +261,19 @@ export function resetPassword(token: string, password: string): Promise<{ messag
 }
 
 /**
+ * Always resolves the same way whether or not the email matches an
+ * account — same reasoning as forgotPassword().
+ */
+export function requestMfaRecovery(email: string): Promise<{ message: string }> {
+  return request('/auth/mfa/recovery-request', { method: 'POST', body: { email } });
+}
+
+/** Clears MFA on success and returns a fresh mfa_setup pending token — same shape login()/signup() return when MFA is required. */
+export function verifyMfaRecovery(token: string): Promise<MfaRequiredResponse> {
+  return request('/auth/mfa/recovery-verify', { method: 'POST', body: { token } });
+}
+
+/**
  * NOTE: POST /auth/refresh requires a refresh token in its body
  * (RefreshTokenDto), but this app's session model is access-token-only
  * (see lib/auth.ts) — /auth/mfa/verify never hands one out. This call will

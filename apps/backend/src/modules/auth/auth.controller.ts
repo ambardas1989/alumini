@@ -15,22 +15,28 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Post,
   Query,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import { timingSafeEqual } from 'crypto';
 
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { MfaResetDevDto } from './dto/mfa-reset-dev.dto';
+import { MfaRecoveryRequestDto } from './dto/mfa-recovery-request.dto';
+import { MfaRecoveryVerifyDto } from './dto/mfa-recovery-verify.dto';
 import { MfaSetupQueryDto } from './dto/mfa-setup-query.dto';
 import { MfaVerifyDto } from './dto/mfa-verify.dto';
 import { MfaChallengeDto } from './dto/mfa-challenge.dto';
@@ -49,6 +55,20 @@ import { GoogleProfile } from './strategies/google.strategy';
  * redirects to localhost.
  */
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+/**
+ * Constant-time comparison for the X-Dev-Key header against
+ * DEV_RESET_KEY — a plain `===` would leak how many leading characters
+ * matched via response timing, letting an attacker brute-force the key
+ * character by character.
+ */
+function matchesDevResetKey(provided: string | undefined): boolean {
+  const expected = process.env.DEV_RESET_KEY;
+  if (!expected || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 @ApiTags('auth')
 @Controller('auth')
@@ -180,6 +200,44 @@ export class AuthController {
   @ApiOperation({ summary: '[DEBUG, non-production only] Returns the currently-valid TOTP code for a user' })
   async mfaDebug(@Query('userId') userId: string) {
     return this.authService.debugMfaCode(userId);
+  }
+
+  /**
+   * Support/dev tool, gated by a shared secret header rather than
+   * NODE_ENV — see AuthService.resetMfaDev()'s own comment for why (it's
+   * meant to be usable against a real account, not just dev/staging).
+   * Powerful and dangerous if DEV_RESET_KEY ever leaks: whoever holds it
+   * can silently disable MFA for any account by email alone. Treat it
+   * like a credential — rotate it if it's ever exposed.
+   */
+  @Post('mfa/reset-dev')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '[Support/dev only] Reset MFA enrolment for an account, gated by X-Dev-Key' })
+  async mfaResetDev(
+    @Headers('x-dev-key') devKey: string | undefined,
+    @Body() dto: MfaResetDevDto,
+    @Req() req: Request,
+  ) {
+    if (!matchesDevResetKey(devKey)) {
+      throw new UnauthorizedException('Invalid or missing X-Dev-Key');
+    }
+    return this.authService.resetMfaDev(dto, req);
+  }
+
+  @Post('mfa/recovery-request')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Request an MFA recovery link (lost authenticator) — always responds the same whether or not the email exists',
+  })
+  async mfaRecoveryRequest(@Body() dto: MfaRecoveryRequestDto, @Req() req: Request) {
+    return this.authService.requestMfaRecovery(dto, req);
+  }
+
+  @Post('mfa/recovery-verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete MFA recovery using the token from the emailed link — clears MFA and returns a setup pending token' })
+  async mfaRecoveryVerify(@Body() dto: MfaRecoveryVerifyDto, @Req() req: Request) {
+    return this.authService.verifyMfaRecovery(dto, req);
   }
 
   // ── Session management ───────────────────────────────────────────────────

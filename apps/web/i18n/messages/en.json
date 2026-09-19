@@ -119,7 +119,13 @@
       },
       "tagline": "Your tribe is waiting.",
       "subTagline": "One last step to keep your account secure",
-      "codeHelperText": "Enter the 6-digit code from your authenticator app"
+      "codeHelperText": "Enter the 6-digit code from your authenticator app",
+      "recovery": {
+        "link": "Lost access to your authenticator?",
+        "sending": "Sending...",
+        "sent": "If that account exists, a recovery link was sent to its email.",
+        "setupAgainBanner": "Your two-factor authentication was reset. Please set up again."
+      }
     },
     "googleComingSoon": "Google sign-in coming soon",
     "stats": {
@@ -179,6 +185,14 @@
       "tagline": "Almost there.",
       "subTagline": "Finishing up your sign-in",
       "signingIn": "Signing you in..."
+    },
+    "mfaRecovery": {
+      "tagline": "Fresh start.",
+      "subTagline": "Getting you back into your account",
+      "verifying": "Verifying your recovery link...",
+      "expiredTitle": "This link has expired",
+      "expiredSubtitle": "Recovery links are valid for 1 hour.",
+      "backToLogin": "Back to sign in"
     }
   },
   "onboarding": {

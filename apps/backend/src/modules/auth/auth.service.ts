@@ -55,6 +55,9 @@ import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { MfaResetDevDto } from './dto/mfa-reset-dev.dto';
+import { MfaRecoveryRequestDto } from './dto/mfa-recovery-request.dto';
+import { MfaRecoveryVerifyDto } from './dto/mfa-recovery-verify.dto';
 import { MfaSetupQueryDto } from './dto/mfa-setup-query.dto';
 import { MfaVerifyDto } from './dto/mfa-verify.dto';
 import { MfaChallengeDto } from './dto/mfa-challenge.dto';
@@ -816,6 +819,163 @@ export class AuthService {
     });
 
     return { message: 'Password reset successfully' };
+  }
+
+  // ── MFA reset / recovery ─────────────────────────────────────────────────
+
+  /**
+   * Support/dev tool — wipes MFA enrolment for an account by email,
+   * gated by a shared secret header (X-Dev-Key, checked in the
+   * controller) rather than NODE_ENV, since it's meant to be usable
+   * against a real (including production) account a support request
+   * needs unblocked, not just a dev/staging one. Audited like every
+   * other auth-state change in this file.
+   */
+  async resetMfaDev(dto: MfaResetDevDto, req?: Request): Promise<{ message: string }> {
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', dto.email)
+      .maybeSingle();
+
+    if (!profile) {
+      throw new BadRequestException('No account found for that email');
+    }
+
+    await this.clearMfaEnrollment(profile.id);
+
+    await this.audit.log({
+      eventType: AuditEventType.AUTH_MFA_RESET,
+      actorId: profile.id,
+      metadata: { via: 'dev_key' },
+      req,
+    });
+
+    return { message: 'MFA reset. Please set up again.' };
+  }
+
+  /**
+   * Always resolves the same way regardless of whether the email matches
+   * an account — same privacy reasoning as forgotPassword().
+   */
+  async requestMfaRecovery(dto: MfaRecoveryRequestDto, req?: Request): Promise<{ message: string }> {
+    const message = 'If that email exists a recovery link was sent';
+
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', dto.email)
+      .maybeSingle();
+
+    if (!profile) {
+      return { message };
+    }
+
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(
+      Date.now() + appConfig.MFA_RECOVERY_TOKEN_EXPIRY_MINUTES * 60_000,
+    ).toISOString();
+
+    const { error } = await this.supabase.from('mfa_recovery_tokens').insert({
+      user_id: profile.id,
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+    });
+
+    if (error) {
+      this.logger.error('Failed to store MFA recovery token', { error, userId: profile.id });
+      return { message };
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const recoveryUrl = `${frontendUrl}/auth/mfa-recovery?token=${rawToken}`;
+
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: process.env.FROM_EMAIL || `noreply@${brand.domain}`,
+          to: dto.email,
+          subject: `Recover access to your ${brand.name} account`,
+          text: `We received a request to recover access to your ${brand.name} account because you lost access to your authenticator app.\n\nContinue here: ${recoveryUrl}\n\nThis link expires in 1 hour and will reset your two-factor authentication — you'll need to set it up again afterward. If you didn't request this, you can safely ignore this email.`,
+        });
+      } catch (err) {
+        this.logger.error('Failed to send MFA recovery email via Resend', { err, userId: profile.id });
+      }
+    } else {
+      this.logger.log(`[DEV] MFA recovery link for ${dto.email}: ${recoveryUrl}`);
+    }
+
+    await this.audit.log({
+      eventType: AuditEventType.AUTH_MFA_RECOVERY_REQUESTED,
+      actorId: profile.id,
+      req,
+    });
+
+    return { message };
+  }
+
+  async verifyMfaRecovery(dto: MfaRecoveryVerifyDto, req?: Request): Promise<MfaRequiredResponse> {
+    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
+
+    const { data: record } = await this.supabase
+      .from('mfa_recovery_tokens')
+      .select('id, user_id, expires_at, used')
+      .eq('token_hash', tokenHash)
+      .maybeSingle();
+
+    if (!record) {
+      throw new BadRequestException('Invalid or expired link');
+    }
+    if (record.used) {
+      throw new BadRequestException('Link already used');
+    }
+    if (isExpired(record.expires_at)) {
+      throw new BadRequestException('Link has expired');
+    }
+
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', record.user_id)
+      .single();
+
+    await this.clearMfaEnrollment(record.user_id);
+
+    await this.supabase
+      .from('mfa_recovery_tokens')
+      .update({ used: true, used_at: new Date().toISOString() })
+      .eq('id', record.id);
+
+    await this.audit.log({
+      eventType: AuditEventType.AUTH_MFA_RESET,
+      actorId: record.user_id,
+      metadata: { via: 'recovery_token' },
+      req,
+    });
+
+    const mfaPendingToken = await this.signToken(
+      { sub: record.user_id, email: profile?.email, purpose: 'mfa_setup' },
+      this.minutes(appConfig.MFA_PENDING_TOKEN_EXPIRY_MINUTES),
+    );
+
+    return { mfaRequired: true, mfaPendingToken, mfaMethod: null };
+  }
+
+  /**
+   * Shared by resetMfaDev() and verifyMfaRecovery() — wipes every MFA
+   * factor for an account (not just TOTP; a full reset should clear SMS
+   * challenges too) and turns MFA off on the profile so the next login
+   * routes back into first-time setup.
+   */
+  private async clearMfaEnrollment(userId: string): Promise<void> {
+    await this.supabase.from('mfa_totp_secrets').delete().eq('user_id', userId);
+    await this.supabase.from('mfa_sms_challenges').delete().eq('user_id', userId);
+    await this.supabase
+      .from('profiles')
+      .update({ mfa_enabled: false, mfa_method: null })
+      .eq('id', userId);
   }
 
   // ── Internal: token issuance ─────────────────────────────────────────────

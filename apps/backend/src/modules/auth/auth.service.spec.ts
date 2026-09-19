@@ -41,7 +41,7 @@ let fromTables: Record<string, any> = {};
 
 function chain(result: { data: any; error: any } = { data: null, error: null }) {
   const builder: any = {};
-  ['select', 'insert', 'update', 'upsert', 'eq', 'is', 'gt', 'in', 'order', 'limit'].forEach(
+  ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'is', 'gt', 'in', 'order', 'limit'].forEach(
     (method) => {
       builder[method] = jest.fn(() => builder);
     },
@@ -504,6 +504,130 @@ describe('AuthService', () => {
         expect.objectContaining({
           eventType: AuditEventType.AUTH_PASSWORD_CHANGED,
           actorId: 'user-1',
+        }),
+      );
+    });
+  });
+
+  // ── resetMfaDev() ────────────────────────────────────────────────────────
+
+  describe('resetMfaDev()', () => {
+    it('rejects when the email has no account', async () => {
+      mockTables({ profiles: chain({ data: null, error: null }) });
+
+      await expect(service.resetMfaDev({ email: 'nobody@example.com' } as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('clears MFA enrolment and audits it when the email matches an account', async () => {
+      mockTables({
+        profiles: chain({ data: { id: 'user-1' }, error: null }),
+        mfa_totp_secrets: chain({ data: null, error: null }),
+        mfa_sms_challenges: chain({ data: null, error: null }),
+      });
+
+      const result = await service.resetMfaDev({ email: 'user@example.com' } as any);
+
+      expect(result).toEqual({ message: 'MFA reset. Please set up again.' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: AuditEventType.AUTH_MFA_RESET,
+          actorId: 'user-1',
+          metadata: { via: 'dev_key' },
+        }),
+      );
+    });
+  });
+
+  // ── requestMfaRecovery() ─────────────────────────────────────────────────
+
+  describe('requestMfaRecovery()', () => {
+    it('returns the generic message and audits nothing when the email has no account', async () => {
+      mockTables({ profiles: chain({ data: null, error: null }) });
+
+      const result = await service.requestMfaRecovery({ email: 'nobody@example.com' } as any);
+
+      expect(result).toEqual({ message: 'If that email exists a recovery link was sent' });
+      expect(mockAuditLog).not.toHaveBeenCalled();
+    });
+
+    it('stores a hashed token and audits the request when the email matches an account', async () => {
+      mockTables({
+        profiles: chain({ data: { id: 'user-1' }, error: null }),
+        mfa_recovery_tokens: chain({ data: null, error: null }),
+      });
+
+      const result = await service.requestMfaRecovery({ email: 'user@example.com' } as any);
+
+      expect(result).toEqual({ message: 'If that email exists a recovery link was sent' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: AuditEventType.AUTH_MFA_RECOVERY_REQUESTED,
+          actorId: 'user-1',
+        }),
+      );
+    });
+  });
+
+  // ── verifyMfaRecovery() ──────────────────────────────────────────────────
+
+  describe('verifyMfaRecovery()', () => {
+    it('rejects an unknown token', async () => {
+      mockTables({ mfa_recovery_tokens: chain({ data: null, error: null }) });
+
+      await expect(service.verifyMfaRecovery({ token: 'bogus' } as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects an already-used token', async () => {
+      mockTables({
+        mfa_recovery_tokens: chain({
+          data: { id: 'mrt-1', user_id: 'user-1', expires_at: daysFromNow(1).toISOString(), used: true },
+          error: null,
+        }),
+      });
+
+      await expect(service.verifyMfaRecovery({ token: 'used-token' } as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('rejects an expired token', async () => {
+      mockTables({
+        mfa_recovery_tokens: chain({
+          data: { id: 'mrt-1', user_id: 'user-1', expires_at: daysFromNow(-1).toISOString(), used: false },
+          error: null,
+        }),
+      });
+
+      await expect(service.verifyMfaRecovery({ token: 'expired-token' } as any)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('clears MFA and returns a fresh mfa_setup pending token on a valid token', async () => {
+      mockTables({
+        mfa_recovery_tokens: chain({
+          data: { id: 'mrt-1', user_id: 'user-1', expires_at: daysFromNow(1).toISOString(), used: false },
+          error: null,
+        }),
+        profiles: chain({ data: { email: 'user@example.com' }, error: null }),
+        mfa_totp_secrets: chain({ data: null, error: null }),
+        mfa_sms_challenges: chain({ data: null, error: null }),
+      });
+
+      const result = await service.verifyMfaRecovery({ token: 'valid-token' } as any);
+
+      expect(result.mfaRequired).toBe(true);
+      expect(result.mfaMethod).toBeNull();
+      expect(result.mfaPendingToken).toBeDefined();
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: AuditEventType.AUTH_MFA_RESET,
+          actorId: 'user-1',
+          metadata: { via: 'recovery_token' },
         }),
       );
     });

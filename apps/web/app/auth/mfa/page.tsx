@@ -25,6 +25,27 @@ type Mode = 'setup' | 'verify';
 
 const MAX_ATTEMPTS_REDIRECT_SECONDS = 3;
 
+/**
+ * Reads the `email` claim out of the pending JWT's payload — client-side
+ * only, no signature check, which is fine here: this only ever feeds a
+ * recovery-request call the backend independently looks the account up
+ * for by email anyway, never a security decision. Needed because
+ * MfaPendingSession (lib/mfaSession.ts) doesn't carry email, only the
+ * token and method.
+ */
+function decodeJwtEmail(token: string): string | null {
+  try {
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
+    return typeof payload.email === 'string' ? payload.email : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function MfaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -44,6 +65,15 @@ export default function MfaPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [redirectSeconds, setRedirectSeconds] = useState<number | null>(null);
+
+  const [recoverySubmitting, setRecoverySubmitting] = useState(false);
+  const [recoverySent, setRecoverySent] = useState(false);
+  // True when this navigation arrived from /auth/mfa-recovery's redirect
+  // (?recovered=true) — swaps the setup screen's subtitle to explain why
+  // the user is back at enrolment instead of it reading like a brand new
+  // account. Captured into state, not read from the URL later, since the
+  // param gets stripped by router.replace() in the effect below.
+  const [recovered, setRecovered] = useState(false);
 
   // CodeInput's `error` prop needs to flip back to false before it can flip
   // to true again to re-trigger the shake — see its own effect on `error`.
@@ -72,6 +102,7 @@ export default function MfaPage() {
       const session: MfaPendingSession = { token: urlToken, method: isSetup ? null : 'totp' };
       setMfaPendingSession(session);
       setPending(session);
+      if (searchParams.get('recovered') === 'true') setRecovered(true);
       router.replace('/auth/mfa');
       return;
     }
@@ -162,6 +193,32 @@ export default function MfaPage() {
     router.push('/auth/login');
   };
 
+  const handleLostAccess = async () => {
+    if (!pending) return;
+    const email = decodeJwtEmail(pending.token);
+    if (!email) {
+      // No email claim to recover with (shouldn't happen — every pending
+      // token this app issues carries one) — send the user back to a
+      // path that definitely works instead of failing silently.
+      handleTrouble();
+      return;
+    }
+    setRecoverySubmitting(true);
+    try {
+      await api.requestMfaRecovery(email);
+      setRecoverySent(true);
+    } catch {
+      // requestMfaRecovery() always resolves 200 from the backend's own
+      // side (never reveals account existence) — a thrown error here can
+      // only be a network/timeout failure. Showing the same "check your
+      // inbox" state either way avoids a dead-end retry loop for
+      // something the user can't fix by retrying immediately.
+      setRecoverySent(true);
+    } finally {
+      setRecoverySubmitting(false);
+    }
+  };
+
   const handleCopySecret = async () => {
     if (!setupData) return;
     try {
@@ -194,7 +251,9 @@ export default function MfaPage() {
     <AuthLayout tagline={t('tagline')} subTagline={t('subTagline')}>
       <div className={styles.top}>
         <h1 className={styles.title}>{mode === 'setup' ? t('setupTitle') : t('verifyTitle')}</h1>
-        <p className={styles.subtitle}>{mode === 'setup' ? t('setupSubtitle') : t('verifySubtitle')}</p>
+        <p className={styles.subtitle}>
+          {mode === 'setup' ? (recovered ? t('recovery.setupAgainBanner') : t('setupSubtitle')) : t('verifySubtitle')}
+        </p>
       </div>
 
       {mode === 'setup' && (
@@ -285,9 +344,24 @@ export default function MfaPage() {
           </Button>
 
           {mode === 'verify' && (
-            <button type="button" className={styles.troubleLink} onClick={handleTrouble}>
-              {t('troubleLink')}
-            </button>
+            <>
+              {recoverySent ? (
+                <p className={styles.recoverySent}>{t('recovery.sent')}</p>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.troubleLink}
+                  onClick={handleLostAccess}
+                  disabled={recoverySubmitting}
+                >
+                  {recoverySubmitting ? t('recovery.sending') : t('recovery.link')}
+                </button>
+              )}
+
+              <button type="button" className={styles.troubleLink} onClick={handleTrouble}>
+                {t('troubleLink')}
+              </button>
+            </>
           )}
         </div>
       )}
