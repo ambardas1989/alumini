@@ -1,0 +1,53 @@
+.centeredLoading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll {
+  padding: var(--page-padding-y) var(--page-padding-x);
+}
+
+.contextCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 13px;
+  padding: 12px 14px;
+  margin-block-end: 8px;
+}
+
+.institutionName {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.classroomName {
+  font-size: var(--text-base);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin-block-start: 2px;
+}
+
+.contextMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-block-start: 8px;
+}
+
+.contextMeta > span {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.progressNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-block-end: 14px;
+}
+
+.methods {
+  display: flex;
+  flex-direction: column;
+}

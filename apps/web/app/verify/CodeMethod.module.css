@@ -1,0 +1,23 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.instruction {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-block-start: -6px;
+}
+
+/* Lands directly on the <input> (Input.tsx forwards className there, not to a wrapper). */
+.monoInput {
+  font-family: monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}

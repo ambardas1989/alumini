@@ -281,22 +281,80 @@
   },
   "verification": {
     "title": "Verify your membership",
+    "statusPending": "Pending",
+    "statusNotVerified": "Not verified",
+    "verifiedToast": "Verification submitted",
+    "documentSubmittedToast": "Document submitted for review",
+    "progressDefault": "Complete any one method to verify",
+    "progressInProgress": "Verification in progress — {method}",
+    "vouchPointsHeader": "{points} / 3 pts",
+    "statusBar": {
+      "notVerified": "Not yet verified",
+      "pending": "Verification pending · {method}",
+      "verified": "Verified ✓ via {method}",
+      "goToClassroom": "Go back to classroom →"
+    },
+    "success": {
+      "title": "You are verified",
+      "viaMethod": "Verified via {method}",
+      "goToClassroomButton": "Go back to classroom"
+    },
     "methods": {
       "email": {
         "label": "Institutional email",
-        "description": "Get a code sent to your school email"
+        "description": "Get a code sent to your school email",
+        "instruction": "Enter your {institution} email address",
+        "domainHint": "Must end in @{domain}",
+        "emailLabel": "Institutional email address",
+        "sendButton": "Send verification code",
+        "otpInstruction": "Enter the 6-digit code sent to {email}",
+        "resendIn": "Resend in {seconds}s",
+        "resendLink": "Resend code",
+        "errors": {
+          "domainMismatch": "Must end in @{domain}"
+        }
       },
       "vouch": {
         "label": "Peer vouching",
-        "description": "3 verified classmates vouch for you"
+        "description": "3 verified classmates vouch for you",
+        "pointsReceived": "{points} of {required} points received",
+        "pointsGuide": "Student vouch = 1 pt · Teacher vouch = 1.5 pts",
+        "teacherShortcut": "2 teacher vouches = instantly verified",
+        "listUnavailable": "Vouches you've received will appear here.",
+        "copyLinkButton": "Copy profile link",
+        "copiedButton": "Copied ✓",
+        "linkCopiedToast": "Link copied. Share with your batchmates."
       },
       "document": {
         "label": "Upload document",
-        "description": "Degree cert, transcript, or student ID"
+        "description": "Degree cert, transcript, or student ID",
+        "acceptedTypes": "Accepted: PDF, JPG, PNG — max 10MB",
+        "dropZoneLabel": "Tap to choose a file",
+        "removeFile": "Remove file",
+        "uploading": "Uploading…",
+        "privacyNote": "Your document is deleted after review for your privacy.",
+        "submitButton": "Upload and submit",
+        "pendingTitle": "Document submitted for review",
+        "pendingBody": "Our team will review within 48 hours.",
+        "submittedOn": "Submitted {date}",
+        "rejectedTitle": "Verification rejected",
+        "tryAgainButton": "Try again with a different document",
+        "errors": {
+          "wrongType": "Please upload a PDF, JPG, or PNG file",
+          "tooLarge": "File must be under 10MB"
+        }
       },
       "linkedin": {
         "label": "LinkedIn import",
-        "description": "Auto-match from your LinkedIn profile"
+        "description": "Auto-match from your LinkedIn profile",
+        "instruction": "Auto-match your institution and graduation year",
+        "trustEducationOnly": "We only check your education history",
+        "trustNoPosting": "We never post on your behalf",
+        "connectButton": "Connect LinkedIn",
+        "connecting": "Checking…",
+        "noMatchTitle": "No matching education found",
+        "noMatchBody": "Make sure your LinkedIn shows {institution} and graduation year {year}.",
+        "tryAgainButton": "Try again"
       },
       "personalCode": {
         "label": "Personal code",
@@ -305,6 +363,18 @@
       "batchCode": {
         "label": "Batch code",
         "description": "Enter the shared code for your batch"
+      },
+      "code": {
+        "instruction": "Enter the code your institution sent you",
+        "formatHint": "Looks like IN-2026-A7K2PQ",
+        "codeLabel": "Code",
+        "verifyButton": "Verify",
+        "errors": {
+          "badFormat": "Invalid format. Should look like IN-2026-A7K2PQ",
+          "invalid": "Invalid or unrecognised code",
+          "expired": "This code has expired",
+          "redeemed": "This code has already been used"
+        }
       }
     }
   },

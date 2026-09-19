@@ -1,0 +1,140 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.dropZone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 16px;
+  border: 2px dashed var(--color-border);
+  border-radius: 13px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.dropZone:hover,
+.dropZone:focus-visible {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.dropZoneActive {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.dropZoneText {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.hiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--color-cream);
+  border: 1px solid var(--color-border);
+}
+
+.fileInfo {
+  min-width: 0;
+}
+
+.fileName {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileSize {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.removeButton {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--color-text-muted);
+}
+
+.progressTrack {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.3s ease;
+}
+
+.privacyNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.infoCard {
+  background: var(--color-warning-light);
+  border: 1px solid var(--color-warning);
+  border-radius: 11px;
+  padding: 12px 14px;
+}
+
+.rejectedCard {
+  background: var(--color-warning-light);
+  border: 1px solid var(--color-warning);
+  border-radius: 11px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.infoTitle {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-warning);
+  margin-block-end: 3px;
+}
+
+.infoBody {
+  font-size: var(--text-xs);
+  color: var(--color-warning);
+}
+
+.infoMeta {
+  font-size: var(--text-xs);
+  color: var(--color-warning);
+  opacity: 0.8;
+  margin-block-start: 4px;
+}

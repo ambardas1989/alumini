@@ -357,6 +357,28 @@ export function getMembers(classroomId: string, page = 0): Promise<ClassroomMemb
   return request(`/classroom/${classroomId}/members`, { query: { page } });
 }
 
+// ── MEMBERSHIP ───────────────────────────────────────────────────────────
+//
+// Not in Part 1's endpoint list — apps/backend/src/modules/membership has
+// its own controller (missed in the original survey) that the verification
+// screen needs: it's the only place that exposes the caller's own
+// membership *row id*, which GET /verify/status/:membershipId requires and
+// nothing else returns.
+
+export interface MembershipDetail {
+  id: string;
+  classroom_id: string;
+  role: string;
+  verification_status: string;
+  verification_method: string | null;
+  verified_at: string | null;
+  joined_at: string;
+}
+
+export function getMembership(classroomId: string): Promise<MembershipDetail> {
+  return request(`/membership/${classroomId}`);
+}
+
 // ── CORRIDOR ─────────────────────────────────────────────────────────────
 
 export function getMessages(
@@ -406,12 +428,21 @@ export function redeemCode(classroomId: string, code: string): Promise<{ verifie
   return request('/verify/code', { method: 'POST', body: { classroomId, code } });
 }
 
+export interface VerificationAttempt {
+  method: string;
+  status: 'pending' | 'approved' | 'rejected';
+  vouch_points: number;
+  reviewed_at: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+}
+
 export function getVerificationStatus(membershipId: string): Promise<{
   membershipId: string;
   verificationStatus: string;
   verificationMethod: string | null;
   verifiedAt: string | null;
-  latestAttempt: unknown;
+  latestAttempt: VerificationAttempt | null;
 }> {
   return request(`/verify/status/${membershipId}`);
 }
