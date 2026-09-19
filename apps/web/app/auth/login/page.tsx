@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { setToken } from '@/lib/auth';
 import { setMfaPendingSession } from '@/lib/mfaSession';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTranslations } from '@/lib/useTranslations';
@@ -19,7 +20,7 @@ import styles from './page.module.css';
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, login: establishSession } = useAuth();
   const t = useTranslations('auth.login');
   const tCommon = useTranslations('common');
   const tBrand = useTranslations('brand');
@@ -54,8 +55,35 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result = await api.login(email, password);
-      setMfaPendingSession({ token: result.mfaPendingToken, method: result.mfaMethod });
-      router.push('/auth/mfa');
+
+      if ('mfaRequired' in result) {
+        setMfaPendingSession({ token: result.mfaPendingToken, method: result.mfaMethod });
+        router.push('/auth/mfa');
+        return;
+      }
+
+      // Direct session, no MFA step — unreachable today (MFA_REQUIRED is
+      // hardcoded true in packages/config/app.ts) but handled correctly in
+      // case that ever changes. TokenPairResponse's own embedded `user`
+      // (AuthUserSummary) is missing avatarUrl/activePersona, which this
+      // app's User type needs, so a real profile fetch is required here —
+      // GET /identity/profile (api.getProfile()), not /identity/me, which
+      // doesn't exist as a route (see identity.controller.ts).
+      setToken(result.accessToken);
+      const expiresAt = new Date(Date.now() + result.expiresIn * 1000).toISOString();
+      const profile = await api.getProfile();
+      establishSession({
+        accessToken: result.accessToken,
+        expiresAt,
+        user: {
+          id: profile.id,
+          email: profile.email,
+          fullName: profile.fullName,
+          avatarUrl: profile.avatarUrl ?? null,
+          activePersona: profile.activePersona,
+        },
+      });
+      router.push('/');
     } catch (err) {
       setError(getErrorMessage(err));
       setLoading(false);

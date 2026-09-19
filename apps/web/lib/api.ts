@@ -103,8 +103,16 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const token = options.token ?? getToken();
+  const sessionToken = getToken();
+  const token = options.token ?? sessionToken;
   if (token) headers.Authorization = `Bearer ${token}`;
+  // Whether this call is riding the real, already-established session —
+  // not a pre-auth call with no token at all (login/signup) and not an
+  // explicit override (an mfaPendingToken, or a sensitive-action
+  // re-challenge reusing the real token for a one-off purpose). Only in
+  // that case does a 401 actually mean "the session itself died" — see
+  // the 401 branch below.
+  const usingRealSession = options.token === undefined && sessionToken !== null;
 
   let response: Response;
   try {
@@ -124,11 +132,27 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (response.status === 401) {
-    clearSession();
-    if (typeof window !== 'undefined') {
-      window.location.href = '/auth/login?message=session_expired';
+    if (usingRealSession) {
+      clearSession();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login?message=session_expired';
+      }
+      throw new ApiError(401, 'AUTH_SESSION_EXPIRED', 'Your session has expired. Please log in again.');
     }
-    throw new ApiError(401, 'AUTH_SESSION_EXPIRED', 'Your session has expired. Please log in again.');
+
+    // BUG FIX: this used to treat every 401 as "the session expired" and
+    // hard-redirect regardless of what the call actually was. Wrong
+    // credentials on /auth/login (AuthService.login() throws
+    // UnauthorizedException — a 401) and a wrong MFA code on
+    // /auth/mfa/verify|challenge (same exception type, via
+    // mfaFailureException()) both hit this branch, wiping out whatever
+    // was in sessionStorage and bouncing the user back to
+    // /auth/login?message=session_expired before the login/MFA page's own
+    // catch block ever got a chance to show "incorrect password"/
+    // "incorrect code" inline. Falls through to the normal error path
+    // below instead, same as any other non-401 failure.
+    const payload: unknown = await response.json().catch(() => null);
+    throw new ApiError(401, extractErrorCode(payload), extractMessage(payload), payload);
   }
 
   if (response.status === 204) {
@@ -168,7 +192,20 @@ export function signup(fullName: string, email: string, password: string): Promi
   return request('/auth/signup', { method: 'POST', body: { fullName, email, password } });
 }
 
-export function login(email: string, password: string): Promise<MfaRequiredResponse> {
+/**
+ * The direct-session shape AuthService.login() returns when MFA isn't
+ * required (see TokenPairResponse on the backend) — unreachable today
+ * since appConfig.MFA_REQUIRED is hardcoded `true` in
+ * packages/config/app.ts, but the backend's return type is a real union
+ * (MfaRequiredResponse | TokenPairResponse), so login() is typed to match
+ * rather than assuming the MFA branch always wins.
+ */
+export interface LoginCompleteResponse {
+  accessToken: string;
+  expiresIn: number;
+}
+
+export function login(email: string, password: string): Promise<MfaRequiredResponse | LoginCompleteResponse> {
   return request('/auth/login', { method: 'POST', body: { email, password } });
 }
 

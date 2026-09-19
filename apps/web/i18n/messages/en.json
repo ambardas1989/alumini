@@ -110,7 +110,7 @@
       "verifyTitle": "Welcome back",
       "verifySubtitle": "Enter the code from your authenticator app",
       "troubleLink": "Having trouble? Sign in again",
-      "submitButton": "Submit",
+      "submitButton": "Verify",
       "redirectingIn": "Redirecting in {seconds}...",
       "errors": {
         "invalidCode": "Incorrect code",
@@ -118,7 +118,8 @@
         "expiredCode": "Session expired. Please sign in again."
       },
       "tagline": "Your tribe is waiting.",
-      "subTagline": "One last step to keep your account secure"
+      "subTagline": "One last step to keep your account secure",
+      "codeHelperText": "Enter the 6-digit code from your authenticator app"
     },
     "googleComingSoon": "Google sign-in coming soon",
     "stats": {
