@@ -142,6 +142,28 @@ export class CorridorService {
     // (Client-side Realtime subscriptions are a completely separate
     // connection that goes through the ANON key and IS subject to RLS —
     // see the module-level comment above.)
+    //
+    // NOTE ON "Node.js detected but native WebSocket not found": every
+    // createClient() call in this backend — not just this one — eagerly
+    // constructs a @supabase/realtime-js RealtimeClient internally, which
+    // throws that exact error on Node <22 (no global WebSocket) regardless
+    // of whether the caller ever touches Realtime. There is no `realtime:
+    // { enabled: false }` (or equivalent) option to opt out of this check —
+    // RealtimeClientOptions has no such field (see
+    // node_modules/@supabase/realtime-js's RealtimeClient.d.ts) — so it
+    // isn't something the other 13 services' createClient() calls can be
+    // individually configured around. The actual fix is the repo's Node
+    // version: .node-version/.nvmrc pin to 22, which has the native
+    // WebSocket global RealtimeClient needs and the SDK's own suggested
+    // remedy for this exact error.
+    //
+    // Separately: this service's own createClient() call never explicitly
+    // "enables" Realtime either — delivery to subscribed browser clients
+    // happens via Supabase watching Postgres's WAL for row changes on
+    // corridor.messages, triggered automatically by this service's own
+    // inserts, not by this backend client subscribing to a channel itself.
+    // Realtime is a client-side (browser) concern end to end; it isn't a
+    // per-backend-service toggle to turn on here and off elsewhere.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
