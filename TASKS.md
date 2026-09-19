@@ -762,7 +762,7 @@ Commit: "fix: AppShell nav bar — routing, persona-aware items, mobile tabs"
 
 ---
 
-## TASK 11 — Final check and summary [PENDING]
+## TASK 11 — Final check and summary [DONE]
 
 Steps:
 
@@ -787,14 +787,45 @@ Steps:
 
 ## COMPLETION SUMMARY
 
-(Claude Code fills this in when TASK 11 is marked [DONE])
+Date completed: 2026-09-19
 
-Date completed:
-Tasks completed:
-Tasks skipped (already done before this run):
-Tests passing:
-Build status:
+Tasks completed: 00, 00A, 01, 02 (already done before this run), 03,
+04 (already done before this run), 05, 06, 07, 08, 09, 10, 11 — all 13.
+
+Tasks skipped (already done before this run): TASK 02 (Google OAuth
+callback page) and TASK 04 (Node 22 upgrade) were both completed in
+an earlier session, before this TASKS.md run started — confirmed and
+left as-is rather than redone.
+
+Tests passing: 278/278 (was 271 at the start of this run; +7 new —
+1 TOTP clock-drift test in TASK 00, 6 forgot/reset-password tests in
+TASK 03).
+
+Build status: next build clean (20 routes). npx tsc --noEmit in
+apps/web: 0 errors. All 10 routes named in this task's step 4
+(login, signup, mfa, forgot-password, reset-password, callback,
+privacy, terms, contact, /) verified live against the actual built
+standalone server — all HTTP 200.
+
 Notes:
+- Two tasks (00 and 00A) had premises that didn't match the actual
+  codebase: TASK 00's "add window: 1" was already present (existed
+  since the auth module's first commit) — widened to window: 2
+  instead, since the report said codes were still being rejected.
+  TASK 01's "find the avatar area in AppShell's top nav bar" doesn't
+  exist — AppShell renders no header by design; built a reusable
+  UserMenu component instead and wired it into the pages that
+  actually have an avatar (home, teacher).
+- TASK 04's literal `realtime: { enabled: false } }` option doesn't
+  exist in the installed @supabase/supabase-js SDK (checked its own
+  .d.ts) — Node 22 alone is the real, complete fix (confirmed from
+  the SDK's own error message and suggested remedy).
+- .node-version has intermittently reverted to UTF-16 encoding across
+  this whole multi-session effort, seemingly from something outside
+  Claude Code's own edits (a Windows tool or editor auto-save) — still
+  worth checking before it causes a Render deploy issue.
+- docs/knowledgeBase/ (untracked) exists alongside this file and
+  wasn't touched — out of scope for this run.
 
 ---
 
