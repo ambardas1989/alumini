@@ -169,6 +169,19 @@ export class AuthController {
     return this.authService.challengeMfa(authToken, dto, req);
   }
 
+  /**
+   * TEMPORARY — see commit "debug: add MFA verification logging".
+   * Unauthenticated by design (matches how it was specified) — only ever
+   * meant to be reachable in dev/staging; 404s in production regardless
+   * (see AuthService.debugMfaCode()). Remove this route and the service
+   * method behind it once AUTH_MFA_INVALID_CODE's root cause is found.
+   */
+  @Get('mfa-debug')
+  @ApiOperation({ summary: '[DEBUG, non-production only] Returns the currently-valid TOTP code for a user' })
+  async mfaDebug(@Query('userId') userId: string) {
+    return this.authService.debugMfaCode(userId);
+  }
+
   // ── Session management ───────────────────────────────────────────────────
 
   @Post('refresh')

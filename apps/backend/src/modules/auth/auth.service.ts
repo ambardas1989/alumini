@@ -33,6 +33,7 @@ import {
   ForbiddenException,
   Injectable,
   Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -470,6 +471,28 @@ export class AuthService {
       if (!record) return 'invalid';
       if (!opts.confirmSetup && !record.confirmed) return 'invalid';
 
+      // TEMPORARY — see commit "debug: add MFA verification logging".
+      // window: 2 didn't fix AUTH_MFA_INVALID_CODE, which rules out clock
+      // drift (both window: 1 and window: 2 already covered anything a
+      // *step-count* mismatch could explain) — this is here to find out
+      // whether the secret itself, its encoding, or the TOTP parameters
+      // (step/digits/algorithm) are the actual mismatch. Remove once the
+      // root cause is found; this logs the raw submitted code and a
+      // prefix of the stored secret.
+      const expectedCodeNow = speakeasy.totp({ secret: record.secret, encoding: 'base32' });
+      console.log('[MFA-DEBUG]', {
+        userId,
+        rawToken: code,
+        secretPrefix: record.secret.slice(0, 8),
+        secretLength: record.secret.length,
+        encoding: 'base32',
+        totpOptions: { step: 30, digits: 6, algorithm: 'sha1' }, // speakeasy defaults — none overridden below
+        serverTimestampMs: Date.now(),
+        serverTimeIso: new Date().toISOString(),
+        expectedCodeNow,
+        confirmed: record.confirmed,
+      });
+
       const isValid = speakeasy.totp.verify({
         secret: record.secret,
         encoding: 'base32',
@@ -484,6 +507,8 @@ export class AuthService {
         // assumes the RFC 6238 defaults (30s step, 6 digits) on both ends.
         window: 2,
       });
+
+      console.log('[MFA-DEBUG] verification result:', { userId, isValid });
 
       if (isValid && opts.confirmSetup) {
         await this.supabase
@@ -517,6 +542,37 @@ export class AuthService {
       .eq('id', challenge.id);
 
     return matches ? 'valid' : 'invalid';
+  }
+
+  /**
+   * TEMPORARY — see commit "debug: add MFA verification logging". Returns
+   * the TOTP code that would currently verify for this user's stored
+   * secret, so a dev/staging deploy can confirm whether the secret itself
+   * is correct without needing an actual authenticator app. 404s outright
+   * in production (not just unauthorized — no confirmation the route even
+   * exists) rather than trusting a second guard alone. Never returns the
+   * secret itself, only the code it currently produces. Remove this
+   * method and its controller route once the root cause is found.
+   */
+  async debugMfaCode(userId: string): Promise<{ code: string; generatedAt: string }> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotFoundException();
+    }
+
+    const { data: record } = await this.supabase
+      .from('mfa_totp_secrets')
+      .select('secret')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!record) {
+      throw new BadRequestException('No TOTP secret on file for this user');
+    }
+
+    return {
+      code: speakeasy.totp({ secret: record.secret, encoding: 'base32' }),
+      generatedAt: new Date().toISOString(),
+    };
   }
 
   /** Maps a non-'valid' verifyCode() result to the matching structured ErrorCode. */
