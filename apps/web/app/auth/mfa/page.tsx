@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as api from '@/lib/api';
 import { ApiError } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { clearMfaPendingSession, getMfaPendingSession, type MfaPendingSession } from '@/lib/mfaSession';
+import {
+  clearMfaPendingSession,
+  getMfaPendingSession,
+  setMfaPendingSession,
+  type MfaPendingSession,
+} from '@/lib/mfaSession';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { AuthLayout } from '@/components/layout/AuthLayout';
@@ -22,6 +27,7 @@ const MAX_ATTEMPTS_REDIRECT_SECONDS = 3;
 
 export default function MfaPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login: establishSession } = useAuth();
   const t = useTranslations('auth.mfa');
 
@@ -45,14 +51,37 @@ export default function MfaPage() {
 
   const mode: Mode = pending?.method == null ? 'setup' : 'verify';
 
-  // Read the handoff from login()/signup() once, on mount — see lib/mfaSession.ts.
+  // Read the handoff from login()/signup() (sessionStorage) — or, if this
+  // navigation just arrived from GET /auth/google/callback's redirect, from
+  // the URL's own ?token=&setup= params instead (see auth.controller.ts's
+  // googleCallback()). Either way this only runs once per real token: after
+  // storing a URL-provided token, router.replace() strips it from the
+  // address bar immediately, which re-triggers this effect (searchParams
+  // changes) — that second run finds no URL token and falls through to the
+  // sessionStorage read, which by then has what the first run just wrote.
   useEffect(() => {
+    const urlToken = searchParams.get('token');
+    if (urlToken) {
+      const isSetup = searchParams.get('setup') !== 'false';
+      // The redirect only carries *whether* an MFA method is already
+      // enrolled (via `setup`), not which one — but nothing below branches
+      // on the specific method string, only on null-vs-not (see `mode`
+      // above), and 'totp' is the only method this app's setup flow
+      // offers (see api.setupMfa()'s own comment), so it's a safe stand-in
+      // whenever a method is known to exist.
+      const session: MfaPendingSession = { token: urlToken, method: isSetup ? null : 'totp' };
+      setMfaPendingSession(session);
+      setPending(session);
+      router.replace('/auth/mfa');
+      return;
+    }
+
     const session = getMfaPendingSession();
     setPending(session);
     if (!session) {
       router.replace('/auth/login');
     }
-  }, [router]);
+  }, [router, searchParams]);
 
   useEffect(() => {
     if (!pending || mode !== 'setup') return;

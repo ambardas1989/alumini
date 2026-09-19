@@ -20,10 +20,11 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
@@ -39,6 +40,13 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthTokenPayload } from './auth.types';
 import { GoogleProfile } from './strategies/google.strategy';
+
+/**
+ * IMPORTANT: Add FRONTEND_URL=https://alumtribe.com to Render environment
+ * variables before testing Google OAuth on production. Without this, OAuth
+ * redirects to localhost.
+ */
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -72,8 +80,39 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback — completes account link/creation' })
-  async googleCallback(@Req() req: Request & { user: GoogleProfile }) {
-    return this.authService.loginWithGoogle(req.user, req);
+  async googleCallback(@Req() req: Request & { user: GoogleProfile }, @Res() res: Response): Promise<void> {
+    const result = await this.authService.loginWithGoogle(req.user, req);
+
+    // SECURITY: this used to `return result` directly — NestJS serialises
+    // that to a raw JSON body, so the browser's final GET (a plain
+    // top-level navigation Google itself redirects to, not a fetch() this
+    // app's own JS ever reads) would land on a page showing the token in
+    // the response body/URL bar. Redirecting to the web app instead keeps
+    // the token off the visible page — it only ever travels via the
+    // redirect's own query string, which the target pages strip
+    // immediately (see auth/mfa's and auth/callback's own mount effects).
+    if ('mfaRequired' in result) {
+      const params = new URLSearchParams({
+        token: result.mfaPendingToken,
+        setup: result.mfaMethod ? 'false' : 'true',
+      });
+      res.redirect(`${FRONTEND_URL}/auth/mfa?${params}`);
+      return;
+    }
+
+    // Unreachable while appConfig.MFA_REQUIRED is hardcoded `true`
+    // (packages/config/app.ts) — loginWithGoogle() always resolves the
+    // branch above in that case. Implemented anyway in case MFA_REQUIRED
+    // ever becomes configurable. TokenPairResponse has `expiresIn`
+    // (seconds), not an `expiresAt` timestamp — converting here since the
+    // frontend's session model (and /auth/mfa/verify's own response
+    // shape) expects an ISO string.
+    const expiresAt = new Date(Date.now() + result.expiresIn * 1000).toISOString();
+    const params = new URLSearchParams({
+      accessToken: result.accessToken,
+      expiresAt,
+    });
+    res.redirect(`${FRONTEND_URL}/auth/callback?${params}`);
   }
 
   // ── MFA ──────────────────────────────────────────────────────────────────

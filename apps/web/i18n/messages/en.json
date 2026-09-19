@@ -167,6 +167,11 @@
         "title": "Your batch, forever",
         "body": "Reunions, memories, and real connections. Long after graduation."
       }
+    },
+    "callback": {
+      "tagline": "Almost there.",
+      "subTagline": "Finishing up your sign-in",
+      "signingIn": "Signing you in..."
     }
   },
   "onboarding": {
