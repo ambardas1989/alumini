@@ -51,7 +51,6 @@
       "title": "Welcome back",
       "subtitle": "Sign in to continue",
       "googleButton": "Sign in with Google",
-      "googleComingSoon": "Google sign-in coming soon",
       "emailLabel": "Email address",
       "passwordLabel": "Password",
       "signInButton": "Sign in",
@@ -64,7 +63,9 @@
         "rateLimited": "Too many attempts. Wait a few minutes.",
         "suspended": "Your account has been suspended. Contact support.",
         "networkError": "Connection failed. Check your internet."
-      }
+      },
+      "subTagline": "Sign in to reconnect with your people",
+      "passwordResetBanner": "Password reset successfully. Please sign in."
     },
     "signup": {
       "title": "Create your account",
@@ -84,7 +85,9 @@
         "passwordMismatch": "Passwords do not match",
         "passwordTooShort": "At least 8 characters",
         "invalidEmail": "Enter a valid email address"
-      }
+      },
+      "subTagline": "Join thousands of alumni already connected",
+      "googleButton": "Sign up with Google"
     },
     "mfa": {
       "setupTitle": "Secure your account",
@@ -105,6 +108,48 @@
         "invalidCode": "Incorrect code",
         "maxAttemptsRedirect": "Too many attempts. Redirecting to sign in...",
         "expiredCode": "Session expired. Please sign in again."
+      },
+      "tagline": "Your tribe is waiting.",
+      "subTagline": "One last step to keep your account secure"
+    },
+    "googleComingSoon": "Google sign-in coming soon",
+    "stats": {
+      "alumni": "Alumni",
+      "schools": "Schools",
+      "cities": "Cities"
+    },
+    "forgotPassword": {
+      "tagline": "It happens to the best of us.",
+      "subTagline": "We'll send a reset link to your email",
+      "title": "Reset your password",
+      "subtitle": "Enter your email and we'll send you a link",
+      "emailLabel": "Email address",
+      "invalidEmail": "Enter a valid email address",
+      "submitButton": "Send reset link",
+      "backToLogin": "Back to sign in",
+      "successTitle": "Check your inbox",
+      "successSubtitle": "We sent a reset link to {email}",
+      "resendPrompt": "Didn't receive it?",
+      "resend": "Resend",
+      "resendCountdown": "Resend in {seconds}s"
+    },
+    "resetPassword": {
+      "tagline": "Fresh start.",
+      "subTagline": "Choose a strong password for your account",
+      "title": "Choose a new password",
+      "subtitle": "Make sure it’s at least 8 characters",
+      "newPasswordLabel": "New password",
+      "confirmLabel": "Confirm password",
+      "submitButton": "Reset password",
+      "successTitle": "Password reset successfully",
+      "successSubtitle": "You can now sign in with your new password",
+      "signInButton": "Sign in",
+      "expiredTitle": "This link has expired",
+      "expiredSubtitle": "Reset links are valid for 1 hour",
+      "requestNew": "Request a new link",
+      "errors": {
+        "passwordTooShort": "At least 8 characters required",
+        "passwordMismatch": "Passwords do not match"
       }
     }
   },

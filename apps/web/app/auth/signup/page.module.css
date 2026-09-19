@@ -1,22 +1,31 @@
 .top {
   text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  margin-block-end: 8px;
+  margin-block-end: 16px;
 }
 
 .title {
-  font-size: var(--text-2xl);
+  font-size: 28px;
   font-weight: 800;
   color: var(--color-text-primary);
-  margin-block-start: 4px;
 }
 
-.subline {
-  font-size: var(--text-sm);
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-block-end: 16px;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.dividerText {
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
+  text-transform: lowercase;
 }
 
 .form {

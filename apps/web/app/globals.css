@@ -49,6 +49,13 @@
      blue doesn't change because our theme does). */
   --color-linkedin: #0a66c2;
 
+  /* Auth split-screen left panel — a fixed brand gradient, not part of the
+     light/dark palette (same reasoning as --color-linkedin above): the left
+     panel is always dark purple regardless of site theme, so this is never
+     redefined under [data-theme='dark']. */
+  --auth-gradient-from: #2d1b69;
+  --auth-gradient-to: #4a1fa8;
+
   /* Touch target floor — kept in sync with styles/spacing.ts's MIN_TOUCH_TARGET */
   --min-touch-target: 44px;
 
@@ -234,4 +241,49 @@ video {
   max-width: 100%;
   height: auto;
   display: block;
+}
+
+/**
+ * ── Auth form styling ───────────────────────────────────────────────────
+ * Applied via plain (non-CSS-Module) class names passed through the shared
+ * Input/PasswordInput/Button components' own `className` passthrough prop
+ * — scoped to auth pages only, deliberately NOT a change to
+ * Input.module.css/Button.module.css themselves, which are shared by every
+ * form in the app (profile, classroom create, admin, ...). Changing those
+ * directly would resize every button/input site-wide, not just auth.
+ */
+.auth-input {
+  height: 52px;
+  border-radius: 12px;
+  font-size: 16px; /* 16px minimum prevents iOS Safari auto-zooming on focus */
+  padding: 0 16px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-primary-button {
+  height: 52px;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: filter 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
+}
+.auth-primary-button:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+.auth-primary-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.auth-primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-google-button {
+  height: 52px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: box-shadow 0.15s ease;
+}
+.auth-google-button:hover:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }

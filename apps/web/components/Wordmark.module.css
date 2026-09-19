@@ -13,3 +13,7 @@
 .sm {
   font-size: var(--text-lg);
 }
+
+.inverse {
+  color: #fff;
+}

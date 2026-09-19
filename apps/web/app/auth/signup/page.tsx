@@ -8,12 +8,12 @@ import { getErrorMessage } from '@/lib/errors';
 import { setMfaPendingSession } from '@/lib/mfaSession';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTranslations } from '@/lib/useTranslations';
-import { AuthCard } from '@/components/layout/AuthCard';
-import { Wordmark } from '@/components/Wordmark';
+import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStrength } from '@/components/ui/PasswordStrength';
+import { GoogleButton } from '@/components/ui/GoogleButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import styles from './page.module.css';
 
@@ -93,12 +93,17 @@ export default function SignupPage() {
   };
 
   return (
-    <AuthCard>
+    <AuthLayout tagline={tBrand('subline')} subTagline={t('subTagline')}>
       <div className={styles.top}>
-        <Wordmark />
         <h1 className={styles.title}>{t('title')}</h1>
-        {/* subline only appears here — the signup first-impression moment */}
-        <p className={styles.subline}>{tBrand('subline')}</p>
+      </div>
+
+      <GoogleButton label={t('googleButton')} />
+
+      <div className={styles.divider}>
+        <span className={styles.dividerLine} />
+        <span className={styles.dividerText}>{tCommon('or')}</span>
+        <span className={styles.dividerLine} />
       </div>
 
       <form className={styles.form} onSubmit={handleSubmit} noValidate>
@@ -113,6 +118,7 @@ export default function SignupPage() {
             clearError('fullName');
           }}
           onBlur={() => handleBlur('fullName')}
+          className="auth-input"
         />
         <Input
           label={t('emailLabel')}
@@ -126,6 +132,7 @@ export default function SignupPage() {
             clearError('email');
           }}
           onBlur={() => handleBlur('email')}
+          className="auth-input"
         />
         <div>
           <PasswordInput
@@ -139,6 +146,7 @@ export default function SignupPage() {
               clearError('password');
             }}
             onBlur={() => handleBlur('password')}
+            className="auth-input"
           />
           <PasswordStrength password={password} />
         </div>
@@ -153,11 +161,19 @@ export default function SignupPage() {
             clearError('confirmPassword');
           }}
           onBlur={() => handleBlur('confirmPassword')}
+          className="auth-input"
         />
 
         {apiError && <ErrorMessage message={apiError} />}
 
-        <Button type="submit" variant="primary" size="lg" fullWidth loading={loading}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          fullWidth
+          loading={loading}
+          className="auth-primary-button"
+        >
           {t('signUpButton')}
         </Button>
       </form>
@@ -165,6 +181,6 @@ export default function SignupPage() {
       <p className={styles.loginLink}>
         <Link href="/auth/login">{t('loginLink')}</Link>
       </p>
-    </AuthCard>
+    </AuthLayout>
   );
 }

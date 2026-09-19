@@ -9,8 +9,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { clearMfaPendingSession, getMfaPendingSession, type MfaPendingSession } from '@/lib/mfaSession';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTranslations } from '@/lib/useTranslations';
-import { AuthCard } from '@/components/layout/AuthCard';
-import { Wordmark } from '@/components/Wordmark';
+import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/Button';
 import { CodeInput } from '@/components/ui/CodeInput';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -149,7 +148,11 @@ export default function MfaPage() {
   if (pending === undefined) {
     // Reading sessionStorage — effectively instant, but avoids a one-frame
     // flash of the wrong mode before the mount effect above resolves it.
-    return <AuthCard>{null}</AuthCard>;
+    return (
+      <AuthLayout tagline={t('tagline')} subTagline={t('subTagline')}>
+        {null}
+      </AuthLayout>
+    );
   }
   if (pending === null) {
     return null; // redirecting to /auth/login
@@ -159,19 +162,11 @@ export default function MfaPage() {
   const showRedirectNotice = errorCode === 'AUTH_MFA_MAX_ATTEMPTS' || errorCode === 'AUTH_MFA_EXPIRED';
 
   return (
-    <AuthCard>
-      {mode === 'setup' ? (
-        <div className={styles.top}>
-          <h1 className={styles.title}>{t('setupTitle')}</h1>
-          <p className={styles.subtitle}>{t('setupSubtitle')}</p>
-        </div>
-      ) : (
-        <div className={styles.top}>
-          <Wordmark size="sm" />
-          <h1 className={styles.title}>{t('verifyTitle')}</h1>
-          <p className={styles.subtitle}>{t('verifySubtitle')}</p>
-        </div>
-      )}
+    <AuthLayout tagline={t('tagline')} subTagline={t('subTagline')}>
+      <div className={styles.top}>
+        <h1 className={styles.title}>{mode === 'setup' ? t('setupTitle') : t('verifyTitle')}</h1>
+        <p className={styles.subtitle}>{mode === 'setup' ? t('setupSubtitle') : t('verifySubtitle')}</p>
+      </div>
 
       {mode === 'setup' && (
         <div className={styles.qrSection}>
@@ -247,6 +242,7 @@ export default function MfaPage() {
               loading={submitting}
               disabled={!codeComplete}
               onClick={() => handleSubmit(code)}
+              className="auth-primary-button"
             >
               {t('submitButton')}
             </Button>
@@ -272,6 +268,6 @@ export default function MfaPage() {
           )}
         </div>
       )}
-    </AuthCard>
+    </AuthLayout>
   );
 }

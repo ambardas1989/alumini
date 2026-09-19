@@ -8,19 +8,13 @@ import { getErrorMessage } from '@/lib/errors';
 import { setMfaPendingSession } from '@/lib/mfaSession';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTranslations } from '@/lib/useTranslations';
-import { AuthCard } from '@/components/layout/AuthCard';
-import { Wordmark } from '@/components/Wordmark';
+import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PasswordInput } from '@/components/ui/PasswordInput';
+import { GoogleButton } from '@/components/ui/GoogleButton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { GoogleIcon } from '@/components/icons/GoogleIcon';
 import styles from './page.module.css';
-
-// Whether the backend has Google OAuth configured — the web app has no way
-// to introspect a server-only env var, so this is a manual flag. See
-// apps/web/.env.local's own comment.
-const GOOGLE_ENABLED = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === 'true';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,14 +31,17 @@ export default function LoginPage() {
 
   const message = searchParams.get('message');
   // session_expired is a mild "something interrupted you" event (warning
-  // styling); signed_out is a normal, expected action the user just took
-  // (neutral/info styling) — different semantic weight, different color.
+  // styling); signed_out and password_reset are both normal, expected
+  // actions the user just took (neutral/info styling) — different semantic
+  // weight, different color.
   const banner =
     message === 'session_expired'
       ? { text: t('sessionExpiredBanner'), variant: 'warning' as const }
       : message === 'signed_out'
         ? { text: t('signedOutBanner'), variant: 'info' as const }
-        : null;
+        : message === 'password_reset'
+          ? { text: t('passwordResetBanner'), variant: 'info' as const }
+          : null;
 
   // Nothing left for an already-logged-in visitor to do on this screen.
   useEffect(() => {
@@ -66,12 +63,7 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthCard>
-      <div className={styles.top}>
-        <Wordmark />
-        <p className={styles.tagline}>{tBrand('tagline')}</p>
-      </div>
-
+    <AuthLayout tagline={tBrand('tagline')} subTagline={t('subTagline')}>
       <div className={styles.authSection}>
         <div className={styles.heading}>
           <h1 className={styles.title}>{t('title')}</h1>
@@ -84,18 +76,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          className={styles.googleButton}
-          disabled={!GOOGLE_ENABLED}
-          title={GOOGLE_ENABLED ? undefined : t('googleComingSoon')}
-          onClick={() => {
-            window.location.href = api.googleAuth();
-          }}
-        >
-          <GoogleIcon />
-          {t('googleButton')}
-        </button>
+        <GoogleButton label={t('googleButton')} />
 
         <div className={styles.divider}>
           <span className={styles.dividerLine} />
@@ -112,6 +93,7 @@ export default function LoginPage() {
             disabled={loading}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            className="auth-input"
           />
           <PasswordInput
             label={t('passwordLabel')}
@@ -120,21 +102,23 @@ export default function LoginPage() {
             disabled={loading}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            className="auth-input"
           />
 
-          {/* No forgot-password screen exists yet in this pass — inert
-              placeholder so the link doesn't navigate anywhere broken. */}
-          <a
-            href="#"
-            className={styles.forgotPassword}
-            onClick={(e) => e.preventDefault()}
-          >
+          <Link href="/auth/forgot-password" className={styles.forgotPassword}>
             {t('forgotPassword')}
-          </a>
+          </Link>
 
           {error && <ErrorMessage message={error} />}
 
-          <Button type="submit" variant="primary" size="lg" fullWidth loading={loading}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
+            className="auth-primary-button"
+          >
             {t('signInButton')}
           </Button>
         </form>
@@ -143,6 +127,6 @@ export default function LoginPage() {
           <Link href="/auth/signup">{t('signupLink')}</Link>
         </p>
       </div>
-    </AuthCard>
+    </AuthLayout>
   );
 }
