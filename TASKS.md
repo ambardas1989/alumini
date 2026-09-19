@@ -634,7 +634,29 @@ Commit: "feat: 404 and error boundary pages"
 
 ---
 
-## TASK 09 — Loading states and error handling audit [PENDING]
+## TASK 09 — Loading states and error handling audit [DONE]
+
+Audited all 8 pages plus their real data-fetching sub-components
+(admin's 5 tabs, teacher's StudentSearchModal). No code changes —
+everything already passed on all four criteria:
+- Loading: every page uses LoadingSpinner/SkeletonCard, never a blank
+  screen (both components already existed, built in the app's very
+  first phase — nothing to create).
+- Error: every catch block routes through getErrorMessage(); grepped
+  all 8 pages + sub-components for direct err.message/error.message
+  access (the raw-leak anti-pattern) and found zero instances.
+- Empty: EmptyState is used everywhere a list can genuinely be empty
+  (home, profile, teacher, admin tabs, student search). Pages with no
+  EmptyState (classroom/create, classroom/[globalId], verify, persona)
+  don't have a "list that can be empty" to begin with — a create
+  form, a chat view, a fixed 6-method list, and a persona list that's
+  never empty (the viewer always has at least their own persona).
+- Form timeout: no page has an explicit 30s submit timeout, but
+  lib/api.ts's request() already aborts every call at 10s
+  (REQUEST_TIMEOUT_MS) via AbortController, which is stricter than
+  what was asked and already guarantees no button stays loading
+  forever.
+No build/test run — nothing changed.
 
 Every page that fetches data must show a loading state
 and handle errors gracefully.
