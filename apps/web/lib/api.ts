@@ -272,15 +272,33 @@ export function claimInstitution(institutionId: string, justification?: string):
   return request(`/institution/${institutionId}/claim`, { method: 'POST', body: { justification } });
 }
 
-export interface InstitutionAdminEntry {
-  userId?: string;
-  email: string;
-  status: 'active' | 'pending_approval' | 'invited';
-  isPrimaryAdmin: boolean;
-  invitedAt?: string;
+/**
+ * Matches InstitutionService.listAdmins()'s real shape exactly — the
+ * earlier flat-array typing here was wrong. Note admin rows carry no
+ * email (the backend's own select doesn't fetch profiles.email for
+ * them) — only pending invites have one, from institution_admin_invites
+ * itself. Screens showing admin rows work around this.
+ */
+export interface InstitutionAdminRow {
+  id: string;
+  user_id: string;
+  status: 'active' | 'pending_approval';
+  is_primary_admin: boolean;
+  created_at: string;
+  profile: { id: string; full_name: string; avatar_url: string | null } | null;
 }
 
-export function getAdmins(institutionId: string): Promise<InstitutionAdminEntry[]> {
+export interface InstitutionAdminInvite {
+  id: string;
+  email: string;
+  invited_by: string;
+  expires_at: string;
+  created_at: string;
+}
+
+export function getAdmins(
+  institutionId: string,
+): Promise<{ admins: InstitutionAdminRow[]; pendingInvites: InstitutionAdminInvite[] }> {
   return request(`/institution/${institutionId}/admins`);
 }
 
@@ -475,8 +493,39 @@ export function removeRsvp(classroomId: string, eventId: string): Promise<void> 
 
 // ── SEARCH ───────────────────────────────────────────────────────────────
 
-export function searchStudents(q: string, classroomId?: string): Promise<unknown[]> {
+export interface StudentSearchResult {
+  userId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  classroomId: string;
+  classroomName: string | undefined;
+  batchYear: number | undefined;
+  verificationStatus: string;
+  role: string;
+}
+
+export function searchStudents(q: string, classroomId?: string): Promise<StudentSearchResult[]> {
   return request('/search/students', { query: { q, classroomId } });
+}
+
+export interface StudentProfile {
+  userId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  linkedinUrl: string | null;
+  sharedClassrooms: Array<{
+    classroomId: string;
+    classroomName: string | undefined;
+    batchYear: number | undefined;
+    globalId: string | undefined;
+    role: string;
+    verificationStatus: string;
+    joinedAt: string;
+  }>;
+}
+
+export function getStudentProfile(userId: string): Promise<StudentProfile> {
+  return request(`/search/students/${userId}`);
 }
 
 // ── PREMIUM ──────────────────────────────────────────────────────────────
@@ -491,19 +540,57 @@ export function getPremiumFeatures(): Promise<unknown[]> {
 
 // ── ADMIN ────────────────────────────────────────────────────────────────
 
-export function getOverview(institutionId: string): Promise<unknown> {
+export interface AdminOverview {
+  totalClassrooms: number;
+  totalVerifiedMembers: number;
+  pendingVerifications: number;
+  activeCodes: number;
+  totalAdmins: number;
+}
+
+export function getOverview(institutionId: string): Promise<AdminOverview> {
   return request(`/admin/${institutionId}/overview`);
 }
 
-export function getClassrooms(institutionId: string): Promise<unknown> {
+export interface AdminClassroomEntry {
+  id: string;
+  globalId: string;
+  name: string;
+  grade: string | null;
+  section: string | null;
+  program: string | null;
+  memberCount: number;
+  verifiedCount: number;
+  pendingCount: number;
+}
+
+export interface AdminClassroomYearGroup {
+  year: number;
+  classrooms: AdminClassroomEntry[];
+  canAddClassroom: boolean;
+}
+
+export function getClassrooms(institutionId: string): Promise<AdminClassroomYearGroup[]> {
   return request(`/admin/${institutionId}/classrooms`);
 }
 
-export function getPendingVerifications(institutionId: string): Promise<unknown[]> {
+export interface PendingDocumentVerification {
+  verificationId: string;
+  userId: string;
+  userDisplayName: string;
+  classroomId: string;
+  classroomName: string;
+  submittedAt: string;
+}
+
+export function getPendingVerifications(institutionId: string): Promise<PendingDocumentVerification[]> {
   return request(`/admin/${institutionId}/verifications/pending`);
 }
 
-export function getDocumentUrl(institutionId: string, verificationId: string): Promise<{ url: string }> {
+export function getDocumentUrl(
+  institutionId: string,
+  verificationId: string,
+): Promise<{ url: string; expiresInSeconds: number }> {
   return request(`/admin/${institutionId}/verifications/${verificationId}/document`);
 }
 
@@ -538,6 +625,44 @@ export function generateBatchCode(institutionId: string, data: GenerateBatchCode
   return request('/codes/batch', { method: 'POST', body: { institutionId, ...data } });
 }
 
-export function getAnalytics(institutionId: string): Promise<unknown> {
+export interface AdminAnalytics {
+  activeAlumniCount: number;
+  topClassrooms: Array<{ classroomId: string; name: string; memberCount: number }>;
+  verificationMethodBreakdown: Record<string, number>;
+  newMembersThisMonth: number;
+}
+
+export function getAnalytics(institutionId: string): Promise<AdminAnalytics> {
   return request(`/admin/${institutionId}/analytics`);
+}
+
+// ── CODES (listing + import — generation is above, alongside overview) ───
+
+export interface CodeEntry {
+  id: string;
+  code: string;
+  type: 'personal' | 'batch';
+  boundName: string | null;
+  boundEmail: string | null;
+  maxRedemptions: number | null;
+  redemptionCount: number;
+  status: 'active' | 'redeemed' | 'exhausted' | 'expired';
+  expiresAt: string;
+  createdAt: string;
+}
+
+export function listCodes(classroomId: string): Promise<CodeEntry[]> {
+  return request(`/codes/${classroomId}`);
+}
+
+/**
+ * ImportCsvDto takes the CSV as a plain string (dto.csvContent), not a
+ * file upload — the client reads the File's text (File.text()) and sends
+ * it as ordinary JSON, no multipart/Storage upload involved.
+ */
+export function importCsv(
+  institutionId: string,
+  csvContent: string,
+): Promise<{ rowCount: number; generatedCount: number; classroomIds: string[] }> {
+  return request('/codes/import', { method: 'POST', body: { institutionId, csvContent } });
 }

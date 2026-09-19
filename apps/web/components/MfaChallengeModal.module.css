@@ -1,0 +1,25 @@
+.description {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-block-end: 16px;
+}
+
+.spinnerRow {
+  display: flex;
+  justify-content: center;
+  padding-block-start: 16px;
+}
+
+.errorText {
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  text-align: center;
+  margin-block-start: 12px;
+}
+
+.lockedOut {
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  text-align: center;
+  padding-block: 16px;
+}

@@ -1,0 +1,70 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  min-height: var(--min-touch-target);
+}
+
+.row:not(:last-child) {
+  margin-block-end: 8px;
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dotActive {
+  background: var(--color-success);
+}
+
+.dotAlumni {
+  background: var(--color-text-muted);
+}
+
+.name {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameActive {
+  color: var(--color-text-primary);
+}
+
+.nameAlumni {
+  color: var(--color-text-secondary);
+}
+
+.meta {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.badge {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.badgeActive {
+  color: var(--color-success);
+  background: var(--color-success-light);
+}
+
+.badgeAlumni {
+  color: var(--color-text-muted);
+  background: var(--color-cream);
+}

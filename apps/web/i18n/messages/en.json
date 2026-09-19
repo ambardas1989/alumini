@@ -437,5 +437,213 @@
     "notFound": "This page doesn't exist or was removed.",
     "serverError": "Something went wrong on our end. Try again shortly.",
     "sessionExpired": "Your session expired. Please log in again."
+  },
+  "teacherHome": {
+    "title": "My Classes · Teacher",
+    "noPersona": {
+      "title": "No teacher profile yet",
+      "description": "Add a teacher persona to manage your classes and students.",
+      "cta": "Add teacher persona"
+    },
+    "stats": {
+      "students": "Students",
+      "years": "Years teaching",
+      "schools": "Schools"
+    },
+    "tabs": {
+      "school": "By school",
+      "year": "By year",
+      "active": "Active",
+      "archive": "Archive"
+    },
+    "empty": {
+      "title": "No classes yet",
+      "description": "Classes you teach will show up here."
+    },
+    "activeEmpty": {
+      "title": "No active classes",
+      "description": "None of your classes are marked active right now."
+    },
+    "archiveEmpty": {
+      "title": "Nothing archived",
+      "description": "Classes you're no longer actively teaching will appear here."
+    },
+    "classCount": "{count, plural, one {# class} other {# classes}}",
+    "showAllClasses": "Show {count} more",
+    "memberCount": "{count, plural, one {# member} other {# members}}",
+    "activeBadge": "Active",
+    "alumniBadge": "Alumni",
+    "search": {
+      "title": "Find a student",
+      "inputLabel": "Search",
+      "placeholder": "Search by name",
+      "minChars": "Type at least 2 characters to search.",
+      "noResults": {
+        "title": "No students found",
+        "description": "Try a different name."
+      },
+      "unknownClass": "Unknown class",
+      "detailTitle": "Student",
+      "backToResults": "Back to results",
+      "viewLinkedIn": "View LinkedIn profile",
+      "sharedClassrooms": "Shared classrooms",
+      "recommendation": {
+        "cta": "Copy recommendation letter",
+        "copied": "Copied to clipboard",
+        "copyFailed": "Couldn't copy — please try again.",
+        "template": "To Whom It May Concern,\n\nI am pleased to recommend {name}, who I had the privilege of teaching in {className} ({year}). {name} consistently demonstrated strong academic ability and character.\n\nSincerely,\n[Your name]"
+      }
+    }
+  },
+  "adminDashboard": {
+    "title": "Admin Dashboard",
+    "noPersona": {
+      "title": "No admin profile yet",
+      "description": "Claim or get invited to an institution to manage it here.",
+      "cta": "Get started"
+    },
+    "pending": {
+      "title": "Almost there",
+      "description": "Your admin access is awaiting approval. We'll notify you once it's confirmed.",
+      "goHome": "Go to home"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "verify": "Verify",
+      "codes": "Codes",
+      "stats": "Stats",
+      "admins": "Admins"
+    },
+    "overview": {
+      "classrooms": "Classrooms",
+      "verifiedMembers": "Verified members",
+      "pendingVerifications": "Pending verifications",
+      "activeCodes": "Active codes",
+      "classroomsByYear": "Classrooms by year",
+      "addClass": "+ Add class",
+      "empty": {
+        "title": "No classrooms yet",
+        "description": "Classrooms at this institution will appear here."
+      },
+      "memberSummary": "{verified} verified · {pending} pending · {total} total"
+    },
+    "verify": {
+      "empty": {
+        "title": "All caught up",
+        "description": "No document verifications are waiting for review."
+      },
+      "submitted": "Submitted {time}",
+      "viewDocument": "View document",
+      "reject": "Reject",
+      "approve": "Approve",
+      "approvedToast": "Verification approved.",
+      "rejectedToast": "Verification rejected.",
+      "rejectModal": {
+        "title": "Reject verification",
+        "reasonLabel": "Reason",
+        "submit": "Reject"
+      },
+      "mfaModal": {
+        "title": "Confirm your identity",
+        "description": "Enter your MFA code to confirm this action."
+      }
+    },
+    "codes": {
+      "noClassrooms": {
+        "title": "No classrooms yet",
+        "description": "Add a classroom before generating codes."
+      },
+      "classroomLabel": "Classroom",
+      "personal": {
+        "title": "Generate personal code",
+        "nameLabel": "Recipient name",
+        "emailLabel": "Recipient email",
+        "generate": "Generate code",
+        "successToast": "Code {code} generated."
+      },
+      "batch": {
+        "title": "Generate batch code",
+        "maxRedemptionsLabel": "Max redemptions",
+        "generate": "Generate code",
+        "successToast": "Code {code} generated."
+      },
+      "csv": {
+        "title": "Bulk import via CSV",
+        "hint": "Upload a CSV to generate codes in bulk.",
+        "chooseFile": "Choose CSV file",
+        "confirmTitle": "Confirm import",
+        "cancel": "Cancel",
+        "confirmImport": "Import",
+        "successToast": "{count} codes generated."
+      },
+      "activeCodes": "Active codes",
+      "noCodes": {
+        "title": "No codes yet",
+        "description": "Codes you generate will show up here."
+      },
+      "type": {
+        "personal": "Personal",
+        "batch": "Batch"
+      },
+      "codeStatus": {
+        "active": "Active",
+        "redeemed": "Redeemed",
+        "exhausted": "Exhausted",
+        "expired": "Expired"
+      },
+      "expires": "Expires {date}"
+    },
+    "stats": {
+      "activeAlumni": "Active alumni",
+      "newMembers": "New members this month",
+      "topClassrooms": "Top classrooms",
+      "noClassrooms": "No classroom data yet.",
+      "methodBreakdown": "Verification methods",
+      "noMethods": "No verifications yet.",
+      "methods": {
+        "email": "Email",
+        "document": "Document",
+        "linkedin": "LinkedIn",
+        "peer_vouch": "Peer vouching",
+        "personal_code": "Personal code",
+        "batch_code": "Batch code",
+        "unknown": "Unknown"
+      }
+    },
+    "admins": {
+      "slotUsage": "{used} of {max} admin slots used",
+      "activeAdmins": "Admins",
+      "unknownAdmin": "Unknown admin",
+      "primaryBadge": "Primary",
+      "coAdminBadge": "Co-admin",
+      "menuLabel": "More actions",
+      "removeAction": "Remove admin",
+      "pendingInvites": "Pending invites",
+      "inviteExpires": "Expires {date}",
+      "cancelInvite": "Cancel",
+      "cancelInviteUnavailable": "Cancelling invites isn't available yet.",
+      "invite": {
+        "cta": "Invite admin",
+        "title": "Invite admin",
+        "emailLabel": "Email",
+        "send": "Send invite",
+        "successToast": "Invite sent."
+      },
+      "slotsFullHint": "All admin slots are in use.",
+      "remove": {
+        "title": "Remove admin",
+        "confirmMessage": "Remove {name} as an admin?",
+        "reasonLabel": "Reason",
+        "cancel": "Cancel",
+        "confirm": "Remove",
+        "mfaTitle": "Confirm your identity",
+        "mfaDescription": "Enter your MFA code to confirm removing this admin.",
+        "successToast": "Admin removed."
+      }
+    }
+  },
+  "mfaChallenge": {
+    "codeLabel": "6-digit code",
+    "maxAttempts": "Too many incorrect attempts. Please try again later."
   }
 }
