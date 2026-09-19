@@ -16,7 +16,7 @@ export class GoogleAuthGuard extends AuthGuard('google') {
   canActivate(context: ExecutionContext) {
     if (!isGoogleOAuthConfigured()) {
       throw new ServiceUnavailableException({
-        message: 'Google OAuth not configured',
+        message: 'Google sign-in is not available',
         error: 'OAUTH_NOT_CONFIGURED',
       });
     }
