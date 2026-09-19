@@ -44,6 +44,11 @@
   --color-error: #dc2626;
   --color-error-light: #fee2e2;
 
+  /* Third-party brand colors — fixed, not part of this app's own light/dark
+     palette, so not redefined under [data-theme='dark'] below (LinkedIn's
+     blue doesn't change because our theme does). */
+  --color-linkedin: #0a66c2;
+
   /* Touch target floor — kept in sync with styles/spacing.ts's MIN_TOUCH_TARGET */
   --min-touch-target: 44px;
 

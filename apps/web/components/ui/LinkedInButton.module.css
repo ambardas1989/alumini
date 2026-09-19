@@ -1,6 +1,6 @@
 .button {
   width: 100%;
-  background: #0a66c2;
+  background: var(--color-linkedin);
   color: #fff;
   font-weight: 700;
   border-radius: 10px;

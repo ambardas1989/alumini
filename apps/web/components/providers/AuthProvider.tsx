@@ -25,6 +25,14 @@ interface AuthContextValue {
   isLoggedIn: boolean;
   login: (session: Session) => void;
   logout: () => Promise<void>;
+  /**
+   * Patches the current user in both context state and localStorage —
+   * needed anywhere the local user changes without a full re-login (persona
+   * switch, profile edit save). Without this, client-side navigation
+   * (router.push) doesn't remount AuthProvider, so context state would
+   * stay stale even though localStorage itself was updated directly.
+   */
+  updateUser: (patch: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -46,6 +54,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTokenExpiry(session.expiresAt);
     setCurrentUser(session.user);
     setUser(session.user);
+  }, []);
+
+  const updateUser = useCallback((patch: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      setCurrentUser(next);
+      return next;
+    });
   }, []);
 
   const logout = useCallback(async () => {
@@ -86,8 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isLoggedIn: user !== null, login, logout }),
-    [user, login, logout],
+    () => ({ user, isLoggedIn: user !== null, login, logout, updateUser }),
+    [user, login, logout, updateUser],
   );
 
   // Avoids a flash of logged-out UI while the localStorage check above runs.

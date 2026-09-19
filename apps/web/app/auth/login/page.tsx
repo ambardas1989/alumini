@@ -35,7 +35,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sessionExpired = searchParams.get('message') === 'session_expired';
+  const message = searchParams.get('message');
+  // session_expired is a mild "something interrupted you" event (warning
+  // styling); signed_out is a normal, expected action the user just took
+  // (neutral/info styling) — different semantic weight, different color.
+  const banner =
+    message === 'session_expired'
+      ? { text: t('sessionExpiredBanner'), variant: 'warning' as const }
+      : message === 'signed_out'
+        ? { text: t('signedOutBanner'), variant: 'info' as const }
+        : null;
 
   // Nothing left for an already-logged-in visitor to do on this screen.
   useEffect(() => {
@@ -69,7 +78,11 @@ export default function LoginPage() {
           <p className={styles.subtitle}>{t('subtitle')}</p>
         </div>
 
-        {sessionExpired && <div className={styles.banner}>{t('sessionExpiredBanner')}</div>}
+        {banner && (
+          <div className={`${styles.banner} ${banner.variant === 'info' ? styles.bannerInfo : ''}`}>
+            {banner.text}
+          </div>
+        )}
 
         <button
           type="button"

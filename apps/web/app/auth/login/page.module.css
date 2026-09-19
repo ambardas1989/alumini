@@ -57,6 +57,11 @@
   text-align: center;
 }
 
+.bannerInfo {
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+
 .googleButton {
   width: 100%;
   min-height: var(--min-touch-target);

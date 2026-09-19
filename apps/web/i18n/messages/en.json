@@ -58,6 +58,7 @@
       "signupLink": "Don't have an account? Sign up",
       "forgotPassword": "Forgot password?",
       "sessionExpiredBanner": "Your session expired. Please sign in again.",
+      "signedOutBanner": "You have been signed out.",
       "errors": {
         "invalidCredentials": "Incorrect email or password",
         "rateLimited": "Too many attempts. Wait a few minutes.",
@@ -382,12 +383,53 @@
     "title": "Profile",
     "editButton": "Edit profile",
     "signOut": "Sign out",
+    "signOutConfirmTitle": "Sign out of {brand}?",
     "switchPersona": "Switch persona",
+    "updatedToast": "Profile updated",
+    "photoComingSoonToast": "Photo upload is coming soon",
+    "fullNameLabel": "Full name",
+    "phoneLabel": "Phone number",
+    "yourClassrooms": "Your classrooms",
+    "noClassroomsTitle": "No classrooms yet",
+    "noClassroomsDescription": "Find your batch to get started",
+    "findMyBatch": "Find my batch",
     "stats": {
       "classrooms": "Classrooms",
       "connections": "Connections",
+      "comingSoon": "Coming soon",
       "profile": "Profile"
+    },
+    "linkedin": {
+      "verifiedBadge": "Verified",
+      "disconnect": "Disconnect",
+      "connectButton": "Connect LinkedIn",
+      "usageNote": "Used for verification and profile visibility",
+      "comingSoonToast": "Coming soon"
     }
+  },
+  "personaTypes": {
+    "alumni": "Alumni",
+    "teacher": "Teacher",
+    "school_admin": "School Admin"
+  },
+  "personaSwitcher": {
+    "title": "Switch persona",
+    "personaCount": "{count, plural, one {# persona} other {# personas}}",
+    "activeBadge": "Active",
+    "switchBadge": "Switch",
+    "underReviewBadge": "Under review",
+    "awaitingApproval": "Awaiting approval — cannot switch yet",
+    "switchedToast": "Switched to {type}",
+    "subLabel": {
+      "alumni": "{count, plural, one {# classroom} other {# classrooms}}",
+      "teacher": "{classes, plural, one {# class} other {# classes}} · {schools, plural, one {# school} other {# schools}}",
+      "schoolAdminFallback": "Institution"
+    },
+    "addPersona": {
+      "title": "Add a persona",
+      "description": "Student, teacher, or institution admin"
+    },
+    "infoNote": "Each persona has its own feed and classrooms. Same name and photo everywhere."
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",
