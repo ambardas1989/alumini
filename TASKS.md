@@ -537,7 +537,14 @@ Commit: "feat: privacy policy and terms of service pages"
 
 ---
 
-## TASK 07 — Contact and support page [PENDING]
+## TASK 07 — Contact and support page [DONE]
+
+Built on StaticPageLayout from TASK 06. Privacy/terms pages already
+link to /contact in their footers (added proactively in TASK 06).
+UserMenu.tsx already had "Help & Support" → /contact positioned
+above the divider, before Sign out (TASK 01) — no AppShell.tsx change
+needed since that dropdown lives in UserMenu, not AppShell (see TASK
+01's note for why). next build passes (20 routes, /contact new).
 
 Steps:
 

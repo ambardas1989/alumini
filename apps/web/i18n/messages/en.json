@@ -790,5 +790,22 @@
         "body": "hello@alumtribe.com"
       }
     }
+  },
+  "contact": {
+    "title": "Contact us",
+    "subtitle": "We'd love to hear from you",
+    "general": {
+      "label": "General",
+      "description": "Questions about AlumTribe, partnerships, or anything else."
+    },
+    "support": {
+      "label": "Support",
+      "description": "Having trouble? We respond within 24 hours."
+    },
+    "report": {
+      "label": "Report a problem",
+      "description": "To report abusive content or a technical issue."
+    },
+    "note": "All three reach the same inbox for now. We aim to respond within 24 hours."
   }
 }
