@@ -291,6 +291,32 @@ describe('AuthService', () => {
       );
     });
 
+    it('accepts a code up to 60s clock-drifted (window: 2), still rejects one further out', async () => {
+      const driftedCode = speakeasy.totp({
+        secret: secret.base32,
+        encoding: 'base32',
+        time: Date.now() / 1000 - 60, // 2 time-steps ago
+      });
+      const tooOldCode = speakeasy.totp({
+        secret: secret.base32,
+        encoding: 'base32',
+        time: Date.now() / 1000 - 120, // 4 time-steps ago — outside window: 2
+      });
+
+      const result: any = await service.challengeMfa(
+        { sub: 'user-1', email: 'user@example.com', purpose: 'mfa_login' },
+        { code: driftedCode } as any,
+      );
+      expect(result.accessToken).toBeDefined();
+
+      await expect(
+        service.challengeMfa(
+          { sub: 'user-1', email: 'user@example.com', purpose: 'mfa_login' },
+          { code: tooOldCode } as any,
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
     it('re-authorises a sensitive action for an access token without issuing new tokens', async () => {
       const result: any = await service.challengeMfa(
         { sub: 'user-1', email: 'user@example.com', purpose: 'access', sessionId: 'sess-1' },

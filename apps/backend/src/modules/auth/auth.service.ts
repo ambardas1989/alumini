@@ -471,7 +471,15 @@ export class AuthService {
         secret: record.secret,
         encoding: 'base32',
         token: code,
-        window: 1, // allow ±1 time-step (30s) of clock drift
+        // ±2 time-steps (60s) of clock drift. This was ±1 (30s) — widened
+        // after reports of fresh codes still being rejected, which a ±30s
+        // window doesn't cover if the drift itself is larger than that. If
+        // codes are still rejected after this, the step-window isn't the
+        // real cause — check the server's actual clock (Render instance
+        // time) and whether the authenticator app in question (e.g. PingID)
+        // uses a non-default step interval or digit count, since speakeasy
+        // assumes the RFC 6238 defaults (30s step, 6 digits) on both ends.
+        window: 2,
       });
 
       if (isValid && opts.confirmSetup) {
