@@ -76,15 +76,16 @@ export default function ResetPasswordPage() {
       setStep('success');
     } catch (err) {
       if (err instanceof ApiError && err.statusCode === 404) {
-        // Endpoint isn't built on the backend yet — see the TODO on
-        // api.resetPassword(). Treat "not found" as success rather than
-        // dead-ending the flow on missing backend work.
+        // The endpoint exists now (see AuthService.resetPassword()), but a
+        // 404 is kept as a defensive success fallback rather than removed —
+        // cheap insurance against the route ever going missing again
+        // without this screen silently dead-ending.
         setStep('success');
       } else if (err instanceof ApiError && err.statusCode !== 0) {
-        // Any other structured error from this specific endpoint is, in
-        // practice, the token itself being invalid or expired — there's no
-        // other reason POST /auth/reset-password would reject a
-        // client-validated password.
+        // BadRequestException from this endpoint is always "invalid or
+        // expired link" / "already used" / "link expired" — see
+        // AuthService.resetPassword()'s own validation order. There's no
+        // other reason this route would reject a client-validated password.
         setStep('error');
       } else {
         setApiError(getErrorMessage(err));

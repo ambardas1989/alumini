@@ -211,22 +211,15 @@ export function challengeMfa(token: string, code: string): Promise<LoginResponse
 }
 
 /**
- * TODO: backend forgot-password endpoint needed — POST /auth/forgot-password
- * does not exist yet (no route in auth.controller.ts). Calling this today
- * always 404s; the forgot-password page treats a 404 here as success
- * (shows the "check your inbox" state anyway) so the UI doesn't dead-end,
- * rather than blocking on backend work that isn't built.
+ * Always resolves the same way whether or not the email matches an account
+ * — the backend never reveals account existence through this response
+ * (see AuthService.forgotPassword()'s own comment).
  */
-export function forgotPassword(email: string): Promise<void> {
+export function forgotPassword(email: string): Promise<{ message: string }> {
   return request('/auth/forgot-password', { method: 'POST', body: { email } });
 }
 
-/**
- * TODO: backend reset-password endpoint needed — POST /auth/reset-password
- * does not exist yet either. Same 404-treated-as-success handling as
- * forgotPassword() above, on the reset-password page.
- */
-export function resetPassword(token: string, password: string): Promise<void> {
+export function resetPassword(token: string, password: string): Promise<{ message: string }> {
   return request('/auth/reset-password', { method: 'POST', body: { token, password } });
 }
 

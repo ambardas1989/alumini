@@ -52,9 +52,10 @@ export default function ForgotPasswordPage() {
       setStep('success');
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      // Endpoint isn't built on the backend yet — see the TODO on
-      // api.forgotPassword(). Treat "not found" as success rather than
-      // dead-ending the flow on missing backend work.
+      // The endpoint exists now (see AuthService.forgotPassword()), but a
+      // 404 is kept as a defensive success fallback rather than removed —
+      // cheap insurance against the route ever going missing again without
+      // this screen silently dead-ending.
       if (err instanceof ApiError && err.statusCode === 404) {
         setStep('success');
         setCooldown(RESEND_COOLDOWN_SECONDS);

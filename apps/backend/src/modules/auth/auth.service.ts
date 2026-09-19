@@ -38,9 +38,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { createHash, randomInt, randomUUID } from 'crypto';
+import { createHash, randomBytes, randomInt, randomUUID } from 'crypto';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
+import { Resend } from 'resend';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
@@ -51,6 +52,8 @@ import { brand } from '@alumini/config/brand';
 
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { MfaSetupQueryDto } from './dto/mfa-setup-query.dto';
 import { MfaVerifyDto } from './dto/mfa-verify.dto';
 import { MfaChallengeDto } from './dto/mfa-challenge.dto';
@@ -631,6 +634,132 @@ export class AuthService {
       metadata: { all_devices: !!dto.allDevices },
       req,
     });
+  }
+
+  // ── Password reset ───────────────────────────────────────────────────────
+
+  /**
+   * Always resolves the same way regardless of whether the email matches an
+   * account — the response never reveals account existence, matching how
+   * every other auth flow in this file avoids leaking that (e.g. login's
+   * shared "incorrect email or password" message).
+   */
+  async forgotPassword(dto: ForgotPasswordDto, req?: Request): Promise<{ message: string }> {
+    const message = 'If that email exists a reset link was sent';
+
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', dto.email)
+      .maybeSingle();
+
+    if (!profile) {
+      return { message };
+    }
+
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(
+      Date.now() + appConfig.PASSWORD_RESET_TOKEN_EXPIRY_MINUTES * 60_000,
+    ).toISOString();
+
+    const { error } = await this.supabase.from('password_reset_tokens').insert({
+      user_id: profile.id,
+      token_hash: tokenHash,
+      expires_at: expiresAt,
+    });
+
+    if (error) {
+      this.logger.error('Failed to store password reset token', { error, userId: profile.id });
+      return { message };
+    }
+
+    // FRONTEND_URL, not a hardcoded domain — same reasoning as
+    // AuthController's googleCallback() redirect: this must point at
+    // localhost in dev and alumtribe.com in production, driven by the
+    // same env var Render is already configured with.
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/auth/reset-password?token=${rawToken}`;
+
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: process.env.FROM_EMAIL || `noreply@${brand.domain}`,
+          to: dto.email,
+          subject: `Reset your ${brand.name} password`,
+          text: `We received a request to reset your ${brand.name} password.\n\nReset it here: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.`,
+        });
+      } catch (err) {
+        // Delivery failing shouldn't surface as an API error (that would
+        // leak "this email exists but sending failed" vs. "doesn't
+        // exist") — log and fall through to the same generic response.
+        this.logger.error('Failed to send password reset email via Resend', { err, userId: profile.id });
+      }
+    } else {
+      this.logger.log(`[DEV] Password reset link for ${dto.email}: ${resetUrl}`);
+    }
+
+    await this.audit.log({
+      eventType: AuditEventType.AUTH_PASSWORD_RESET_REQUESTED,
+      actorId: profile.id,
+      req,
+    });
+
+    return { message };
+  }
+
+  async resetPassword(dto: ResetPasswordDto, req?: Request): Promise<{ message: string }> {
+    const tokenHash = createHash('sha256').update(dto.token).digest('hex');
+
+    const { data: record } = await this.supabase
+      .from('password_reset_tokens')
+      .select('id, user_id, expires_at, used')
+      .eq('token_hash', tokenHash)
+      .maybeSingle();
+
+    if (!record) {
+      throw new BadRequestException('Invalid or expired link');
+    }
+    if (record.used) {
+      throw new BadRequestException('Link already used');
+    }
+    if (isExpired(record.expires_at)) {
+      throw new BadRequestException('Link has expired');
+    }
+
+    const { error: updateError } = await this.supabase.auth.admin.updateUserById(record.user_id, {
+      password: dto.password,
+    });
+    if (updateError) {
+      this.logger.error('Failed to update password via Supabase Admin API', {
+        error: updateError,
+        userId: record.user_id,
+      });
+      throw new BadRequestException('Could not reset password. Please try again.');
+    }
+
+    await this.supabase
+      .from('password_reset_tokens')
+      .update({ used: true, used_at: new Date().toISOString() })
+      .eq('id', record.id);
+
+    // Same "revoke every active session" shape as logout({allDevices: true})
+    // — a password reset should sign the account out everywhere, including
+    // wherever the old password is still an active session.
+    await this.supabase
+      .from('sessions')
+      .update({ revoked_at: new Date().toISOString(), revoked_reason: 'password_reset' })
+      .eq('user_id', record.user_id)
+      .is('revoked_at', null);
+
+    await this.audit.log({
+      eventType: AuditEventType.AUTH_PASSWORD_CHANGED,
+      actorId: record.user_id,
+      req,
+    });
+
+    return { message: 'Password reset successfully' };
   }
 
   // ── Internal: token issuance ─────────────────────────────────────────────

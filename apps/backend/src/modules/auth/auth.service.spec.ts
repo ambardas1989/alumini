@@ -23,6 +23,7 @@ import * as speakeasy from 'speakeasy';
 import { AuthService } from './auth.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditEventType, MfaMethod } from '@alumini/types';
+import { daysFromNow } from '@alumini/utils';
 
 // ── Supabase mock ──────────────────────────────────────────────────────────
 //
@@ -35,6 +36,7 @@ import { AuditEventType, MfaMethod } from '@alumini/types';
 
 const mockCreateUser = jest.fn();
 const mockSignInWithPassword = jest.fn();
+const mockUpdateUserById = jest.fn().mockResolvedValue({ data: {}, error: null });
 let fromTables: Record<string, any> = {};
 
 function chain(result: { data: any; error: any } = { data: null, error: null }) {
@@ -58,7 +60,10 @@ function mockTables(overrides: Record<string, ReturnType<typeof chain>>) {
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
     auth: {
-      admin: { createUser: (...args: any[]) => mockCreateUser(...args) },
+      admin: {
+        createUser: (...args: any[]) => mockCreateUser(...args),
+        updateUserById: (...args: any[]) => mockUpdateUserById(...args),
+      },
       signInWithPassword: (...args: any[]) => mockSignInWithPassword(...args),
     },
     from: (table: string) => fromTables[table] ?? chain(),
@@ -410,6 +415,95 @@ describe('AuthService', () => {
           eventType: AuditEventType.AUTH_LOGOUT,
           actorId: 'user-1',
           metadata: { all_devices: false },
+        }),
+      );
+    });
+  });
+
+  // ── forgotPassword() ─────────────────────────────────────────────────────
+
+  describe('forgotPassword()', () => {
+    it('returns the generic message and audits nothing when the email has no account', async () => {
+      mockTables({ profiles: chain({ data: null, error: null }) });
+
+      const result = await service.forgotPassword({ email: 'nobody@example.com' } as any);
+
+      expect(result).toEqual({ message: 'If that email exists a reset link was sent' });
+      expect(mockAuditLog).not.toHaveBeenCalled();
+    });
+
+    it('stores a hashed token and audits the request when the email matches an account', async () => {
+      mockTables({
+        profiles: chain({ data: { id: 'user-1' }, error: null }),
+        password_reset_tokens: chain({ data: null, error: null }),
+      });
+
+      const result = await service.forgotPassword({ email: 'user@example.com' } as any);
+
+      expect(result).toEqual({ message: 'If that email exists a reset link was sent' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: AuditEventType.AUTH_PASSWORD_RESET_REQUESTED,
+          actorId: 'user-1',
+        }),
+      );
+    });
+  });
+
+  // ── resetPassword() ──────────────────────────────────────────────────────
+
+  describe('resetPassword()', () => {
+    it('rejects an unknown token', async () => {
+      mockTables({ password_reset_tokens: chain({ data: null, error: null }) });
+
+      await expect(
+        service.resetPassword({ token: 'bogus', password: 'NewPassw0rd!' } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects an already-used token', async () => {
+      mockTables({
+        password_reset_tokens: chain({
+          data: { id: 'trt-1', user_id: 'user-1', expires_at: daysFromNow(1).toISOString(), used: true },
+          error: null,
+        }),
+      });
+
+      await expect(
+        service.resetPassword({ token: 'used-token', password: 'NewPassw0rd!' } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects an expired token', async () => {
+      mockTables({
+        password_reset_tokens: chain({
+          data: { id: 'trt-1', user_id: 'user-1', expires_at: daysFromNow(-1).toISOString(), used: false },
+          error: null,
+        }),
+      });
+
+      await expect(
+        service.resetPassword({ token: 'expired-token', password: 'NewPassw0rd!' } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('updates the password, revokes sessions, and audits the change on a valid token', async () => {
+      mockTables({
+        password_reset_tokens: chain({
+          data: { id: 'trt-1', user_id: 'user-1', expires_at: daysFromNow(1).toISOString(), used: false },
+          error: null,
+        }),
+        sessions: chain({ data: null, error: null }),
+      });
+
+      const result = await service.resetPassword({ token: 'valid-token', password: 'NewPassw0rd!' } as any);
+
+      expect(result).toEqual({ message: 'Password reset successfully' });
+      expect(mockUpdateUserById).toHaveBeenCalledWith('user-1', { password: 'NewPassw0rd!' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: AuditEventType.AUTH_PASSWORD_CHANGED,
+          actorId: 'user-1',
         }),
       );
     });

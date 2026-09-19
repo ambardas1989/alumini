@@ -269,7 +269,22 @@ the callback page converts this correctly.
 
 ---
 
-## TASK 03 — Forgot and reset password backend [PENDING]
+## TASK 03 — Forgot and reset password backend [DONE]
+
+Migration numbered 009 (006 was already taken by notification_module
+— task text was stale). Added POST /auth/forgot-password and
+POST /auth/reset-password, both DTOs, and a Resend email integration
+(the `resend` package was already a dependency but unused anywhere —
+this is its first real usage). Reset link uses FRONTEND_URL, not a
+hardcoded alumtribe.com — same reasoning as the Google OAuth callback
+redirect (localhost in dev, alumtribe.com in prod, one env var).
+Added AuditEventType.AUTH_PASSWORD_RESET_REQUESTED (new) — reused the
+existing but previously-unused AUTH_PASSWORD_CHANGED for the actual
+reset, and the existing session-revocation pattern from
+logout({allDevices}) with a new 'password_reset' reason. Updated the
+frontend's forgot/reset-password pages: their 404-treated-as-success
+fallback stays (cheap insurance) but the "not built yet" comments are
+now inaccurate and were corrected. 6 new backend tests, 278/278 total.
 
 The UI pages for forgot/reset password were built but the
 backend endpoints don't exist. Build them now.

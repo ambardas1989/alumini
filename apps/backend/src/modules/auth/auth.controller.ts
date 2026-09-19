@@ -29,6 +29,8 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { MfaSetupQueryDto } from './dto/mfa-setup-query.dto';
 import { MfaVerifyDto } from './dto/mfa-verify.dto';
 import { MfaChallengeDto } from './dto/mfa-challenge.dto';
@@ -66,6 +68,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Log in with email + password. Returns an MFA challenge, not a session.' })
   async login(@Body() dto: LoginDto, @Req() req: Request) {
     return this.authService.login(dto, req);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request a password reset link — always responds the same whether or not the email exists' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto, @Req() req: Request) {
+    return this.authService.forgotPassword(dto, req);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete a password reset using the token from the emailed link' })
+  async resetPassword(@Body() dto: ResetPasswordDto, @Req() req: Request) {
+    return this.authService.resetPassword(dto, req);
   }
 
   // ── Google OAuth ─────────────────────────────────────────────────────────

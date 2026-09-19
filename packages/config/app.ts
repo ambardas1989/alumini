@@ -115,6 +115,9 @@ export const appConfig = {
    */
   MFA_PENDING_TOKEN_EXPIRY_MINUTES: 10,
 
+  /** How long a forgot-password reset link stays valid before expiring */
+  PASSWORD_RESET_TOKEN_EXPIRY_MINUTES: 60,
+
   /** Digit length of SMS OTP codes sent for MFA fallback */
   SMS_OTP_LENGTH: 6,
 

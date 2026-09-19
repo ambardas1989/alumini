@@ -112,6 +112,7 @@ export const AuditEventType = {
   AUTH_MFA_SUCCESS: 'auth.mfa.success',
   AUTH_MFA_FAILURE: 'auth.mfa.failure',
   AUTH_MFA_CHALLENGE: 'auth.mfa.challenge',
+  AUTH_PASSWORD_RESET_REQUESTED: 'auth.password.reset_requested',
   AUTH_PASSWORD_CHANGED: 'auth.password.changed',
   AUTH_SESSION_INVALIDATED: 'auth.session.invalidated',
   AUTH_LOGOUT: 'auth.logout',
