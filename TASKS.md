@@ -360,10 +360,12 @@ Windows — worth checking in Render logs after next deploy.
 
 ---
 
-## TASK 05 — FRONTEND_URL config and docs [PENDING]
+## TASK 05 — FRONTEND_URL config and docs [DONE]
 
-FRONTEND_URL comment was added to auth.controller.ts in the
-last build. Still need the docs and .env.example update.
+Steps 1 and 2 (FRONTEND_URL in the controller + comment,
+.env.example entry) were already done in an earlier commit
+(4431ee4). Only step 3 was outstanding — created docs/ENVIRONMENT.md
+with the exact content specified. No code changes, no build/test run.
 
 Steps:
 
