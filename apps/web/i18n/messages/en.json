@@ -16,7 +16,8 @@
     "dismissNotification": "Dismiss notification",
     "goBack": "Go back",
     "dismiss": "Dismiss",
-    "change": "Change"
+    "change": "Change",
+    "close": "Close"
   },
   "nav": {
     "primaryLabel": "Primary",
@@ -195,17 +196,87 @@
     "card": {
       "memberCount": "{count, plural, one {# member} other {# members}}"
     },
-    "channels": {
-      "staffRoomLocked": "Staff Room is for teachers only",
-      "studentAlleyLocked": "Student Alley is for students only"
+    "header": {
+      "back": "Back",
+      "members": "{count, plural, one {# member} other {# members}}",
+      "teachers": "{count, plural, one {# teacher} other {# teachers}}",
+      "verified": "{count, plural, one {# verified} other {# verified}}",
+      "yearsSince": "{years}yr",
+      "channelInfo": "Channel info"
+    },
+    "locked": {
+      "staff_room": {
+        "title": "Staff Room",
+        "subtitle": "This channel is for teachers only",
+        "description": "Only verified faculty can read and post here"
+      },
+      "student_alley": {
+        "title": "Student Alley",
+        "subtitle": "This channel is for students only",
+        "description": "A private space for students to connect"
+      }
+    },
+    "nonMember": {
+      "joinButton": "Join this classroom",
+      "verifyNow": "Verify now →"
     },
     "messages": {
       "empty": "No messages yet. Say hello!",
       "deleted": "Message deleted",
       "redacted": "Verify your membership to read messages",
       "inputPlaceholder": "Write a message...",
-      "sendFailed": "Failed to send. Tap to retry.",
-      "unverifiedInput": "Verify membership to post"
+      "send": "Send",
+      "sending": "Sending…",
+      "sendFailed": "Failed · Tap to retry",
+      "unverifiedInput": "Verify membership to post",
+      "deleteMessage": "Delete message",
+      "deleteConfirmTitle": "Delete this message?",
+      "deleteConfirmMessage": "This cannot be undone.",
+      "deleteConfirm": "Delete",
+      "deleteCancel": "Cancel",
+      "newMessages": "{count, plural, one {# new message} other {# new messages}}"
+    },
+    "events": {
+      "online": "Online",
+      "going": "Going",
+      "maybe": "Maybe",
+      "notGoing": "Not going"
+    },
+    "infoSheet": {
+      "membersCount": "{count, plural, one {# member} other {# members}}",
+      "viewAllMembers": "View all members",
+      "upcomingEvents": "Upcoming events",
+      "noUpcomingEvents": "No upcoming events",
+      "createEvent": "+ Create event",
+      "shareLink": "Share classroom link",
+      "linkCopied": "Link copied",
+      "leaveClassroom": "Leave classroom",
+      "leaveConfirmTitle": "Leave {name}?",
+      "leaveConfirmMessage": "You will lose access to all messages.",
+      "leaveButton": "Leave"
+    },
+    "eventCreate": {
+      "title": "Create an event",
+      "titleLabel": "Title",
+      "dateLabel": "Date and time",
+      "dateMustBeFuture": "Must be in the future",
+      "onlineLabel": "Online",
+      "locationLabel": "Location",
+      "descriptionLabel": "Description",
+      "createButton": "Create event",
+      "successToast": "Event created"
+    },
+    "memberList": {
+      "title": "{count, plural, one {# member} other {# members}}",
+      "you": "You",
+      "filter": {
+        "all": "All",
+        "verified": "Verified",
+        "pending": "Pending"
+      },
+      "vouchFor": "Vouch for {name}",
+      "vouched": "Vouched ✓",
+      "vouchSent": "Vouch sent to {name}"
     }
   },
   "verification": {

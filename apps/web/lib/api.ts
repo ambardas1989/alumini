@@ -378,6 +378,14 @@ export function deleteMessage(classroomId: string, messageId: string): Promise<v
 
 // ── VERIFICATION ─────────────────────────────────────────────────────────
 
+/** Not in Part 1's endpoint list, but the classroom screen's member-list vouch button needs it. */
+export function vouch(
+  voucheeId: string,
+  classroomId: string,
+): Promise<{ vouchPoints: number; required: number; isVerified: boolean }> {
+  return request('/verify/vouch', { method: 'POST', body: { voucheeId, classroomId } });
+}
+
 export function initiateEmailVerification(classroomId: string, email: string): Promise<void> {
   return request('/verify/email', { method: 'POST', body: { classroomId, institutionalEmail: email } });
 }

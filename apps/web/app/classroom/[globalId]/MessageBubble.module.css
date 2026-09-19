@@ -1,0 +1,146 @@
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-block-end: 10px;
+}
+
+.rowOwn {
+  flex-direction: row-reverse;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  max-width: 78%;
+}
+
+.rowOwn .column {
+  align-items: flex-end;
+}
+
+.senderName {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-block-end: 2px;
+}
+
+.redactedPill {
+  display: inline-block;
+  background: var(--color-border);
+  border-radius: 20px;
+  padding-inline: 8px;
+  color: var(--color-text-muted);
+}
+
+.bubble {
+  padding: 9px 13px;
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.bubbleOther {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  border-radius: 4px 14px 14px 14px;
+}
+
+.bubbleOwn {
+  background: var(--color-primary-light);
+  color: var(--color-text-primary);
+  border-radius: 14px 4px 14px 14px;
+}
+
+.sending {
+  opacity: 0.6;
+}
+
+.redactedContent {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 140px;
+}
+
+.shimmerBar {
+  height: 9px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-primary-light) 50%, var(--color-border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-block-start: 3px;
+}
+
+.time {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.retryLink {
+  font-size: 10px;
+  color: var(--color-error);
+  font-weight: 600;
+  background: none;
+  border: none;
+  text-decoration: underline;
+}
+
+.deleteTrigger {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  padding-inline: 4px;
+}
+
+.systemRow {
+  display: flex;
+  justify-content: center;
+  margin-block-end: 10px;
+}
+
+.systemText {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: var(--color-border);
+  border-radius: 20px;
+  padding: 3px 12px;
+}
+
+.deletedText {
+  font-size: var(--text-sm);
+  font-style: italic;
+  color: var(--color-text-muted);
+  padding: 9px 13px;
+}
+
+.confirmMessage {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-block-end: 20px;
+}
+
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

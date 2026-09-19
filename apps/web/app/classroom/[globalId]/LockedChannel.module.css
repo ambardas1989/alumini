@@ -1,0 +1,32 @@
+.wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 32px 24px;
+  background: var(--color-surface);
+}
+
+.lockIcon {
+  color: var(--color-text-muted);
+  margin-block-end: 4px;
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.message {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  max-width: 260px;
+}
+
+.message + .message {
+  margin-block-start: -4px;
+}
