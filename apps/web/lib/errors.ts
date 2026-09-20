@@ -25,6 +25,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   CLASSROOM_NOT_MEMBER: 'You are not a member of this classroom.',
   CHANNEL_ACCESS_DENIED: 'You do not have access to this channel.',
   MESSAGES_LOAD_FAILED: 'Could not load messages right now.',
+  PROFILE_NOT_FOUND: 'Unable to load your profile. Please try again.',
   OAUTH_NOT_CONFIGURED: 'Google sign-in is not available right now.',
 };
 

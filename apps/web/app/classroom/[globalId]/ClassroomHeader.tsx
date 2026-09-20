@@ -6,6 +6,9 @@ import styles from './ClassroomHeader.module.css';
 
 interface ClassroomHeaderProps {
   name: string;
+  grade?: string | null;
+  section?: string | null;
+  program?: string | null;
   institutionName: string;
   batchYear: number;
   memberCount: number;
@@ -20,8 +23,11 @@ interface ClassroomHeaderProps {
  * unprotected subtitle with no wrap/truncation guard, so a longer
  * institution name (e.g. "KV Fort William") wrapped word-by-word with the
  * "·" separator stranded on its own line. Institution name is now the
- * (truncated, single-line) top line; the classroom identity + batch year
- * moved to the subtitle, which now has the same nowrap/ellipsis guard.
+ * (truncated, single-line) top line; the subtitle is "Class {section} ·
+ * Batch of {year}" for a school classroom (grade+section, e.g. "Class 12B
+ * · Batch of 2008") or "{program} · Batch of {year}" for a college/
+ * university one (no grade/section there) — either way nowrap/ellipsis
+ * guarded like the name above it.
  *
  * The old 4th stat ("{years}yr", e.g. "18yr") was ambiguous —
  * indistinguishable from a member-style count — and now-redundant with the
@@ -30,6 +36,9 @@ interface ClassroomHeaderProps {
  */
 export function ClassroomHeader({
   name,
+  grade,
+  section,
+  program,
   institutionName,
   batchYear,
   memberCount,
@@ -40,6 +49,8 @@ export function ClassroomHeader({
   const router = useRouter();
   const t = useTranslations('classroom.header');
 
+  const identity = grade ? `${grade}${section ?? ''}` : (program ?? name);
+
   return (
     <header className={styles.header}>
       <button type="button" className={styles.back} onClick={() => router.back()} aria-label={t('back')}>
@@ -48,7 +59,7 @@ export function ClassroomHeader({
       <div className={styles.titleBlock}>
         <p className={styles.name}>{institutionName}</p>
         <p className={styles.subtitle}>
-          {t('classroomBatch', { name, year: batchYear })}
+          {t('classroomBatch', { identity, year: batchYear })}
         </p>
       </div>
       <button type="button" className={styles.statsRow} onClick={onStatsClick}>

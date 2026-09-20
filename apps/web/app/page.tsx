@@ -17,6 +17,7 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
 import styles from './page.module.css';
 
 const NUDGE_DISMISSED_KEY = 'alumtribe_verify_nudge_dismissed';
@@ -159,7 +160,16 @@ export default function HomePage() {
               </>
             )}
 
-            {!loading && feed.length === 0 && (
+            {/* FRONTEND FIX 5: this used to show the "Join a classroom"
+                empty state whenever the ACTIVITY feed was empty, regardless
+                of whether the user already had classrooms — so a member of
+                one or more (just-quiet) classrooms was told to go find a
+                batch they'd already found. Three real states now: no
+                classrooms at all (the original empty state); classrooms but
+                no activity yet (show the classroom cards + a "quiet, not
+                empty" note, no "find your batch" CTA); classrooms WITH
+                activity (the feed, unchanged). */}
+            {!loading && feed.length === 0 && classrooms.length === 0 && (
               <EmptyState
                 icon="🎓"
                 title={t('empty.title')}
@@ -169,7 +179,29 @@ export default function HomePage() {
               />
             )}
 
+            {!loading && feed.length === 0 && classrooms.length > 0 && (
+              <>
+                {classrooms.map((classroom) => (
+                  <ClassroomCard
+                    key={classroom.id}
+                    classroom={
+                      {
+                        globalId: classroom.globalId,
+                        name: classroom.name,
+                        batchYear: classroom.batchYear,
+                        memberCount: classroom.memberCount,
+                        institution: { name: classroom.institution.name },
+                        verificationStatus: classroom.verificationStatus,
+                      } satisfies ClassroomCardData
+                    }
+                  />
+                ))}
+                <p className={styles.noActivityNote}>{t('noActivity')}</p>
+              </>
+            )}
+
             {!loading &&
+              feed.length > 0 &&
               feed.map((item) => {
                 const { icon, accent } = feedAccent(item.type);
                 return (

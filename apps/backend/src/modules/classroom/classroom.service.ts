@@ -410,10 +410,18 @@ export class ClassroomService {
     const isVerified = requesterMembership.verification_status === 'verified';
     const { from, to } = getRange(page, appConfig.MEMBERS_PAGE_SIZE);
 
+    // BUG FIX (BACKEND FIX 2 — PGRST201): `memberships` has TWO foreign
+    // keys into `profiles` (user_id and verified_by), so a bare
+    // `profile:profiles(...)` embed is ambiguous to PostgREST and fails
+    // every call. Same fix pattern as corridor.service.ts's identical
+    // sender_id/deleted_by situation — the `!memberships_user_id_fkey`
+    // hint disambiguates it. verified_by is intentionally not joined here —
+    // not needed for the member list display.
     const { data: members, error } = await this.supabase
       .from('memberships')
       .select(
-        'user_id, role, verification_status, joined_at, profile:profiles(id, full_name, avatar_url)',
+        'user_id, role, verification_status, joined_at, ' +
+          'profile:profiles!memberships_user_id_fkey(id, full_name, avatar_url)',
       )
       .eq('classroom_id', classroomId)
       .order('joined_at', { ascending: true })

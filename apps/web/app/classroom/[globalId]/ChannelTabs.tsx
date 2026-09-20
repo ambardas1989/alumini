@@ -2,11 +2,13 @@
 
 import { ChannelType } from '@alumini/types';
 import { brand } from '@/lib/brand';
+import { useTranslations } from '@/lib/useTranslations';
 import styles from './ChannelTabs.module.css';
 
 interface ChannelTabsProps {
   active: ChannelType;
   onChange: (channel: ChannelType) => void;
+  onInfoClick: () => void;
 }
 
 const TABS: Array<{ channel: ChannelType; brandKey: 'main' | 'staff' | 'student' }> = [
@@ -15,12 +17,19 @@ const TABS: Array<{ channel: ChannelType; brandKey: 'main' | 'staff' | 'student'
   { channel: ChannelType.STUDENT_ALLEY, brandKey: 'student' },
 ];
 
-// FIX 3: the standalone "ℹ" icon that used to float between tabs (shown
-// only on the active tab) was removed — it looked out of place and wasn't
-// an obviously tappable target there. The classroom-info panel it opened
-// is now reached via the "Details" link in ClassroomHeader instead (below
-// the stats row), which is the more conventional/discoverable location.
-export function ChannelTabs({ active, onChange }: ChannelTabsProps) {
+/**
+ * "+" opens the same classroom info panel (member list, global ID, creation
+ * date) as ClassroomHeader's "Details" link — a previous pass removed a
+ * standalone "ℹ" that floated BETWEEN tabs (confusing placement) in favour
+ * of that header link only; this re-adds a dedicated entry point in the tab
+ * bar too, but as the LAST item after Student Alley, not interleaved with
+ * the channel tabs — hand-rolled SVG rather than pulling in @tabler/icons
+ * for one icon, matching this codebase's established icon convention (see
+ * AuthLayout.tsx's own icons).
+ */
+export function ChannelTabs({ active, onChange, onInfoClick }: ChannelTabsProps) {
+  const t = useTranslations('classroom.header');
+
   return (
     <div className={styles.tabs} role="tablist">
       {TABS.map((tab) => {
@@ -39,6 +48,11 @@ export function ChannelTabs({ active, onChange }: ChannelTabsProps) {
           </div>
         );
       })}
+      <button type="button" className={styles.infoButton} aria-label={t('details')} title={t('details')} onClick={onInfoClick}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      </button>
     </div>
   );
 }

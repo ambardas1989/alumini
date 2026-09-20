@@ -273,6 +273,7 @@
       "description": "Join a classroom to start seeing activity here",
       "cta": "Find your batch"
     },
+    "noActivity": "No recent activity yet. Start a conversation in your classroom.",
     "suggested": {
       "joinButton": "Join",
       "mutualAlumni": "{count, plural, one {# mutual alumni} other {# mutual alumni}}"
@@ -340,7 +341,7 @@
     },
     "header": {
       "back": "Back",
-      "classroomBatch": "{name} · {year} batch",
+      "classroomBatch": "Class {identity} · Batch of {year}",
       "members": "{count, plural, one {# member} other {# members}}",
       "teachers": "{count, plural, one {# teacher} other {# teachers}}",
       "verified": "{count, plural, one {# verified} other {# verified}}",
@@ -376,7 +377,8 @@
       "deleteConfirmMessage": "This cannot be undone.",
       "deleteConfirm": "Delete",
       "deleteCancel": "Cancel",
-      "newMessages": "{count, plural, one {# new message} other {# new messages}}"
+      "newMessages": "{count, plural, one {# new message} other {# new messages}}",
+      "liveUpdatesPaused": "Live updates paused"
     },
     "events": {
       "online": "Online",

@@ -32,6 +32,12 @@ import styles from './page.module.css';
 const POLL_INTERVAL_MS = 5000;
 const SCROLL_BOTTOM_THRESHOLD_PX = 60;
 const MEMBER_STATS_MAX_PAGES = 8; // caps at 200 members — see loadMemberStats()'s own comment
+// FRONTEND FIX 2: pollOnce() used to retry forever on failure — a channel
+// that consistently 403'd/500'd (e.g. the PGRST201 bug, or the role
+// mismatch above) meant an open tab made one request every 5s indefinitely
+// (200+ requests inside 20 minutes). Stop after this many CONSECUTIVE
+// failures and require an explicit manual retry instead.
+const MAX_POLL_FAILURES = 3;
 
 type ClassroomDetail = Classroom & { institution: Institution };
 
@@ -59,13 +65,23 @@ function toAscending(data: Array<Message | RedactedMessage>, classroomId: string
   return [...data].reverse().map((m) => toUiMessage(m, classroomId, channel));
 }
 
+// BUG FIX (BACKEND/FRONTEND FIX 3 — channel access control): this used to
+// allow role==='admin' into student_alley too, but MembershipService.
+// canAccessChannel() on the backend never has (student_alley is
+// role===STUDENT only, unconditionally — see its own comment on why
+// staff_room/student_alley don't get an admin carve-out the same way).
+// That mismatch is exactly what caused "Student Alley blocks the test
+// user" for an admin (usually the classroom's creator): the frontend
+// showed the channel as unlocked and open, then every message
+// fetch/send 403'd against the real backend rule. Now mirrors the
+// backend exactly — see membership.service.ts's canAccessChannel().
 function canAccessChannel(role: string | null, verificationStatus: string | null, channel: ChannelType): boolean {
   // pending_auto gets full classroom/student_alley access (early-joiner cold-start fix) but
   // not staff_room — mirrors MembershipService.canAccessChannel() on the backend.
   const hasFullAccess = verificationStatus === 'verified' || verificationStatus === 'pending_auto';
   if (channel === ChannelType.CLASSROOM) return true; // unverified gets the degraded/redacted view, not a lock
   if (channel === ChannelType.STAFF_ROOM) return verificationStatus === 'verified' && (role === 'teacher' || role === 'admin');
-  if (channel === ChannelType.STUDENT_ALLEY) return hasFullAccess && (role === 'student' || role === 'admin');
+  if (channel === ChannelType.STUDENT_ALLEY) return hasFullAccess && role === 'student';
   return false;
 }
 
@@ -108,6 +124,11 @@ export default function ClassroomPage() {
   isScrolledToBottomRef.current = isScrolledToBottom;
   const [newMessageCount, setNewMessageCount] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // FRONTEND FIX 2 — see MAX_POLL_FAILURES above.
+  const pollFailureCountRef = useRef(0);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [pollingStopped, setPollingStopped] = useState(false);
 
   const [members, setMembers] = useState<ClassroomMember[]>([]);
   const [memberStats, setMemberStats] = useState({ teacherCount: 0, verifiedCount: 0 });
@@ -264,6 +285,10 @@ export default function ClassroomPage() {
   useEffect(() => {
     if (!classroom || !membership.isMember || !canAccessActive) return;
     setMessages([]);
+    // Switching channels (or reloading the classroom) is a fresh start —
+    // don't carry a stale "polling stopped" state from a different tab.
+    pollFailureCountRef.current = 0;
+    setPollingStopped(false);
     loadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classroom, membership.isMember, activeChannel, canAccessActive]);
@@ -272,6 +297,7 @@ export default function ClassroomPage() {
     if (!classroom) return;
     try {
       const data = await api.getMessages(classroom.id, activeChannel, 0);
+      pollFailureCountRef.current = 0;
       const fresh = toAscending(data, classroom.id, activeChannel);
       const knownIds = new Set(messagesRef.current.filter((m) => !m.clientId).map((m) => m.id));
       const newOnes = fresh.filter((m) => !knownIds.has(m.id));
@@ -293,25 +319,34 @@ export default function ClassroomPage() {
         loadEvents();
       }
     } catch (err) {
-      // Silent to the UI — polling failures shouldn't interrupt the reading
-      // experience with an error banner — but still logged for debugging.
+      // Silent to the UI (per-poll) — a single blip shouldn't interrupt the
+      // reading experience with an error banner — but still logged for
+      // debugging, and counted: after MAX_POLL_FAILURES consecutive misses
+      // this stops polling entirely rather than retrying forever (FIX 2).
       // eslint-disable-next-line no-console
       console.error('[CLASSROOM-ERROR] Poll failed', { classroomId: classroom.id, channel: activeChannel, err });
+      pollFailureCountRef.current += 1;
+      if (pollFailureCountRef.current >= MAX_POLL_FAILURES) {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+        setPollingStopped(true);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classroom, activeChannel]);
 
   useEffect(() => {
-    if (!classroom || !membership.isMember || !canAccessActive) return;
+    if (!classroom || !membership.isMember || !canAccessActive || pollingStopped) return;
 
-    let interval: ReturnType<typeof setInterval> | null = null;
     const start = () => {
-      if (interval) return;
-      interval = setInterval(pollOnce, POLL_INTERVAL_MS);
+      if (pollIntervalRef.current) return;
+      pollIntervalRef.current = setInterval(pollOnce, POLL_INTERVAL_MS);
     };
     const stop = () => {
-      if (interval) clearInterval(interval);
-      interval = null;
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     };
 
     const handleVisibility = () => {
@@ -325,7 +360,13 @@ export default function ClassroomPage() {
       stop();
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [classroom, membership.isMember, activeChannel, canAccessActive, pollOnce]);
+  }, [classroom, membership.isMember, activeChannel, canAccessActive, pollingStopped, pollOnce]);
+
+  const resumePolling = () => {
+    pollFailureCountRef.current = 0;
+    setPollingStopped(false);
+    loadMessages();
+  };
 
   const handleScroll = () => {
     const el = listRef.current;
@@ -496,6 +537,9 @@ export default function ClassroomPage() {
     <AppShell showNav={false}>
       <ClassroomHeader
         name={classroom.name}
+        grade={classroom.grade}
+        section={classroom.section}
+        program={classroom.program}
         institutionName={classroom.institution.name}
         batchYear={classroom.batchYear}
         memberCount={classroom.memberCount}
@@ -503,7 +547,7 @@ export default function ClassroomPage() {
         verifiedCount={memberStats.verifiedCount}
         onStatsClick={() => setShowInfoSheet(true)}
       />
-      <ChannelTabs active={activeChannel} onChange={setActiveChannel} />
+      <ChannelTabs active={activeChannel} onChange={setActiveChannel} onInfoClick={() => setShowInfoSheet(true)} />
 
       {!canAccessActive ? (
         <LockedChannel
@@ -578,6 +622,15 @@ export default function ClassroomPage() {
             <button type="button" className={styles.newMessagesBanner} onClick={scrollToBottom}>
               ↓ {t('messages.newMessages', { count: newMessageCount })}
             </button>
+          )}
+
+          {pollingStopped && (
+            <div className={styles.pollStoppedBanner}>
+              <span>{t('messages.liveUpdatesPaused')}</span>
+              <button type="button" onClick={resumePolling}>
+                {tCommon('retry')}
+              </button>
+            </div>
           )}
 
           {hasFullAccess && <MessageInput onSend={handleSend} />}

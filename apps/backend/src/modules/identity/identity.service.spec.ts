@@ -25,7 +25,7 @@ import {
 
 import { IdentityService } from './identity.service';
 import { AuditService } from '../audit/audit.service';
-import { AuditEventType, PersonaType } from '@alumini/types';
+import { AuditEventType, ErrorCode, PersonaType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
 
 // ── Supabase mock ──────────────────────────────────────────────────────────
@@ -106,6 +106,20 @@ describe('IdentityService', () => {
       mockTables({ profiles: chain({ data: null, error: { message: 'not found' } }) });
 
       await expect(service.getProfile('missing')).rejects.toThrow(NotFoundException);
+    });
+
+    it('carries a recognisable ErrorCode so the frontend shows a profile-specific message, not the generic fallback (BACKEND FIX 4 / FRONTEND FIX 1)', async () => {
+      mockTables({ profiles: chain({ data: null, error: { message: 'not found' } }) });
+
+      let caught: NotFoundException | undefined;
+      try {
+        await service.getProfile('missing');
+      } catch (err) {
+        caught = err as NotFoundException;
+      }
+
+      expect(caught).toBeInstanceOf(NotFoundException);
+      expect(caught!.getResponse()).toMatchObject({ error: ErrorCode.PROFILE_NOT_FOUND });
     });
   });
 

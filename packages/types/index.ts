@@ -192,6 +192,7 @@ export const ErrorCode = {
   CLASSROOM_NOT_MEMBER: 'CLASSROOM_NOT_MEMBER',
   CHANNEL_ACCESS_DENIED: 'CHANNEL_ACCESS_DENIED',
   MESSAGES_LOAD_FAILED: 'MESSAGES_LOAD_FAILED',
+  PROFILE_NOT_FOUND: 'PROFILE_NOT_FOUND',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 

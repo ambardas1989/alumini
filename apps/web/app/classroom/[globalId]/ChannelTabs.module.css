@@ -33,3 +33,15 @@
 .tabWrapActive .tab {
   color: #fff;
 }
+
+.infoButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  color: rgba(255, 255, 255, 0.75);
+  background: none;
+  border: none;
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.15);
+}

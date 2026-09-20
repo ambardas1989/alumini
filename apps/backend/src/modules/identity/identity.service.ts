@@ -55,7 +55,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
-import { AuditEventType, PersonaType } from '@alumini/types';
+import { AuditEventType, ErrorCode, PersonaType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
 
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -82,8 +82,28 @@ export class IdentityService {
 
   // ── Profile ──────────────────────────────────────────────────────────────
 
-  /** Returns the caller's own full profile row — never another user's. */
+  /**
+   * Returns the caller's own full profile row — never another user's.
+   *
+   * BACKEND FIX 4 investigation: this already uses the service-role client
+   * (bypasses RLS — see the constructor) and `userId` is `authToken.sub`,
+   * passed straight through from JwtStrategy.validate() with no
+   * reshaping (see jwt.strategy.ts / current-user.decorator.ts) — there is
+   * no code path here where the wrong id gets looked up. A 404 from this
+   * method means literally no `profiles` row exists for that id. Every
+   * account created through POST /auth/signup goes through
+   * supabase.auth.admin.createUser(), which inserts into `auth.users` and
+   * fires the `handle_new_user` trigger (001_initial_schema.sql) that
+   * creates the matching `profiles` row — so a normally-signed-up account
+   * should never hit this. If it reproduces, the debug log below is the
+   * fastest way to confirm whether the id being looked up is what's
+   * expected before chasing it further as a one-off data gap (e.g. an
+   * account created outside the normal signup flow).
+   */
   async getProfile(userId: string) {
+    // eslint-disable-next-line no-console
+    console.log('[PROFILE-DEBUG] userId from JWT:', userId);
+
     const { data: profile, error } = await this.supabase
       .from('profiles')
       .select(
@@ -95,7 +115,16 @@ export class IdentityService {
       .single();
 
     if (error || !profile) {
-      throw new NotFoundException('Profile not found');
+      this.logger.error('[PROFILE-DEBUG] Profile not found', { userId, error });
+      // FRONTEND FIX 1: a plain string NotFoundException serializes with
+      // Nest's default `error: 'Not Found'` — not one of this app's
+      // ErrorCode values — so lib/errors.ts's getErrorMessage() couldn't
+      // recognise it and fell through to the generic "Something went
+      // wrong" fallback instead of a profile-specific message.
+      throw new NotFoundException({
+        message: 'Profile not found',
+        error: ErrorCode.PROFILE_NOT_FOUND,
+      });
     }
 
     return profile;
