@@ -4,13 +4,21 @@
  * render on the server too, where `localStorage` doesn't exist, and Next.js
  * throws if you touch it unguarded during SSR.
  *
- * Deliberately just three keys, access-token-only: POST /auth/mfa/verify —
- * this app's session-establishing endpoint — does not return a refresh
- * token (see apps/backend LoginResponseDto). There is nothing to persist
- * for a refresh flow beyond the access token's own expiry.
+ * BUG FIX (TASKS_03 TASK 02): this used to be access-token-only, on the
+ * premise that POST /auth/mfa/verify never returns a refresh token. It
+ * always DID generate one server-side (AuthService.issueTokenPair()) — it
+ * just wasn't included in the response body, so there was never anything
+ * for the client to send back to POST /auth/refresh. Combined with
+ * expiresAt being computed from the REFRESH token's multi-day lifetime
+ * instead of the access token's real 15-minute one, the app never even
+ * tried to refresh before the access token silently died — the actual root
+ * cause of "session expired" appearing during completely normal use. Both
+ * are fixed now (see LoginResponseDto), and a refresh token has a real,
+ * persisted home here.
  */
 
 const TOKEN_KEY = 'alumini_token';
+const REFRESH_TOKEN_KEY = 'alumini_refresh_token';
 const EXPIRY_KEY = 'alumini_token_expiry';
 const USER_KEY = 'alumini_user';
 
@@ -42,6 +50,16 @@ export function setToken(token: string): void {
 export function clearToken(): void {
   if (!isBrowser()) return;
   window.localStorage.removeItem(TOKEN_KEY);
+}
+
+export function getRefreshToken(): string | null {
+  if (!isBrowser()) return null;
+  return window.localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+export function setRefreshToken(token: string): void {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(REFRESH_TOKEN_KEY, token);
 }
 
 export function getTokenExpiry(): Date | null {
@@ -87,6 +105,7 @@ export function shouldRefreshToken(): boolean {
 export function clearSession(): void {
   clearToken();
   if (!isBrowser()) return;
+  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
   window.localStorage.removeItem(EXPIRY_KEY);
   window.localStorage.removeItem(USER_KEY);
 }

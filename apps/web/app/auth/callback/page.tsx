@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as api from '@/lib/api';
-import { setToken, setTokenExpiry } from '@/lib/auth';
+import { setToken, setRefreshToken, setTokenExpiry } from '@/lib/auth';
 import { getErrorMessage } from '@/lib/errors';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTranslations } from '@/lib/useTranslations';
@@ -35,9 +35,10 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const accessToken = searchParams.get('accessToken');
+    const refreshToken = searchParams.get('refreshToken');
     const expiresAt = searchParams.get('expiresAt');
 
-    if (!accessToken || !expiresAt) {
+    if (!accessToken || !refreshToken || !expiresAt) {
       router.replace('/auth/login');
       return;
     }
@@ -48,9 +49,10 @@ export default function AuthCallbackPage() {
 
     // getProfile() authenticates with whatever lib/auth.ts's getToken()
     // returns, so the token has to be persisted before calling it — the
-    // callback's redirect only carries accessToken/expiresAt, not the
-    // profile itself, unlike /auth/mfa/verify's response.
+    // callback's redirect only carries accessToken/refreshToken/expiresAt,
+    // not the profile itself, unlike /auth/mfa/verify's response.
     setToken(accessToken);
+    setRefreshToken(refreshToken);
     setTokenExpiry(expiresAt);
 
     api
@@ -58,6 +60,7 @@ export default function AuthCallbackPage() {
       .then((profile) => {
         establishSession({
           accessToken,
+          refreshToken,
           expiresAt,
           user: {
             id: profile.id,

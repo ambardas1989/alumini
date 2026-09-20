@@ -25,7 +25,7 @@ import type {
   ChannelType,
   RsvpStatus,
 } from '@alumini/types';
-import { getToken, clearSession, type User } from './auth';
+import { getToken, getRefreshToken, setRefreshToken, clearSession, type User } from './auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -184,6 +184,7 @@ export interface SetupMfaResponse {
 /** Matches POST /auth/mfa/verify and /auth/mfa/challenge's response — apps/backend LoginResponseDto. */
 export interface LoginResponse {
   accessToken: string;
+  refreshToken: string;
   expiresAt: string;
   user: User;
 }
@@ -202,6 +203,7 @@ export function signup(fullName: string, email: string, password: string): Promi
  */
 export interface LoginCompleteResponse {
   accessToken: string;
+  refreshToken: string;
   expiresIn: number;
 }
 
@@ -274,21 +276,31 @@ export function verifyMfaRecovery(token: string): Promise<MfaRequiredResponse> {
 }
 
 /**
- * NOTE: POST /auth/refresh requires a refresh token in its body
- * (RefreshTokenDto), but this app's session model is access-token-only
- * (see lib/auth.ts) — /auth/mfa/verify never hands one out. This call will
- * 400 until a login path that stores a refresh token exists; callers
- * (AuthProvider's auto-refresh) already treat any failure here as
- * "session over, log in again," which is the safe fallback.
+ * BUG FIX (TASKS_03 TASK 02): this used to send an empty body — POST
+ * /auth/refresh requires a refresh token (RefreshTokenDto), which
+ * /auth/mfa/verify and /auth/mfa/challenge never actually returned even
+ * though the backend always generated one (see LoginResponseDto's own
+ * comment) — so every call here 400'd, always, on every account. Now sends
+ * the refresh token lib/auth.ts persists at login, and stores the NEW one
+ * the backend rotates in on success (refresh tokens are single-use —
+ * AuthService.refreshTokens() issues a fresh pair each time).
  */
-export function refreshToken(): Promise<{ accessToken: string; expiresAt: string }> {
-  return request<{ accessToken: string; expiresIn: number }>('/auth/refresh', {
+export function refreshToken(): Promise<{ accessToken: string; refreshToken: string; expiresAt: string }> {
+  const current = getRefreshToken();
+  if (!current) {
+    return Promise.reject(new ApiError(401, 'AUTH_SESSION_EXPIRED', 'No refresh token available'));
+  }
+  return request<{ accessToken: string; refreshToken: string; expiresIn: number }>('/auth/refresh', {
     method: 'POST',
-    body: {},
-  }).then((raw) => ({
-    accessToken: raw.accessToken,
-    expiresAt: new Date(Date.now() + raw.expiresIn * 1000).toISOString(),
-  }));
+    body: { refreshToken: current },
+  }).then((raw) => {
+    setRefreshToken(raw.refreshToken);
+    return {
+      accessToken: raw.accessToken,
+      refreshToken: raw.refreshToken,
+      expiresAt: new Date(Date.now() + raw.expiresIn * 1000).toISOString(),
+    };
+  });
 }
 
 export function logout(): Promise<void> {

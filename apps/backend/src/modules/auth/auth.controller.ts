@@ -146,6 +146,7 @@ export class AuthController {
     const expiresAt = new Date(Date.now() + result.expiresIn * 1000).toISOString();
     const params = new URLSearchParams({
       accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
       expiresAt,
     });
     res.redirect(`${FRONTEND_URL}/auth/callback?${params}`);

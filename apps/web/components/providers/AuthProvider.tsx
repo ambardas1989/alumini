@@ -7,6 +7,7 @@ import {
   getCurrentUser,
   isLoggedIn as checkIsLoggedIn,
   setCurrentUser,
+  setRefreshToken,
   setToken,
   setTokenExpiry,
   shouldRefreshToken,
@@ -16,6 +17,7 @@ import {
 /** The session data a completed login (POST /auth/mfa/verify or /challenge) produces — see api.LoginResponse. */
 interface Session {
   accessToken: string;
+  refreshToken: string;
   expiresAt: string;
   user: User;
 }
@@ -51,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback((session: Session) => {
     setToken(session.accessToken);
+    setRefreshToken(session.refreshToken);
     setTokenExpiry(session.expiresAt);
     setCurrentUser(session.user);
     setUser(session.user);

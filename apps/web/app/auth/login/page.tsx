@@ -74,6 +74,7 @@ export default function LoginPage() {
       const profile = await api.getProfile();
       establishSession({
         accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
         expiresAt,
         user: {
           id: profile.id,

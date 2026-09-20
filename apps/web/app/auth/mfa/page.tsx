@@ -174,7 +174,12 @@ export default function MfaPage() {
             ? await api.verifyMfa(pending.token, submittedCode)
             : await api.challengeMfa(pending.token, submittedCode);
 
-        establishSession({ accessToken: result.accessToken, expiresAt: result.expiresAt, user: result.user });
+        establishSession({
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          expiresAt: result.expiresAt,
+          user: result.user,
+        });
         clearMfaPendingSession();
         router.push(mode === 'setup' ? '/onboarding' : '/');
       } catch (err) {

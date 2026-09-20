@@ -47,7 +47,7 @@ import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
 import { AuditEventType, ErrorCode, MfaMethod, PersonaType } from '@alumini/types';
-import { daysFromNow, isExpired } from '@alumini/utils';
+import { daysFromNow, isExpired, minutesFromNow } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
 import { brand } from '@alumini/config/brand';
 
@@ -376,7 +376,16 @@ export class AuthService {
 
     return {
       accessToken: tokenPair.accessToken,
-      expiresAt: daysFromNow(appConfig.JWT_EXPIRY_DAYS).toISOString(),
+      refreshToken: tokenPair.refreshToken,
+      // BUG FIX (TASKS_03 TASK 02): this used to be daysFromNow(JWT_EXPIRY_DAYS)
+      // — the REFRESH token's multi-day lifetime, not the access token's
+      // real 15-minute one. The frontend stores this value as "when to
+      // silently refresh" (lib/auth.ts's shouldRefreshToken()); with a
+      // multi-day expiry on file, it never even tried until the access
+      // token had ALREADY been dead — by real JWT expiry, unnoticed by the
+      // client — for potentially days, so the next API call's 401 always
+      // looked like an out-of-the-blue "session expired".
+      expiresAt: minutesFromNow(appConfig.JWT_ACCESS_EXPIRY_MINUTES).toISOString(),
       user: await this.loadLoginResponseUser(userId, email),
     };
   }
@@ -397,7 +406,7 @@ export class AuthService {
     authToken: AuthTokenPayload,
     dto: MfaChallengeDto,
     req?: Request,
-  ): Promise<TokenPairResponse | MfaVerifiedResponse> {
+  ): Promise<LoginResponseDto | MfaVerifiedResponse> {
     const userId = authToken.sub;
 
     const { data: profile } = await this.supabase
@@ -431,9 +440,28 @@ export class AuthService {
     });
 
     if (authToken.purpose === 'mfa_login') {
-      return this.issueTokenPair(userId, profile?.email ?? authToken.email ?? '', req, {
-        event: 'mfa_challenge_login',
-      });
+      const email = profile?.email ?? authToken.email ?? '';
+      // BUG FIX (TASKS_03 TASK 02): this used to return issueTokenPair()'s
+      // raw TokenPairResponse (accessToken/refreshToken/expiresIn/
+      // AuthUserSummary) directly — but the frontend's challengeMfa() was
+      // always typed (and this method's own return type declared) as
+      // LoginResponseDto (accessToken/refreshToken/expiresAt/richer user).
+      // `expiresIn` (a number of seconds) landing in a field the client
+      // reads as `expiresAt` (an ISO string) meant getTokenExpiry() always
+      // failed to parse it, shouldRefreshToken() always returned false, and
+      // the access token silently expired with nothing on the client ever
+      // noticing until the next API call 401'd — same root cause as
+      // completeMfaSetup()'s sibling bug just above. Reshaped to match
+      // exactly, reusing the same richer loadLoginResponseUser() (not
+      // loadUserSummary(), which lacks avatarUrl/activePersona the
+      // frontend's session needs).
+      const tokenPair = await this.issueTokenPair(userId, email, req, { event: 'mfa_challenge_login' });
+      return {
+        accessToken: tokenPair.accessToken,
+        refreshToken: tokenPair.refreshToken,
+        expiresAt: minutesFromNow(appConfig.JWT_ACCESS_EXPIRY_MINUTES).toISOString(),
+        user: await this.loadLoginResponseUser(userId, email),
+      };
     }
 
     // Sensitive-action re-challenge — record it distinctly from a plain

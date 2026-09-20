@@ -157,6 +157,15 @@ export function daysFromNow(days: number): Date {
 }
 
 /**
+ * Returns a Date that is N minutes from now.
+ * Used for setting expiry timestamps on short-lived tokens (e.g. the
+ * access-token expiry echoed back in LoginResponseDto).
+ */
+export function minutesFromNow(minutes: number): Date {
+  return new Date(Date.now() + minutes * 60_000);
+}
+
+/**
  * Returns true if the given timestamp is in the past.
  */
 export function isExpired(expiresAt: string | Date): boolean {
