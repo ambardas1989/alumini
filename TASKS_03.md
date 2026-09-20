@@ -140,7 +140,7 @@ Commit: "fix: PGRST201 ambiguous FK in messages and members queries"
 
 ---
 
-## TASK 04 — Fix: channel access rules and message input [PENDING]
+## TASK 04 — Fix: channel access rules and message input [DONE: this required a real read/post asymmetry that didn't exist before — students can now READ staff_room (only posting stays teacher/admin-only) and are shown "🍎 The teachers' lounge is off-limits, kiddo." instead of an input, while teachers/admins are now HARD-LOCKED out of student_alley entirely (not just posting) with "Student Alley is private to students." corridor.service.ts's getMessages() no longer reuses canAccessChannel() (post-access) for reads — it now derives read access itself per channel from the membership row, matching exactly what's specified. Frontend split the old single canAccessChannel() into canReadChannel()/canPostChannel(), gating LockedChannel vs. the message list vs. the input independently. membership.service.ts's canAccessChannel() (still the POST/full-access gate for sendMessage()) was unchanged — its student_alley rule (students only, no admin) was already correct from a prior fix.]
 
 Staff Room shows message input for students.
 Student Alley shows as locked for students (wrong — it should be open).

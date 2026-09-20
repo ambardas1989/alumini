@@ -7,14 +7,13 @@
  * - WRITES always go through MembershipService.canAccessChannel(), which
  *   only returns true for a VERIFIED member with the right role for that
  *   channel. There is no degraded "post while unverified" mode anywhere.
- * - READS start with the same canAccessChannel() check. If it says no,
- *   this module does NOT immediately reject — for the 'classroom' channel
- *   specifically, SPEC.md §7.4 carves out a degraded mode: a member who
- *   simply hasn't been verified yet may still read that one channel, with
- *   every message's content and sender redacted. staff_room/student_alley
- *   have no such carve-out (SPEC.md §7.3's table is unconditional for
- *   those two) — a canAccessChannel() failure there is a hard 403.
- *   See getMessages() for exactly how that's implemented.
+ * - READS are gated separately and more permissively — see getMessages()'s
+ *   own doc comment. classroom: unverified members get a redacted read
+ *   rather than a lock (SPEC.md §7.4). staff_room: students CAN read
+ *   (teachers being visible to students is the point) even though only
+ *   teacher/admin can POST there. student_alley: the opposite asymmetry —
+ *   teachers/admins get NO read access at all, a hard lock, since it's
+ *   explicitly private to students (TASKS_03.md TASK 04).
  *
  * REDACTION vs DELETION — two independent transforms, see presentMessage():
  * - A DELETED message (is_deleted=true) reads as a tombstone — content and
@@ -100,7 +99,7 @@ import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
 import { MembershipService } from '../membership/membership.service';
-import { AuditEventType, ChannelType, ErrorCode, MessageType } from '@alumini/types';
+import { AuditEventType, ChannelType, ErrorCode, MemberRole, MessageType } from '@alumini/types';
 import { getRange, redactName } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
 
@@ -173,44 +172,69 @@ export class CorridorService {
   // ── Read ─────────────────────────────────────────────────────────────────
 
   /**
-   * Paginated messages for one channel. See the module-level comment for
-   * the full access-control reasoning — short version: full access via
-   * canAccessChannel(), a degraded redacted-read fallback for the
-   * 'classroom' channel only, hard rejection otherwise.
+   * Paginated messages for one channel.
+   *
+   * READ access is intentionally more permissive than POST access
+   * (canAccessChannel(), used by sendMessage() below) for two channels —
+   * TASKS_03.md TASK 04:
+   * - classroom: any verified/pending_auto member reads normally; a plain
+   *   'pending'/'rejected' member (or one who hasn't verified yet) still
+   *   gets a degraded, redacted read rather than a hard lock (SPEC.md §7.4).
+   * - staff_room: students CAN read (teachers being visible to students is
+   *   the point) — only POSTING there is teacher/admin-only. Unverified
+   *   members of any role still get no access at all (no redacted mode
+   *   here, unlike classroom).
+   * - student_alley: the opposite asymmetry — teachers/admins get NO read
+   *   access at all (a hard lock, not just a posting restriction) since
+   *   this channel is explicitly private to students.
+   *
+   * Reads the membership row directly rather than going through
+   * MembershipService.canAccessChannel() (which only answers the stricter
+   * "may fully read+post" question) — same established cross-module
+   * table-access pattern every module since auth has used.
    */
   async getMessages(userId: string, classroomId: string, channel: ChannelType, page = 0) {
-    const hasFullAccess = await this.membershipService.canAccessChannel(userId, classroomId, channel);
+    const { data: membership } = await this.supabase
+      .from('memberships')
+      .select('role, verification_status')
+      .eq('user_id', userId)
+      .eq('classroom_id', classroomId)
+      .maybeSingle();
 
+    if (!membership) {
+      throw new ForbiddenException({
+        message: 'Only members of this classroom can read its messages',
+        error: ErrorCode.CHANNEL_ACCESS_DENIED,
+      });
+    }
+
+    const hasFullAccess =
+      membership.verification_status === 'verified' || membership.verification_status === 'pending_auto';
+
+    let canRead = false;
     let redact = false;
 
-    if (!hasFullAccess) {
-      if (channel !== ChannelType.CLASSROOM) {
-        throw new ForbiddenException({
-          message: 'You do not have access to this channel',
-          error: ErrorCode.CHANNEL_ACCESS_DENIED,
-        });
-      }
+    switch (channel) {
+      case ChannelType.CLASSROOM:
+        canRead = true;
+        redact = !hasFullAccess;
+        break;
+      case ChannelType.STAFF_ROOM:
+        // Any verified/pending_auto member, any role — students included.
+        canRead = hasFullAccess;
+        break;
+      case ChannelType.STUDENT_ALLEY:
+        // Students only — teachers/admins are locked out entirely, not
+        // just from posting (privacy, not a permissions technicality).
+        canRead = hasFullAccess && membership.role === MemberRole.STUDENT;
+        break;
+    }
 
-      // Plain "are they at least a member" check — MembershipService's
-      // canAccessChannel() deliberately doesn't answer this (see its own
-      // module comment); reading `memberships` directly here follows the
-      // same established cross-module table-access pattern every module
-      // since auth has used.
-      const { data: membership } = await this.supabase
-        .from('memberships')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('classroom_id', classroomId)
-        .maybeSingle();
-
-      if (!membership) {
-        throw new ForbiddenException({
-          message: 'Only members of this classroom can read its messages',
-          error: ErrorCode.CHANNEL_ACCESS_DENIED,
-        });
-      }
-
-      redact = true;
+    if (!canRead) {
+      throw new ForbiddenException({
+        message: 'You do not have access to this channel',
+        error: ErrorCode.CHANNEL_ACCESS_DENIED,
+      });
     }
 
     const { from, to } = getRange(page, appConfig.MESSAGES_PAGE_SIZE);

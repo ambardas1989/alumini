@@ -68,21 +68,24 @@ function toAscending(data: Array<Message | RedactedMessage>, classroomId: string
   return [...data].reverse().map((m) => toUiMessage(m, classroomId, channel));
 }
 
-// BUG FIX (BACKEND/FRONTEND FIX 3 — channel access control): this used to
-// allow role==='admin' into student_alley too, but MembershipService.
-// canAccessChannel() on the backend never has (student_alley is
-// role===STUDENT only, unconditionally — see its own comment on why
-// staff_room/student_alley don't get an admin carve-out the same way).
-// That mismatch is exactly what caused "Student Alley blocks the test
-// user" for an admin (usually the classroom's creator): the frontend
-// showed the channel as unlocked and open, then every message
-// fetch/send 403'd against the real backend rule. Now mirrors the
-// backend exactly — see membership.service.ts's canAccessChannel().
-function canAccessChannel(role: string | null, verificationStatus: string | null, channel: ChannelType): boolean {
-  // pending_auto gets full classroom/student_alley access (early-joiner cold-start fix) but
-  // not staff_room — mirrors MembershipService.canAccessChannel() on the backend.
+// TASKS_03 TASK 04 — READ and POST access are no longer the same question
+// for every channel. staff_room: students CAN read (teachers being visible
+// to students is the point) but only teacher/admin can POST there.
+// student_alley: the opposite asymmetry — teachers/admins get NO read
+// access at all (a hard lock, not just a posting restriction, since it's
+// explicitly private to students). Mirrors corridor.service.ts's
+// getMessages()/canAccessChannel() split exactly — see their own comments.
+function canReadChannel(role: string | null, verificationStatus: string | null, channel: ChannelType): boolean {
   const hasFullAccess = verificationStatus === 'verified' || verificationStatus === 'pending_auto';
   if (channel === ChannelType.CLASSROOM) return true; // unverified gets the degraded/redacted view, not a lock
+  if (channel === ChannelType.STAFF_ROOM) return hasFullAccess; // any role, including students
+  if (channel === ChannelType.STUDENT_ALLEY) return hasFullAccess && role === 'student';
+  return false;
+}
+
+function canPostChannel(role: string | null, verificationStatus: string | null, channel: ChannelType): boolean {
+  const hasFullAccess = verificationStatus === 'verified' || verificationStatus === 'pending_auto';
+  if (channel === ChannelType.CLASSROOM) return hasFullAccess;
   if (channel === ChannelType.STAFF_ROOM) return verificationStatus === 'verified' && (role === 'teacher' || role === 'admin');
   if (channel === ChannelType.STUDENT_ALLEY) return hasFullAccess && role === 'student';
   return false;
@@ -261,7 +264,8 @@ export default function ClassroomPage() {
   }, [classroom, membership.isMember, loadEvents]);
 
   // ── Messages: load on channel switch, poll while active + verified ─────
-  const canAccessActive = canAccessChannel(membership.userRole, membership.verificationStatus, activeChannel);
+  const canReadActive = canReadChannel(membership.userRole, membership.verificationStatus, activeChannel);
+  const canPostActive = canPostChannel(membership.userRole, membership.verificationStatus, activeChannel);
 
   const loadMessages = useCallback(async () => {
     if (!classroom) return;
@@ -286,7 +290,7 @@ export default function ClassroomPage() {
   }, [classroom, activeChannel]);
 
   useEffect(() => {
-    if (!classroom || !membership.isMember || !canAccessActive) return;
+    if (!classroom || !membership.isMember || !canReadActive) return;
     setMessages([]);
     // Switching channels (or reloading the classroom) is a fresh start —
     // don't carry a stale "polling stopped" state from a different tab.
@@ -294,7 +298,7 @@ export default function ClassroomPage() {
     setPollingStopped(false);
     loadMessages();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classroom, membership.isMember, activeChannel, canAccessActive]);
+  }, [classroom, membership.isMember, activeChannel, canReadActive]);
 
   // Returns the delay (ms) before the NEXT poll should run: the steady
   // 5s cadence after a clean poll, or the next exponential-backoff step
@@ -346,7 +350,7 @@ export default function ClassroomPage() {
   }, [classroom, activeChannel]);
 
   useEffect(() => {
-    if (!classroom || !membership.isMember || !canAccessActive || pollingStopped) return;
+    if (!classroom || !membership.isMember || !canReadActive || pollingStopped) return;
 
     let cancelled = false;
 
@@ -371,7 +375,7 @@ export default function ClassroomPage() {
       if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
       pollTimeoutRef.current = null;
     };
-  }, [classroom, membership.isMember, activeChannel, canAccessActive, pollingStopped, pollOnce]);
+  }, [classroom, membership.isMember, activeChannel, canReadActive, pollingStopped, pollOnce]);
 
   const resumePolling = () => {
     pollFailureCountRef.current = 0;
@@ -560,7 +564,7 @@ export default function ClassroomPage() {
       />
       <ChannelTabs active={activeChannel} onChange={setActiveChannel} onInfoClick={() => setShowInfoSheet(true)} />
 
-      {!canAccessActive ? (
+      {!canReadActive ? (
         <LockedChannel
           title={t(`locked.${activeChannel}.title`)}
           subtitle={t(`locked.${activeChannel}.subtitle`)}
@@ -644,7 +648,20 @@ export default function ClassroomPage() {
             </div>
           )}
 
-          {hasFullAccess && <MessageInput onSend={handleSend} />}
+          {canPostActive ? (
+            <MessageInput onSend={handleSend} />
+          ) : (
+            hasFullAccess && (
+              // Reachable only for staff_room+student today — a verified
+              // member who CAN read this channel but isn't allowed to post
+              // in it (student_alley+teacher/admin is locked at the read
+              // level above instead, and classroom's own "can't post yet"
+              // case is the verifyBanner nudge above, not this).
+              <p className={styles.postRestrictedNote}>
+                {t(`postRestricted.${activeChannel}`)}
+              </p>
+            )
+          )}
         </div>
       )}
 

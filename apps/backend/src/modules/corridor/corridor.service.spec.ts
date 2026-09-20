@@ -100,9 +100,11 @@ describe('CorridorService', () => {
       sender: { id: 'user-2', full_name: 'Priya Sharma', avatar_url: 'https://x/y.png' },
     };
 
-    it('returns real content and sender for a fully-accessible channel', async () => {
-      mockCanAccessChannel.mockResolvedValue(true);
-      mockTables({ messages: chain({ data: [rawMessage], error: null }) });
+    it('returns real content and sender for a verified member on the classroom channel', async () => {
+      mockTables({
+        memberships: chain({ data: { role: 'student', verification_status: 'verified' }, error: null }),
+        messages: chain({ data: [rawMessage], error: null }),
+      });
 
       const result = await service.getMessages('user-1', 'class-1', ChannelType.CLASSROOM);
 
@@ -110,16 +112,7 @@ describe('CorridorService', () => {
       expect(result[0].sender).toEqual({ id: 'user-2', fullName: 'Priya Sharma', avatarUrl: 'https://x/y.png' });
     });
 
-    it('throws ForbiddenException for staff_room/student_alley with no full access — no degraded mode', async () => {
-      mockCanAccessChannel.mockResolvedValue(false);
-
-      await expect(
-        service.getMessages('user-1', 'class-1', ChannelType.STAFF_ROOM),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
     it('throws ForbiddenException on the classroom channel for a non-member', async () => {
-      mockCanAccessChannel.mockResolvedValue(false);
       mockTables({ memberships: chain({ data: null, error: null }) });
 
       await expect(
@@ -128,9 +121,8 @@ describe('CorridorService', () => {
     });
 
     it('redacts content and sender for an unverified member on the classroom channel', async () => {
-      mockCanAccessChannel.mockResolvedValue(false);
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }), // is a member
+        memberships: chain({ data: { role: 'student', verification_status: 'pending' }, error: null }),
         messages: chain({ data: [rawMessage], error: null }),
       });
 
@@ -142,9 +134,58 @@ describe('CorridorService', () => {
       expect((result[0] as any).isRedacted).toBe(true);
     });
 
-    it('tombstones a deleted message even for a fully-verified viewer', async () => {
-      mockCanAccessChannel.mockResolvedValue(true);
+    // TASKS_03 TASK 04 — staff_room: students can READ (only posting is
+    // teacher/admin-only, enforced separately in sendMessage()).
+    it('lets a verified student READ staff_room — reading and posting are gated separately', async () => {
       mockTables({
+        memberships: chain({ data: { role: 'student', verification_status: 'verified' }, error: null }),
+        messages: chain({ data: [rawMessage], error: null }),
+      });
+
+      const result = await service.getMessages('user-1', 'class-1', ChannelType.STAFF_ROOM);
+      expect(result[0].content).toBe('Hello everyone');
+    });
+
+    it('throws ForbiddenException for staff_room when the member is unverified — no degraded mode there', async () => {
+      mockTables({ memberships: chain({ data: { role: 'student', verification_status: 'pending' }, error: null }) });
+
+      await expect(
+        service.getMessages('user-1', 'class-1', ChannelType.STAFF_ROOM),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    // TASKS_03 TASK 04 — student_alley: the opposite asymmetry. Students
+    // read+post; teachers/admins get NO read access at all (a hard lock,
+    // not just a posting restriction — this channel is private to students).
+    it('lets a verified student READ student_alley', async () => {
+      mockTables({
+        memberships: chain({ data: { role: 'student', verification_status: 'verified' }, error: null }),
+        messages: chain({ data: [rawMessage], error: null }),
+      });
+
+      const result = await service.getMessages('user-1', 'class-1', ChannelType.STUDENT_ALLEY);
+      expect(result[0].content).toBe('Hello everyone');
+    });
+
+    it('throws ForbiddenException for student_alley when the member is a verified teacher — hard lock, not redacted', async () => {
+      mockTables({ memberships: chain({ data: { role: 'teacher', verification_status: 'verified' }, error: null }) });
+
+      await expect(
+        service.getMessages('user-1', 'class-1', ChannelType.STUDENT_ALLEY),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws ForbiddenException for student_alley when the member is a verified admin', async () => {
+      mockTables({ memberships: chain({ data: { role: 'admin', verification_status: 'verified' }, error: null }) });
+
+      await expect(
+        service.getMessages('user-1', 'class-1', ChannelType.STUDENT_ALLEY),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('tombstones a deleted message even for a fully-verified viewer', async () => {
+      mockTables({
+        memberships: chain({ data: { role: 'student', verification_status: 'verified' }, error: null }),
         messages: chain({
           data: [{ ...rawMessage, is_deleted: true, deleted_at: '2024-02-01T00:00:00Z', content: 'never seen' }],
           error: null,
@@ -159,9 +200,8 @@ describe('CorridorService', () => {
     });
 
     it('tombstones a deleted message for a redacted (unverified) viewer too', async () => {
-      mockCanAccessChannel.mockResolvedValue(false);
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { role: 'student', verification_status: 'pending' }, error: null }),
         messages: chain({
           data: [{ ...rawMessage, is_deleted: true, deleted_at: '2024-02-01T00:00:00Z' }],
           error: null,
@@ -175,8 +215,10 @@ describe('CorridorService', () => {
     });
 
     it('throws a BadRequestException carrying a recognisable ErrorCode when the query itself fails (FIX 1 regression)', async () => {
-      mockCanAccessChannel.mockResolvedValue(true);
-      mockTables({ messages: chain({ data: null, error: { message: 'relationship ambiguous' } }) });
+      mockTables({
+        memberships: chain({ data: { role: 'student', verification_status: 'verified' }, error: null }),
+        messages: chain({ data: null, error: { message: 'relationship ambiguous' } }),
+      });
 
       let caught: BadRequestException | undefined;
       try {

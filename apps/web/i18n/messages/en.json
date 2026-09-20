@@ -350,14 +350,19 @@
     "locked": {
       "staff_room": {
         "title": "Staff Room",
-        "subtitle": "This channel is for teachers only.",
-        "description": "Only verified faculty can read and post here"
+        "subtitle": "Verify your membership to see this channel.",
+        "description": "Students can read Staff Room once verified — only posting stays teacher/admin-only"
       },
       "student_alley": {
         "title": "Student Alley",
-        "subtitle": "This channel is for students only.",
-        "description": "A private space for students to connect"
+        "subtitle": "Student Alley is private to students.",
+        "description": "Teachers and admins don't have access to this channel"
       }
+    },
+    "postRestricted": {
+      "classroom": "",
+      "staff_room": "🍎 The teachers' lounge is off-limits, kiddo.",
+      "student_alley": "🎒 This is the students' space. We'll leave them to it."
     },
     "nonMember": {
       "joinButton": "Join this classroom",
