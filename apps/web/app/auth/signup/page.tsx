@@ -96,6 +96,7 @@ export default function SignupPage() {
     <AuthLayout tagline={tBrand('subline')} subTagline={t('subTagline')}>
       <div className={styles.top}>
         <h1 className={styles.title}>{t('title')}</h1>
+        <p className={styles.subtitle}>{t('subtitle')}</p>
       </div>
 
       <GoogleButton label={t('googleButton')} />

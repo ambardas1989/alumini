@@ -53,8 +53,8 @@
   },
   "auth": {
     "login": {
-      "title": "Welcome back",
-      "subtitle": "Sign in to continue",
+      "title": "Back to your tribe.",
+      "subtitle": "Sign in to reconnect with your people",
       "googleButton": "Sign in with Google",
       "emailLabel": "Email address",
       "passwordLabel": "Password",
@@ -73,7 +73,8 @@
       "passwordResetBanner": "Password reset successfully. Please sign in."
     },
     "signup": {
-      "title": "Create your account",
+      "title": "Find your batch.",
+      "subtitle": "Create your account to get started",
       "fullNameLabel": "Full name",
       "emailLabel": "Email address",
       "passwordLabel": "Password",
@@ -108,7 +109,7 @@
       "appSuggestion": "Use Google Authenticator, Authy, or any TOTP app",
       "codeLabel": "6-digit code",
       "confirmSetupInstruction": "Enter the 6-digit code to confirm setup",
-      "verifyTitle": "Welcome back",
+      "verifyTitle": "One last step.",
       "verifySubtitle": "Enter the code from your authenticator app",
       "troubleLink": "Having trouble? Sign in again",
       "submitButton": "Verify",

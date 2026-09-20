@@ -9,6 +9,12 @@
   color: var(--color-text-primary);
 }
 
+.subtitle {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-block-start: 4px;
+}
+
 .divider {
   display: flex;
   align-items: center;

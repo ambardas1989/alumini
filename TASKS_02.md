@@ -422,7 +422,7 @@ Commit: "feat: institution request flow, admin approval, 45 seeded institutions"
 
 ---
 
-## TASK 06 — Login and signup copy refresh [PENDING]
+## TASK 06 — Login and signup copy refresh [DONE: updated the right-panel form heading/sub (not AuthLayout's left-panel brand tagline, which the task's wording pointed at but the actual heading text lives in each page's own t('title')/t('subtitle')) — login "Back to your tribe." / "Sign in to reconnect with your people", signup "Find your batch." / "Create your account to get started" (new subtitle line + CSS class added, signup previously had no subtitle), mfa verifyTitle "One last step." (sub unchanged).]
 
 "Welcome back" is generic. AlumTribe needs warmer,
 brand-forward copy on auth screens.
