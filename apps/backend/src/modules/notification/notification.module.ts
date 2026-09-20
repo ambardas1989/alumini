@@ -2,19 +2,20 @@
  * NotificationModule — push (FCM), in-app, and email (Resend) delivery
  * (SPEC.md §9, feature F40).
  *
- * NO CONTROLLER, NO HTTP SURFACE. This module is purely event-driven —
- * NotificationService's @OnEvent() handlers are wired up automatically by
- * the app-wide EventEmitterModule (registered in app.module.ts) once this
- * module's provider is instantiated; nothing else needs to import or call
- * into this module directly. Exported anyway, matching every other
- * module's convention, in case a future module wants to call
- * sendInApp()/sendPush() synchronously rather than through an event.
+ * Delivery (NotificationService's @OnEvent() handlers) is purely event-
+ * driven, wired up automatically by the app-wide EventEmitterModule once
+ * this module's provider is instantiated — nothing calls into that side
+ * directly. NotificationController is this module's only HTTP surface,
+ * added for the read side (GET /notifications, mark-read, unread-count) —
+ * see NotificationService's own "Read side" section for why.
  */
 
 import { Module } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import { NotificationController } from './notification.controller';
 
 @Module({
+  controllers: [NotificationController],
   providers: [NotificationService],
   exports: [NotificationService],
 })

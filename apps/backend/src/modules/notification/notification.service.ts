@@ -134,6 +134,69 @@ export class NotificationService {
     }
   }
 
+  // ── Read side (TASK 08/09 — GET /notifications, mark-read) ──────────────
+  //
+  // Added on top of the purely event-driven module above: the frontend
+  // activity feed (home) and notifications dropdown both need to read back
+  // what sendInApp() has been writing to `notifications` all along — there
+  // was no way to do that before this. NotificationController is the
+  // module's first-ever controller/HTTP surface as a result.
+
+  /** Paginated, newest-first. `unreadOnly` powers the badge-count poll without pulling full rows. */
+  async getNotifications(userId: string, limit = 20, unreadOnly = false) {
+    let query = this.supabase
+      .from('notifications')
+      .select('id, type, title, body, data, is_read, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (unreadOnly) {
+      query = query.eq('is_read', false);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      this.logger.error('Failed to load notifications', { error, userId });
+      return [];
+    }
+
+    return data ?? [];
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('is_read', false);
+
+    if (error) {
+      this.logger.error('Failed to count unread notifications', { error, userId });
+      return 0;
+    }
+
+    return count ?? 0;
+  }
+
+  /** Marks specific notification ids as read, or every one of the caller's if `all` is set. Always scoped to `userId` — never trusts a bare id list alone. */
+  async markRead(userId: string, notificationIds?: string[], all?: boolean): Promise<void> {
+    if (!all && (!notificationIds || notificationIds.length === 0)) return;
+
+    let query = this.supabase.from('notifications').update({ is_read: true }).eq('user_id', userId);
+
+    if (!all) {
+      query = query.in('id', notificationIds!);
+    }
+
+    const { error } = await query;
+
+    if (error) {
+      this.logger.error('Failed to mark notifications read', { error, userId });
+    }
+  }
+
   // ── Delivery primitives ──────────────────────────────────────────────────
 
   /**

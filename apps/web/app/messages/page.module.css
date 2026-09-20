@@ -1,0 +1,13 @@
+.topBar {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--color-cream);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topBarTitle {
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}

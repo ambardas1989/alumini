@@ -26,7 +26,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'eq', 'is', 'not'].forEach((method) => {
+  ['select', 'insert', 'update', 'eq', 'is', 'not', 'in', 'order', 'limit'].forEach((method) => {
     builder[method] = jest.fn(() => builder);
   });
   builder.single = jest.fn(() => Promise.resolve(next()));
@@ -163,6 +163,78 @@ describe('NotificationService', () => {
       const service = await createService();
 
       await expect(service.sendInApp('user-1', 'test.type', 'T', 'B')).resolves.not.toThrow();
+    });
+  });
+
+  // ── getNotifications() / getUnreadCount() / markRead() ──────────────────
+
+  describe('getNotifications()', () => {
+    it('returns the caller’s notifications newest-first', async () => {
+      mockTables({
+        notifications: chain({ data: [{ id: 'n1', type: 'test', title: 'T', body: 'B', is_read: false }], error: null }),
+      });
+
+      const service = await createService();
+      const result = await service.getNotifications('user-1');
+
+      expect(result).toEqual([{ id: 'n1', type: 'test', title: 'T', body: 'B', is_read: false }]);
+    });
+
+    it('returns an empty array on a Supabase error rather than throwing', async () => {
+      mockTables({ notifications: chain({ data: null, error: { message: 'db down' } }) });
+      const service = await createService();
+
+      await expect(service.getNotifications('user-1')).resolves.toEqual([]);
+    });
+  });
+
+  describe('getUnreadCount()', () => {
+    it('returns the unread count', async () => {
+      mockTables({ notifications: chain({ data: null, error: null, count: 3 }) });
+      const service = await createService();
+
+      await expect(service.getUnreadCount('user-1')).resolves.toBe(3);
+    });
+
+    it('returns 0 on a Supabase error rather than throwing', async () => {
+      mockTables({ notifications: chain({ data: null, error: { message: 'db down' } }) });
+      const service = await createService();
+
+      await expect(service.getUnreadCount('user-1')).resolves.toBe(0);
+    });
+  });
+
+  describe('markRead()', () => {
+    it('marks specific ids read, scoped to the caller', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({ notifications: notificationsChain });
+      const service = await createService();
+
+      await service.markRead('user-1', ['n1', 'n2']);
+
+      expect(notificationsChain.update).toHaveBeenCalledWith({ is_read: true });
+      expect(notificationsChain.eq).toHaveBeenCalledWith('user_id', 'user-1');
+      expect(notificationsChain.in).toHaveBeenCalledWith('id', ['n1', 'n2']);
+    });
+
+    it('marks everything read when all is true, without filtering by id', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({ notifications: notificationsChain });
+      const service = await createService();
+
+      await service.markRead('user-1', undefined, true);
+
+      expect(notificationsChain.in).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op when neither ids nor all is given', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({ notifications: notificationsChain });
+      const service = await createService();
+
+      await service.markRead('user-1');
+
+      expect(notificationsChain.update).not.toHaveBeenCalled();
     });
   });
 

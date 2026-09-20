@@ -508,7 +508,7 @@ Commit: "fix: NaN members, undefined classroom link, profile crash, bell icon"
 
 ---
 
-## TASK 08 — Home tab and Classes tab redesign [PENDING]
+## TASK 08 — Home tab and Classes tab redesign [DONE: Home rewritten as an activity feed (greeting header, unread/classroom-count subtitle, verification nudge kept, feed sourced from the new GET /notifications read endpoints — built here since nothing existed yet, see TASK 09 note); "Suggested classrooms" skipped (no GET /classrooms/suggested endpoint, documented rather than faked) and new_message/new_member/vouch_request feed item types skipped (no backend event emits them yet — only verification.*/event.created are real). New /classes page: search-filtered classroom list + sticky "+ New Classroom" with an inline creation form (extracted the old /classroom/create page body into a shared components/ClassroomCreateForm.tsx so both routes use one implementation); teacher persona is redirected to the existing /teacher filing-cabinet view instead of a second grouped-list implementation. New /messages placeholder page. BottomNav's Classes tab now points at /classes (was a /classroom/create workaround). Backend: notification.controller.ts is this module's first-ever HTTP surface — GET /notifications, GET /notifications/unread-count, POST /notifications/mark-read — needed by both this task and TASK 09.]
 
 The mockup defined a clear split between Home and Classes
 that was not followed during the build. Fix this now.

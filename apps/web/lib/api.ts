@@ -798,3 +798,27 @@ export function importCsv(
 ): Promise<{ rowCount: number; generatedCount: number; classroomIds: string[] }> {
   return request('/codes/import', { method: 'POST', body: { institutionId, csvContent } });
 }
+
+// ── NOTIFICATIONS ────────────────────────────────────────────────────────
+
+export interface NotificationRow {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  data: Record<string, unknown> | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export function getNotifications(limit = 20): Promise<NotificationRow[]> {
+  return request('/notifications', { query: { limit: String(limit) } });
+}
+
+export function getUnreadNotificationCount(): Promise<{ count: number }> {
+  return request('/notifications/unread-count');
+}
+
+export function markNotificationsRead(input: { notificationIds?: string[]; all?: boolean }): Promise<void> {
+  return request('/notifications/mark-read', { method: 'POST', body: input });
+}

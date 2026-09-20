@@ -227,8 +227,34 @@
       "goHomeButton": "Go to home"
     }
   },
+  "messages": {
+    "title": "Messages",
+    "comingSoonTitle": "Direct messages coming soon",
+    "comingSoonDescription": "You'll be able to message alumni directly here."
+  },
+  "classes": {
+    "title": "My Classrooms",
+    "searchLabel": "Search classrooms",
+    "searchPlaceholder": "Search your classrooms...",
+    "noResults": "No classrooms match your search.",
+    "newClassroomButton": "+ New Classroom",
+    "newClassroomTitle": "New classroom",
+    "cancel": "✕ Cancel",
+    "createdToast": "Classroom created!",
+    "empty": {
+      "title": "You haven't joined any classrooms yet.",
+      "description": "Find your batch and reconnect with your people.",
+      "cta": "Find your batch"
+    }
+  },
   "home": {
     "title": "My classrooms",
+    "greeting": {
+      "morning": "Good morning, {name}",
+      "afternoon": "Good afternoon, {name}",
+      "evening": "Good evening, {name}"
+    },
+    "subtitle": "{classrooms, plural, one {# classroom} other {# classrooms}} · {unread, plural, one {# unread} other {# unread}}",
     "welcomeBanner": "Some bonds never graduate. Find your batch below.",
     "verificationNudge": "Complete verification to post and read messages →",
     "activeClassrooms": "Active classrooms",
@@ -236,9 +262,9 @@
     "suggestedForYou": "Suggested for you",
     "createClassroomFab": "Create a classroom",
     "empty": {
-      "title": "No classrooms yet",
-      "description": "Find your batch and reconnect with your people",
-      "cta": "Find my batch"
+      "title": "Your feed is quiet for now",
+      "description": "Join a classroom to start seeing activity here",
+      "cta": "Find your batch"
     },
     "suggested": {
       "joinButton": "Join",
