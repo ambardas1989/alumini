@@ -844,3 +844,36 @@ export function getUnreadNotificationCount(): Promise<{ count: number }> {
 export function markNotificationsRead(input: { notificationIds?: string[]; all?: boolean }): Promise<void> {
   return request('/notifications/mark-read', { method: 'POST', body: input });
 }
+
+// ── DIRECT MESSAGES ──────────────────────────────────────────────────────
+
+export interface DmConversation {
+  user: { id: string; fullName: string | null; avatarUrl: string | null };
+  lastMessage: { content: string | null; createdAt: string; isOwn: boolean };
+  unreadCount: number;
+}
+
+export interface DmMessage {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export function getDmConversations(): Promise<DmConversation[]> {
+  return request('/dm/conversations');
+}
+
+export function getDmMessages(userId: string, page = 0): Promise<DmMessage[]> {
+  return request(`/dm/conversations/${userId}`, { query: { page } });
+}
+
+export function sendDmMessage(userId: string, content: string): Promise<DmMessage> {
+  return request(`/dm/conversations/${userId}`, { method: 'POST', body: { content } });
+}
+
+export function markDmRead(userId: string): Promise<void> {
+  return request(`/dm/conversations/${userId}/read`, { method: 'POST' });
+}

@@ -242,7 +242,7 @@ Commit: "feat: profile page — avatar, stats, classrooms, account actions"
 
 ---
 
-## TASK 06 — Feature: Direct messages [PENDING]
+## TASK 06 — Feature: Direct messages [DONE: backend DmModule (getConversations/getMessages/sendMessage/markRead, shared-verified-classroom gate) + 015_direct_messages.sql (run manually) + frontend messages/page.tsx (conversation list + thread view via ?userId=) + Message button on member cards; 15 suites/323 backend tests pass]
 
 Simple 1:1 DM between verified members of the same classroom.
 No read receipts. No typing indicators. No online status.

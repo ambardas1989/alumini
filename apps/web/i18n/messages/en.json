@@ -236,8 +236,14 @@
   },
   "messages": {
     "title": "Messages",
-    "comingSoonTitle": "Direct messages coming soon",
-    "comingSoonDescription": "You'll be able to message alumni directly here."
+    "searchPlaceholder": "Search conversations...",
+    "emptyTitle": "No messages yet",
+    "emptyDescription": "Message a classmate from their profile in a classroom",
+    "thread": {
+      "back": "Back",
+      "inputPlaceholder": "Type a message...",
+      "send": "Send"
+    }
   },
   "classes": {
     "title": "My Classrooms",
@@ -431,7 +437,8 @@
       },
       "vouchFor": "Vouch for {name}",
       "vouched": "Vouched ✓",
-      "vouchSent": "Vouch sent to {name}"
+      "vouchSent": "Vouch sent to {name}",
+      "message": "Message"
     }
   },
   "membership": {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
 import type { ClassroomMember } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
@@ -22,6 +23,7 @@ interface MemberListModalProps {
 type Filter = 'all' | 'verified' | 'pending';
 
 export function MemberListModal({ classroomId, members, currentUserId, viewerIsVerified, onClose }: MemberListModalProps) {
+  const router = useRouter();
   const t = useTranslations('classroom.memberList');
   const { showToast } = useToast();
   const [filter, setFilter] = useState<Filter>('all');
@@ -80,31 +82,38 @@ export function MemberListModal({ classroomId, members, currentUserId, viewerIsV
                 </p>
                 <span className={styles.roleBadge}>{member.role}</span>
               </div>
-              {canVouch ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={alreadyVouched}
-                  loading={vouchingId === member.userId}
-                  onClick={() => handleVouch(member)}
-                >
-                  {alreadyVouched ? t('vouched') : t('vouchFor', { name: member.fullName ?? '' })}
-                </Button>
-              ) : (
-                <span
-                  className={`${styles.statusBadge} ${
-                    member.verificationStatus === 'verified'
-                      ? styles.badgeVerified
-                      : member.verificationStatus === 'pending_auto'
-                        ? styles.badgeEarly
-                        : member.verificationStatus === 'rejected'
-                          ? styles.badgeRejected
-                          : styles.badgePending
-                  }`}
-                >
-                  {t(`status.${member.verificationStatus}`)}
-                </span>
-              )}
+              <div className={styles.actions}>
+                {canVouch ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={alreadyVouched}
+                    loading={vouchingId === member.userId}
+                    onClick={() => handleVouch(member)}
+                  >
+                    {alreadyVouched ? t('vouched') : t('vouchFor', { name: member.fullName ?? '' })}
+                  </Button>
+                ) : (
+                  <span
+                    className={`${styles.statusBadge} ${
+                      member.verificationStatus === 'verified'
+                        ? styles.badgeVerified
+                        : member.verificationStatus === 'pending_auto'
+                          ? styles.badgeEarly
+                          : member.verificationStatus === 'rejected'
+                            ? styles.badgeRejected
+                            : styles.badgePending
+                    }`}
+                  >
+                    {t(`status.${member.verificationStatus}`)}
+                  </span>
+                )}
+                {!isSelf && (
+                  <Button variant="ghost" size="sm" onClick={() => router.push(`/messages?userId=${member.userId}`)}>
+                    {t('message')}
+                  </Button>
+                )}
+              </div>
             </li>
           );
         })}

@@ -16,6 +16,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { ClassroomModule } from './modules/classroom/classroom.module';
 import { MembershipModule } from './modules/membership/membership.module';
 import { CorridorModule } from './modules/corridor/corridor.module';
+import { DmModule } from './modules/dm/dm.module';
 import { VerificationModule } from './modules/verification/verification.module';
 import { EventsModule } from './modules/events/events.module';
 import { NotificationModule } from './modules/notification/notification.module';
@@ -64,6 +65,7 @@ import { appConfig } from '@alumini/config/app';
     ClassroomModule,
     MembershipModule,
     CorridorModule,
+    DmModule,
     VerificationModule,
     EventsModule,
     NotificationModule,
