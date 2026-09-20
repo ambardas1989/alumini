@@ -9,6 +9,7 @@ import { useTranslations } from '@/lib/useTranslations';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { SheetModal } from '@/components/ui/SheetModal';
@@ -97,8 +98,14 @@ export function VerifyTab({ institutionId }: VerifyTabProps) {
     <>
       {items.map((item) => (
         <div key={item.verificationId} className={styles.card}>
-          <p className={styles.name}>{item.userDisplayName}</p>
-          <p className={styles.meta}>{item.classroomName}</p>
+          <div className={styles.header}>
+            <Avatar avatarUrl={null} fullName={item.userDisplayName} size="md" />
+            <div className={styles.headerText}>
+              <p className={styles.name}>{item.userDisplayName}</p>
+              <p className={styles.meta}>{item.classroomName}</p>
+            </div>
+            <span className={styles.methodBadge}>{t('methodBadge')}</span>
+          </div>
           <p className={styles.submitted}>{t('submitted', { time: formatRelativeTime(item.submittedAt) })}</p>
 
           <button type="button" className={styles.viewDoc} onClick={() => handleViewDocument(item.verificationId)}>
@@ -107,8 +114,9 @@ export function VerifyTab({ institutionId }: VerifyTabProps) {
 
           <div className={styles.actions}>
             <Button
-              variant="secondary"
+              variant="ghost"
               size="sm"
+              className={styles.rejectButton}
               disabled={busyId === item.verificationId}
               onClick={() => {
                 setRejectTarget(item.verificationId);
@@ -118,8 +126,9 @@ export function VerifyTab({ institutionId }: VerifyTabProps) {
               {t('reject')}
             </Button>
             <Button
-              variant="primary"
+              variant="ghost"
               size="sm"
+              className={styles.approveButton}
               loading={busyId === item.verificationId}
               onClick={() => setPendingAction({ kind: 'approve', verificationId: item.verificationId })}
             >

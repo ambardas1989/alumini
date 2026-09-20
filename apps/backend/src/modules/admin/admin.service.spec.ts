@@ -37,7 +37,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'update', 'eq', 'in', 'gte', 'order', 'range', 'limit'].forEach((method) => {
+  ['select', 'insert', 'update', 'eq', 'in', 'gte', 'lt', 'order', 'range', 'limit'].forEach((method) => {
     builder[method] = jest.fn(() => builder);
   });
   builder.single = jest.fn(() => Promise.resolve(next()));
@@ -106,7 +106,11 @@ describe('AdminService', () => {
     it('returns zeroed counts for an institution with no classrooms', async () => {
       mockTables({
         personas: chain({ data: { id: 'p1' }, error: null }, { data: null, error: null, count: 3 }),
-        classrooms: chain({ data: [], error: null }, { data: null, error: null, count: 0 }),
+        classrooms: chain(
+          { data: [], error: null },
+          { data: null, error: null, count: 0 },
+          { data: null, error: null, count: 0 },
+        ),
         institution_codes: chain({ data: [], error: null }),
       });
 
@@ -114,6 +118,8 @@ describe('AdminService', () => {
 
       expect(result).toEqual({
         totalClassrooms: 0,
+        activeClassrooms: 0,
+        totalMembers: 0,
         totalVerifiedMembers: 0,
         pendingVerifications: 0,
         activeCodes: 0,
@@ -393,6 +399,7 @@ describe('AdminService', () => {
         topClassrooms: [],
         verificationMethodBreakdown: {},
         newMembersThisMonth: 0,
+        memberGrowth: [],
       });
     });
 

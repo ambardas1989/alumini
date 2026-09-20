@@ -1,5 +1,7 @@
-import { IsInt, IsUUID, Min } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsIn, IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+const EXPIRY_DAY_OPTIONS = [7, 30, 90] as const;
 
 export class GenerateBatchCodeDto {
   @ApiProperty()
@@ -14,4 +16,9 @@ export class GenerateBatchCodeDto {
   @IsInt()
   @Min(1)
   maxRedemptions: number;
+
+  @ApiPropertyOptional({ enum: EXPIRY_DAY_OPTIONS, description: 'Defaults to appConfig.CODE_EXPIRY_DAYS when omitted' })
+  @IsOptional()
+  @IsIn(EXPIRY_DAY_OPTIONS)
+  expiresInDays?: (typeof EXPIRY_DAY_OPTIONS)[number];
 }

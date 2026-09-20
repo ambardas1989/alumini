@@ -692,9 +692,10 @@
     },
     "tabs": {
       "overview": "Overview",
-      "verify": "Verify",
-      "codes": "Codes",
-      "stats": "Stats",
+      "verify": "Verifications ({count})",
+      "classrooms": "Classrooms",
+      "codes": "Batch Codes",
+      "stats": "Analytics",
       "admins": "Admins",
       "requests": "Requests ({count})"
     },
@@ -728,8 +729,10 @@
     },
     "overview": {
       "classrooms": "Classrooms",
+      "totalMembers": "Total members",
       "verifiedMembers": "Verified members",
       "pendingVerifications": "Pending verifications",
+      "activeClassrooms": "Active classrooms",
       "activeCodes": "Active codes",
       "classroomsByYear": "Classrooms by year",
       "addClass": "+ Add class",
@@ -738,13 +741,19 @@
         "description": "Classrooms at this institution will appear here."
       },
       "memberSummary": "{verified} verified · {pending} pending · {total} total",
-      "recentActivity": "Recent activity"
+      "recentActivity": "Recent activity",
+      "quickActions": {
+        "reviewVerifications": "Review verifications",
+        "generateCodes": "Generate codes"
+      },
+      "institutionSelectorLabel": "Institution"
     },
     "verify": {
       "empty": {
-        "title": "All caught up",
+        "title": "✓ No pending verifications. All caught up.",
         "description": "No document verifications are waiting for review."
       },
+      "methodBadge": "Document",
       "submitted": "Submitted {time}",
       "viewDocument": "View document",
       "reject": "Reject",
@@ -777,8 +786,16 @@
       "batch": {
         "title": "Generate batch code",
         "maxRedemptionsLabel": "Max redemptions",
-        "generate": "Generate code",
-        "successToast": "Code {code} generated."
+        "expiresLabel": "Expires in",
+        "expires7": "7 days",
+        "expires30": "30 days",
+        "expires90": "90 days",
+        "generate": "Generate codes",
+        "successToast": "Code {code} generated.",
+        "warning": "Share this code carefully — it can be redeemed up to {max} times.",
+        "generatedCodeLabel": "Generated code",
+        "copyCode": "Copy code",
+        "copiedToast": "Code copied to clipboard."
       },
       "csv": {
         "title": "Bulk import via CSV",
@@ -821,6 +838,28 @@
         "personal_code": "Personal code",
         "batch_code": "Batch code",
         "unknown": "Unknown"
+      },
+      "memberGrowth": "Member growth",
+      "month": "Month",
+      "newMembersCol": "New members",
+      "cumulative": "Cumulative",
+      "method": "Method",
+      "count": "Count",
+      "percentOfTotal": "% of total",
+      "classroom": "Classroom",
+      "members": "Members",
+      "noData": "No data yet."
+    },
+    "classrooms": {
+      "filter": {
+        "all": "All",
+        "active": "Active",
+        "alumni": "Alumni"
+      },
+      "viewClassroom": "View classroom →",
+      "empty": {
+        "title": "No classrooms yet",
+        "description": "Classrooms at this institution will appear here."
       }
     },
     "admins": {

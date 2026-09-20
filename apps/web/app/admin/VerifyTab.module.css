@@ -9,6 +9,27 @@
   margin-block-end: 10px;
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.headerText {
+  flex: 1;
+  min-width: 0;
+}
+
+.methodBadge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: var(--color-cream);
+  border-radius: 20px;
+  padding: 3px 8px;
+}
+
 .name {
   font-size: var(--text-sm);
   font-weight: 800;
@@ -42,4 +63,12 @@
 
 .actions > * {
   flex: 1;
+}
+
+.approveButton {
+  color: var(--color-success) !important;
+}
+
+.rejectButton {
+  color: var(--color-error) !important;
 }

@@ -157,7 +157,7 @@ export class CodesService {
     const institution = await this.getInstitutionDetails(dto.institutionId);
 
     const code = await this.generateUniqueCode(institution.country_code, new Date().getFullYear());
-    const expiresAt = daysFromNow(appConfig.CODE_EXPIRY_DAYS);
+    const expiresAt = daysFromNow(dto.expiresInDays ?? appConfig.CODE_EXPIRY_DAYS);
 
     const { data: codeRow, error } = await this.supabase
       .from('institution_codes')

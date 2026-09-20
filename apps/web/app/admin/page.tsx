@@ -15,17 +15,19 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import { OverviewTab } from './OverviewTab';
 import { VerifyTab } from './VerifyTab';
+import { ClassroomsTab } from './ClassroomsTab';
 import { CodesTab } from './CodesTab';
 import { StatsTab } from './StatsTab';
 import { AdminsTab } from './AdminsTab';
 import { InstitutionRequestsTab } from './InstitutionRequestsTab';
 import styles from './page.module.css';
 
-type Tab = 'overview' | 'verify' | 'codes' | 'stats' | 'admins' | 'requests';
+type Tab = 'overview' | 'verify' | 'classrooms' | 'codes' | 'stats' | 'admins' | 'requests';
 const TAB_KEY = 'alumtribe_admin_tab';
-const SCHOOL_ADMIN_TABS: Tab[] = ['overview', 'verify', 'codes', 'stats', 'admins'];
+const SCHOOL_ADMIN_TABS: Tab[] = ['overview', 'verify', 'classrooms', 'codes', 'stats', 'admins'];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -35,10 +37,14 @@ export default function AdminDashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [adminPersona, setAdminPersona] = useState<Persona | null | undefined>(undefined);
+  const [adminPersonas, setAdminPersonas] = useState<Persona[]>([]);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
+  const [pendingVerificationCount, setPendingVerificationCount] = useState(0);
   const [tab, setTab] = useState<Tab>('overview');
+
+  const adminPersona = adminPersonas.find((p) => p.id === selectedPersonaId) ?? adminPersonas[0] ?? null;
 
   const tabs = [...SCHOOL_ADMIN_TABS, ...(isPlatformAdmin ? (['requests'] as const) : [])];
 
@@ -54,7 +60,13 @@ export default function AdminDashboardPage() {
     setError(null);
     try {
       const [personas, profile] = await Promise.all([api.getPersonas(), api.getProfile()]);
-      setAdminPersona(personas.find((p) => p.type === 'school_admin') ?? null);
+      // TASKS_03.md TASK 11 — "If admin of multiple institutions: show
+      // institution selector dropdown at top." A user can hold more than
+      // one active school_admin persona (one per institution — see
+      // 001_initial_schema.sql's UNIQUE(user_id, type, institution_id)),
+      // so this collects all of them rather than just the first.
+      const schoolAdminPersonas = personas.filter((p) => p.type === 'school_admin');
+      setAdminPersonas(schoolAdminPersonas);
       setIsPlatformAdmin(profile.isPlatformAdmin);
       if (profile.isPlatformAdmin) {
         // Best-effort — a platform admin without a school_admin persona
@@ -62,6 +74,13 @@ export default function AdminDashboardPage() {
         api
           .adminListInstitutionRequests('pending')
           .then((rows) => setPendingRequestCount(rows.length))
+          .catch(() => undefined);
+      }
+      const active = schoolAdminPersonas.find((p) => p.status === 'active');
+      if (active?.institutionId) {
+        api
+          .getPendingVerifications(active.institutionId)
+          .then((rows) => setPendingVerificationCount(rows.length))
           .catch(() => undefined);
       }
     } catch (err) {
@@ -164,6 +183,26 @@ export default function AdminDashboardPage() {
         <h1 className={styles.topBarTitle}>{t('title')}</h1>
       </div>
 
+      {adminPersonas.length > 1 && (
+        <div className={styles.institutionSelectorWrap}>
+          <Select
+            label={t('overview.institutionSelectorLabel')}
+            value={adminPersona!.id}
+            onChange={(e) => setSelectedPersonaId(e.target.value)}
+          >
+            {adminPersonas.map((p) => (
+              // Persona carries no institution name — @alumini/types has no
+              // "get institution by id" lookup this page can reach for
+              // (same gap persona/page.tsx's subLabel fallback documents) —
+              // the id is honest and still lets an admin tell entries apart.
+              <option key={p.id} value={p.id}>
+                {p.institutionId}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
+
       <div className={styles.tabBar} role="tablist">
         {tabs.map((tabKey) => (
           <button
@@ -174,14 +213,19 @@ export default function AdminDashboardPage() {
             className={`${styles.tab} ${tab === tabKey ? styles.tabActive : ''}`}
             onClick={() => changeTab(tabKey)}
           >
-            {tabKey === 'requests' ? t('tabs.requests', { count: pendingRequestCount }) : t(`tabs.${tabKey}`)}
+            {tabKey === 'requests'
+              ? t('tabs.requests', { count: pendingRequestCount })
+              : tabKey === 'verify'
+                ? t('tabs.verify', { count: pendingVerificationCount })
+                : t(`tabs.${tabKey}`)}
           </button>
         ))}
       </div>
 
       <PageContainer>
-        {tab === 'overview' && <OverviewTab institutionId={institutionId} />}
+        {tab === 'overview' && <OverviewTab institutionId={institutionId} onNavigateTab={changeTab} />}
         {tab === 'verify' && <VerifyTab institutionId={institutionId} />}
+        {tab === 'classrooms' && <ClassroomsTab institutionId={institutionId} />}
         {tab === 'requests' && <InstitutionRequestsTab />}
         {tab === 'codes' && <CodesTab institutionId={institutionId} />}
         {tab === 'stats' && <StatsTab institutionId={institutionId} />}

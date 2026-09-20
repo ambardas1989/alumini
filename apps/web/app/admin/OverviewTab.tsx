@@ -15,6 +15,7 @@ import tabStyles from './Tab.module.css';
 
 interface OverviewTabProps {
   institutionId: string;
+  onNavigateTab?: (tab: 'verify' | 'codes') => void;
 }
 
 // event_type values are dotted (e.g. "classroom.joined") — colliding with
@@ -27,7 +28,7 @@ function humanizeEventType(eventType: string): string {
     .replace(/^./, (c) => c.toUpperCase());
 }
 
-export function OverviewTab({ institutionId }: OverviewTabProps) {
+export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) {
   const router = useRouter();
   const t = useTranslations('adminDashboard.overview');
 
@@ -77,6 +78,10 @@ export function OverviewTab({ institutionId }: OverviewTabProps) {
           <p className={styles.statLabel}>{t('classrooms')}</p>
         </div>
         <div className={styles.statCard}>
+          <p className={styles.statValue}>{formatNumber(overview.totalMembers)}</p>
+          <p className={styles.statLabel}>{t('totalMembers')}</p>
+        </div>
+        <div className={styles.statCard}>
           <p className={styles.statValue}>{formatNumber(overview.totalVerifiedMembers)}</p>
           <p className={styles.statLabel}>{t('verifiedMembers')}</p>
         </div>
@@ -85,10 +90,21 @@ export function OverviewTab({ institutionId }: OverviewTabProps) {
           <p className={styles.statLabel}>{t('pendingVerifications')}</p>
         </div>
         <div className={styles.statCard}>
-          <p className={styles.statValue}>{formatNumber(overview.activeCodes)}</p>
-          <p className={styles.statLabel}>{t('activeCodes')}</p>
+          <p className={styles.statValue}>{formatNumber(overview.activeClassrooms)}</p>
+          <p className={styles.statLabel}>{t('activeClassrooms')}</p>
         </div>
       </div>
+
+      {onNavigateTab && (
+        <div className={styles.quickActions}>
+          <Button variant="secondary" size="md" fullWidth onClick={() => onNavigateTab('verify')}>
+            {t('quickActions.reviewVerifications')}
+          </Button>
+          <Button variant="secondary" size="md" fullWidth onClick={() => onNavigateTab('codes')}>
+            {t('quickActions.generateCodes')}
+          </Button>
+        </div>
+      )}
 
       <div className={tabStyles.sectionHeader}>
         <p className={tabStyles.sectionLabel}>{t('classroomsByYear')}</p>

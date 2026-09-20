@@ -695,6 +695,8 @@ export interface AdminActivityEntry {
 
 export interface AdminOverview {
   totalClassrooms: number;
+  activeClassrooms: number;
+  totalMembers: number;
   totalVerifiedMembers: number;
   pendingVerifications: number;
   activeCodes: number;
@@ -773,6 +775,7 @@ export function generatePersonalCode(institutionId: string, data: Omit<GenerateP
 export interface GenerateBatchCodeData {
   classroomId: string;
   maxRedemptions: number;
+  expiresInDays?: 7 | 30 | 90;
 }
 
 export function generateBatchCode(institutionId: string, data: GenerateBatchCodeData): Promise<InstitutionCode> {
@@ -784,6 +787,7 @@ export interface AdminAnalytics {
   topClassrooms: Array<{ classroomId: string; name: string; memberCount: number }>;
   verificationMethodBreakdown: Record<string, number>;
   newMembersThisMonth: number;
+  memberGrowth: Array<{ month: string; newMembers: number; cumulative: number }>;
 }
 
 export function getAnalytics(institutionId: string): Promise<AdminAnalytics> {

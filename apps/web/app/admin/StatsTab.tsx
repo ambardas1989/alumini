@@ -14,16 +14,7 @@ interface StatsTabProps {
   institutionId: string;
 }
 
-const METHOD_COLOR_VARS: Record<string, string> = {
-  email: 'var(--color-info)',
-  document: 'var(--color-primary)',
-  linkedin: 'var(--color-linkedin)',
-  peer_vouch: 'var(--color-success)',
-  personal_code: 'var(--color-warning)',
-  batch_code: 'var(--color-warning)',
-};
-const FALLBACK_METHOD_COLOR = 'var(--color-text-muted)';
-
+/** TASK 11 TAB 5 — three simple tables: member growth, verification methods, top classrooms. */
 export function StatsTab({ institutionId }: StatsTabProps) {
   const t = useTranslations('adminDashboard.stats');
 
@@ -60,7 +51,6 @@ export function StatsTab({ institutionId }: StatsTabProps) {
   if (!analytics) return null;
 
   const topClassrooms = [...analytics.topClassrooms].sort((a, b) => b.memberCount - a.memberCount).slice(0, 5);
-  const maxMemberCount = Math.max(1, ...topClassrooms.map((c) => c.memberCount));
   const methodEntries = Object.entries(analytics.verificationMethodBreakdown).filter(([, count]) => count > 0);
   const methodTotal = methodEntries.reduce((sum, [, count]) => sum + count, 0) || 1;
 
@@ -77,18 +67,21 @@ export function StatsTab({ institutionId }: StatsTabProps) {
         </div>
       </div>
 
-      <p className={tabStyles.sectionLabel}>{t('topClassrooms')}</p>
-      {topClassrooms.length === 0 ? (
-        <p className={styles.emptyHint}>{t('noClassrooms')}</p>
+      <p className={tabStyles.sectionLabel}>{t('memberGrowth')}</p>
+      {analytics.memberGrowth.length === 0 ? (
+        <p className={styles.emptyHint}>{t('noData')}</p>
       ) : (
-        <div className={styles.barChart}>
-          {topClassrooms.map((c) => (
-            <div key={c.classroomId} className={styles.barRow}>
-              <span className={styles.barLabel}>{c.name}</span>
-              <div className={styles.barTrack}>
-                <div className={styles.barFill} style={{ width: `${(c.memberCount / maxMemberCount) * 100}%` }} />
-              </div>
-              <span className={styles.barValue}>{formatNumber(c.memberCount)}</span>
+        <div className={styles.table}>
+          <div className={styles.tableHeaderRow}>
+            <span>{t('month')}</span>
+            <span>{t('newMembersCol')}</span>
+            <span>{t('cumulative')}</span>
+          </div>
+          {analytics.memberGrowth.map((row) => (
+            <div key={row.month} className={styles.tableRow}>
+              <span>{row.month}</span>
+              <span>{formatNumber(row.newMembers)}</span>
+              <span>{formatNumber(row.cumulative)}</span>
             </div>
           ))}
         </div>
@@ -98,15 +91,36 @@ export function StatsTab({ institutionId }: StatsTabProps) {
       {methodEntries.length === 0 ? (
         <p className={styles.emptyHint}>{t('noMethods')}</p>
       ) : (
-        <div className={styles.pillRow}>
+        <div className={styles.table}>
+          <div className={styles.tableHeaderRow}>
+            <span>{t('method')}</span>
+            <span>{t('count')}</span>
+            <span>{t('percentOfTotal')}</span>
+          </div>
           {methodEntries.map(([method, count]) => (
-            <span
-              key={method}
-              className={styles.pill}
-              style={{ ['--pill-color' as string]: METHOD_COLOR_VARS[method] ?? FALLBACK_METHOD_COLOR }}
-            >
-              {t(`methods.${method}`)} · {Math.round((count / methodTotal) * 100)}%
-            </span>
+            <div key={method} className={styles.tableRow}>
+              <span>{t(`methods.${method}`)}</span>
+              <span>{formatNumber(count)}</span>
+              <span>{Math.round((count / methodTotal) * 100)}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className={tabStyles.sectionLabel}>{t('topClassrooms')}</p>
+      {topClassrooms.length === 0 ? (
+        <p className={styles.emptyHint}>{t('noClassrooms')}</p>
+      ) : (
+        <div className={styles.table}>
+          <div className={styles.tableHeaderRowTwo}>
+            <span>{t('classroom')}</span>
+            <span>{t('members')}</span>
+          </div>
+          {topClassrooms.map((c) => (
+            <div key={c.classroomId} className={styles.tableRowTwo}>
+              <span className={styles.tableClassroomName}>{c.name}</span>
+              <span>{formatNumber(c.memberCount)}</span>
+            </div>
           ))}
         </div>
       )}

@@ -10,6 +10,11 @@
   color: var(--color-text-primary);
 }
 
+.institutionSelectorWrap {
+  padding: 10px 16px 0;
+  background: var(--color-surface);
+}
+
 .tabBar {
   display: flex;
   gap: 6px;

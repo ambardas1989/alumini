@@ -1,0 +1,43 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block-start: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.row:not(:last-child) {
+  margin-block-end: 4px;
+}
+
+.name {
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.globalId {
+  flex-shrink: 0;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.viewLink {
+  display: inline-block;
+  margin-block-start: 8px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+}

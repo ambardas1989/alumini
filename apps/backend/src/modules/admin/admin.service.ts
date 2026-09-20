@@ -120,8 +120,20 @@ export class AdminService {
 
     const classroomIds = await this.getInstitutionClassroomIds(institutionId);
 
-    const [totalClassroomsResult, totalAdminsResult] = await Promise.all([
+    // TASKS_03.md TASK 11's 5-card stats row needs "Total members" and
+    // "Active classrooms" alongside the pre-existing counts — active uses
+    // the identical batch-year window ClassroomService.getMyClassrooms()
+    // already defines isActive with (SPEC's one true definition, not a
+    // second one invented here).
+    const activeYearThreshold = new Date().getFullYear() - appConfig.CLASSROOM_ACTIVE_YEAR_WINDOW;
+
+    const [totalClassroomsResult, activeClassroomsResult, totalAdminsResult] = await Promise.all([
       this.supabase.from('classrooms').select('id', { count: 'exact', head: true }).eq('institution_id', institutionId),
+      this.supabase
+        .from('classrooms')
+        .select('id', { count: 'exact', head: true })
+        .eq('institution_id', institutionId)
+        .gte('batch_year', activeYearThreshold),
       this.supabase
         .from('personas')
         .select('id', { count: 'exact', head: true })
@@ -130,11 +142,13 @@ export class AdminService {
         .eq('status', 'active'),
     ]);
 
+    let totalMembers = 0;
     let totalVerifiedMembers = 0;
     let pendingVerifications = 0;
 
     if (classroomIds.length > 0) {
-      const [verifiedResult, pendingResult] = await Promise.all([
+      const [totalMembersResult, verifiedResult, pendingResult] = await Promise.all([
+        this.supabase.from('memberships').select('id', { count: 'exact', head: true }).in('classroom_id', classroomIds),
         this.supabase
           .from('memberships')
           .select('id', { count: 'exact', head: true })
@@ -146,12 +160,15 @@ export class AdminService {
           .in('classroom_id', classroomIds)
           .eq('status', 'pending'),
       ]);
+      totalMembers = totalMembersResult.count ?? 0;
       totalVerifiedMembers = verifiedResult.count ?? 0;
       pendingVerifications = pendingResult.count ?? 0;
     }
 
     return {
       totalClassrooms:    totalClassroomsResult.count ?? 0,
+      activeClassrooms:   activeClassroomsResult.count ?? 0,
+      totalMembers,
       totalVerifiedMembers,
       pendingVerifications,
       activeCodes:        await this.countActiveCodes(institutionId),
@@ -405,6 +422,7 @@ export class AdminService {
     let activeAlumniCount = 0;
     const verificationMethodBreakdown: Record<string, number> = {};
     let newMembersThisMonth = 0;
+    let memberGrowth: Array<{ month: string; newMembers: number; cumulative: number }> = [];
 
     if (classroomIds.length > 0) {
       const { count: verifiedCount } = await this.supabase
@@ -435,9 +453,49 @@ export class AdminService {
         .in('classroom_id', classroomIds)
         .gte('joined_at', startOfMonth.toISOString());
       newMembersThisMonth = newCount ?? 0;
+
+      // TASKS_03.md TASK 11's "Member growth: Month | New members |
+      // Cumulative (last 6 months)" table. windowStart is the 1st of the
+      // month 5 months back, so the 6 buckets below cover windowStart..now
+      // inclusive. cumulative starts from baselineCount — everyone who
+      // joined BEFORE the window — not from 0, so it reads as a running
+      // institution-wide total, not just growth within the window.
+      const now = new Date();
+      const windowStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+      const [{ count: baselineCount }, { data: recentJoins }] = await Promise.all([
+        this.supabase
+          .from('memberships')
+          .select('id', { count: 'exact', head: true })
+          .in('classroom_id', classroomIds)
+          .lt('joined_at', windowStart.toISOString()),
+        this.supabase
+          .from('memberships')
+          .select('joined_at')
+          .in('classroom_id', classroomIds)
+          .gte('joined_at', windowStart.toISOString()),
+      ]);
+
+      const buckets = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(windowStart.getFullYear(), windowStart.getMonth() + i, 1);
+        return { key: `${d.getFullYear()}-${d.getMonth()}`, label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), count: 0 };
+      });
+      const bucketByKey = new Map(buckets.map((b) => [b.key, b]));
+
+      for (const row of recentJoins ?? []) {
+        const d = new Date(row.joined_at);
+        const bucket = bucketByKey.get(`${d.getFullYear()}-${d.getMonth()}`);
+        if (bucket) bucket.count += 1;
+      }
+
+      let cumulative = baselineCount ?? 0;
+      memberGrowth = buckets.map((b) => {
+        cumulative += b.count;
+        return { month: b.label, newMembers: b.count, cumulative };
+      });
     }
 
-    return { activeAlumniCount, topClassrooms, verificationMethodBreakdown, newMembersThisMonth };
+    return { activeAlumniCount, topClassrooms, verificationMethodBreakdown, newMembersThisMonth, memberGrowth };
   }
 
   // ── Institution claims (platform admin only) ─────────────────────────────

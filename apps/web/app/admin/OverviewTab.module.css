@@ -24,6 +24,12 @@
   margin-block-start: 2px;
 }
 
+.quickActions {
+  display: flex;
+  gap: 8px;
+  margin-block-end: 16px;
+}
+
 .addClassLink {
   font-size: var(--text-sm);
   font-weight: 700;

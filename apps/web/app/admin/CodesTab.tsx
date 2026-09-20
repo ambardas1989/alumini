@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { InstitutionCode } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
@@ -45,7 +46,9 @@ export function CodesTab({ institutionId }: CodesTabProps) {
 
   const [batchClassroomId, setBatchClassroomId] = useState('');
   const [maxRedemptions, setMaxRedemptions] = useState(10);
+  const [expiresInDays, setExpiresInDays] = useState<7 | 30 | 90>(30);
   const [batchSubmitting, setBatchSubmitting] = useState(false);
+  const [generatedCode, setGeneratedCode] = useState<InstitutionCode | null>(null);
 
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [csvFileName, setCsvFileName] = useState('');
@@ -103,7 +106,8 @@ export function CodesTab({ institutionId }: CodesTabProps) {
     if (!batchClassroomId || maxRedemptions < 1) return;
     setBatchSubmitting(true);
     try {
-      const code = await api.generateBatchCode(institutionId, { classroomId: batchClassroomId, maxRedemptions });
+      const code = await api.generateBatchCode(institutionId, { classroomId: batchClassroomId, maxRedemptions, expiresInDays });
+      setGeneratedCode(code);
       showToast(t('batch.successToast', { code: code.code }), 'success');
       load();
     } catch (err) {
@@ -111,6 +115,11 @@ export function CodesTab({ institutionId }: CodesTabProps) {
     } finally {
       setBatchSubmitting(false);
     }
+  };
+
+  const handleCopyGeneratedCode = () => {
+    if (!generatedCode) return;
+    navigator.clipboard.writeText(generatedCode.code).then(() => showToast(t('batch.copiedToast'), 'success'));
   };
 
   const handleFileSelect = async (file: File) => {
@@ -196,16 +205,60 @@ export function CodesTab({ institutionId }: CodesTabProps) {
             </option>
           ))}
         </Select>
-        <Input
-          label={t('batch.maxRedemptionsLabel')}
-          type="number"
-          min={1}
-          value={maxRedemptions}
-          onChange={(e) => setMaxRedemptions(Number(e.target.value))}
-        />
+
+        <div>
+          <p className={styles.radioLabel}>{t('batch.maxRedemptionsLabel')}</p>
+          <div className={styles.radioRow} role="radiogroup" aria-label={t('batch.maxRedemptionsLabel')}>
+            {[10, 25, 50, 100].map((option) => (
+              <button
+                key={option}
+                type="button"
+                role="radio"
+                aria-checked={maxRedemptions === option}
+                className={`chip ${maxRedemptions === option ? 'chip-active' : ''}`}
+                onClick={() => setMaxRedemptions(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className={styles.radioLabel}>{t('batch.expiresLabel')}</p>
+          <div className={styles.radioRow} role="radiogroup" aria-label={t('batch.expiresLabel')}>
+            {([7, 30, 90] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                role="radio"
+                aria-checked={expiresInDays === option}
+                className={`chip ${expiresInDays === option ? 'chip-active' : ''}`}
+                onClick={() => setExpiresInDays(option)}
+              >
+                {t(`batch.expires${option}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <Button variant="primary" size="md" fullWidth loading={batchSubmitting} onClick={handleGenerateBatch}>
           {t('batch.generate')}
         </Button>
+
+        <p className={styles.batchWarning}>{t('batch.warning', { max: maxRedemptions })}</p>
+
+        {generatedCode && (
+          <div className={styles.generatedCodeCard}>
+            <p className={styles.radioLabel}>{t('batch.generatedCodeLabel')}</p>
+            <div className={styles.generatedCodeRow}>
+              <span className={styles.generatedCodeValue}>{generatedCode.code}</span>
+              <Button variant="ghost" size="sm" onClick={handleCopyGeneratedCode}>
+                {t('batch.copyCode')}
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className={styles.formCard}>
