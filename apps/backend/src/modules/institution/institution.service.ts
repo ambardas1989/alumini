@@ -54,11 +54,12 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
-import { AuditEventType, PersonaType } from '@alumini/types';
+import { AuditEventType, ErrorCode, PersonaType } from '@alumini/types';
 import { isExpired } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
 
 import { SearchInstitutionsDto } from './dto/search-institutions.dto';
+import { RequestInstitutionDto } from './dto/request-institution.dto';
 import { ClaimInstitutionDto } from './dto/claim-institution.dto';
 import { RejectClaimDto } from './dto/reject-claim.dto';
 import { InviteAdminDto } from './dto/invite-admin.dto';
@@ -113,6 +114,89 @@ export class InstitutionService {
     if (error) {
       this.logger.error('Institution search failed', { error, query: dto.q });
       return [];
+    }
+
+    return data ?? [];
+  }
+
+  // ── Institution requests (TASK 05 — proposing a NEW institution) ─────────
+  //
+  // Different from the claim flow below: submitClaim() is for claiming
+  // administration of an institution that already exists in `institutions`.
+  // requestInstitution() is upstream of that — for an institution that
+  // doesn't exist in the database at all yet, so there's nothing to search
+  // for or claim until a platform admin reviews and creates it.
+
+  /**
+   * Submits a request for a new institution. If an institution with a
+   * similar name already exists, returns its details via a 409 instead of
+   * creating a duplicate request — same "offer the existing thing instead
+   * of creating a duplicate" pattern as ClassroomService.createClassroom().
+   */
+  async requestInstitution(userId: string, dto: RequestInstitutionDto, req?: Request) {
+    const { data: existing } = await this.supabase
+      .from('institutions')
+      .select('id, name, slug, type')
+      .ilike('name', `%${dto.name}%`)
+      .maybeSingle();
+
+    if (existing) {
+      throw new ConflictException({
+        message: `A similar institution already exists: ${existing.name}.`,
+        error: ErrorCode.INSTITUTION_REQUEST_DUPLICATE,
+        existingInstitutionId: existing.id,
+        existingInstitutionName: existing.name,
+        existingInstitutionSlug: existing.slug,
+      });
+    }
+
+    const { data: request, error } = await this.supabase
+      .from('institution_requests')
+      .insert({
+        requested_by: userId,
+        name: dto.name,
+        type: dto.type,
+        city: dto.city ?? null,
+        city_code: dto.cityCode ?? null,
+        country_code: dto.countryCode,
+        website_url: dto.websiteUrl ?? null,
+        email_domain: dto.emailDomain ?? null,
+        requester_relationship: dto.requesterRelationship,
+        notes: dto.notes ?? null,
+      })
+      .select()
+      .single();
+
+    if (error || !request) {
+      this.logger.error('Failed to create institution request', { error, userId, dto });
+      throw new BadRequestException('Failed to submit this request. Please try again.');
+    }
+
+    this.logger.log(`[INSTITUTION-REQUEST] ${dto.name} (${dto.type}) ${dto.city ?? ''} by ${userId}`);
+
+    await this.audit.log({
+      eventType: AuditEventType.INSTITUTION_REQUEST_SUBMITTED,
+      actorId: userId,
+      targetId: request.id,
+      targetType: 'institution_request',
+      metadata: { name: dto.name, type: dto.type },
+      req,
+    });
+
+    return { message: 'Request submitted', requestId: request.id };
+  }
+
+  /** All institution requests the caller has submitted, newest first. */
+  async getMyInstitutionRequests(userId: string) {
+    const { data, error } = await this.supabase
+      .from('institution_requests')
+      .select('id, name, type, city, country_code, status, rejection_reason, created_at')
+      .eq('requested_by', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      this.logger.error('Failed to load institution requests', { error, userId });
+      throw new BadRequestException('Failed to load your requests');
     }
 
     return data ?? [];

@@ -374,6 +374,75 @@ export function removeAdmin(institutionId: string, userId: string, reason: strin
   return request(`/institution/${institutionId}/admins/${userId}`, { method: 'DELETE', body: { reason } });
 }
 
+// ── INSTITUTION REQUESTS ─────────────────────────────────────────────────
+
+export interface RequestInstitutionInput {
+  name: string;
+  type: 'school' | 'college' | 'university';
+  city?: string;
+  cityCode?: string;
+  countryCode: string;
+  websiteUrl?: string;
+  emailDomain?: string;
+  requesterRelationship: 'alumni' | 'teacher' | 'admin' | 'other';
+  notes?: string;
+}
+
+export interface InstitutionConflictPayload {
+  existingInstitutionId: string;
+  existingInstitutionName: string;
+  existingInstitutionSlug: string;
+}
+
+export function requestInstitution(dto: RequestInstitutionInput): Promise<{ message: string; requestId: string }> {
+  return request('/institution/request', { method: 'POST', body: dto });
+}
+
+export interface InstitutionRequestRow {
+  id: string;
+  name: string;
+  type: string;
+  city: string | null;
+  country_code: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason: string | null;
+  created_at: string;
+}
+
+export function getMyInstitutionRequests(): Promise<InstitutionRequestRow[]> {
+  return request('/institution/my-requests');
+}
+
+export interface AdminInstitutionRequestRow extends InstitutionRequestRow {
+  requested_by: string;
+  city_code: string | null;
+  website_url: string | null;
+  email_domain: string | null;
+  requester_relationship: string;
+  notes: string | null;
+  requester: { full_name: string; email: string } | null;
+}
+
+export function adminListInstitutionRequests(status = 'pending', page = 0): Promise<AdminInstitutionRequestRow[]> {
+  return request('/admin/institution-requests', { query: { status, page: String(page) } });
+}
+
+export function adminApproveInstitutionRequest(
+  requestId: string,
+  slug: string,
+  cityCode?: string,
+  emailDomain?: string,
+): Promise<{ institution: Institution; message: string }> {
+  return request(`/admin/institution-requests/${requestId}/approve`, {
+    method: 'POST',
+    body: { slug, cityCode, emailDomain },
+  });
+}
+
+export function adminRejectInstitutionRequest(requestId: string, reason: string): Promise<{ message: string }> {
+  return request(`/admin/institution-requests/${requestId}/reject`, { method: 'POST', body: { reason } });
+}
+
 // ── CLASSROOM ────────────────────────────────────────────────────────────
 
 export function getMyClassrooms(): Promise<

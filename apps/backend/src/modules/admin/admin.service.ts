@@ -87,11 +87,13 @@ import { AuditService } from '../audit/audit.service';
 import { VerificationService } from '../verification/verification.service';
 import { InstitutionService } from '../institution/institution.service';
 import { AuditEventType, PersonaType } from '@alumini/types';
-import { isExpired } from '@alumini/utils';
+import { getRange, isExpired } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
 
 import { RejectVerificationDocumentDto } from './dto/reject-verification-document.dto';
 import { RejectInstitutionClaimDto } from './dto/reject-institution-claim.dto';
+import { ApproveInstitutionRequestDto } from './dto/approve-institution-request.dto';
+import { RejectInstitutionRequestDto } from './dto/reject-institution-request.dto';
 
 @Injectable()
 export class AdminService {
@@ -447,6 +449,137 @@ export class AdminService {
   async rejectClaim(userId: string, claimId: string, dto: RejectInstitutionClaimDto, req?: Request) {
     await this.assertPlatformAdmin(userId);
     return this.institutionService.rejectClaim(userId, claimId, { reason: dto.reason }, req);
+  }
+
+  // ── Institution requests (platform admin only) — TASK 05 ─────────────────
+  //
+  // Different from the claims queue above: a "claim" is for an institution
+  // that already exists in `institutions`; an "institution request" (this
+  // section) is for one that doesn't exist yet — see InstitutionService's
+  // requestInstitution() module comment.
+
+  async listInstitutionRequests(userId: string, status: string = 'pending', page = 0) {
+    await this.assertPlatformAdmin(userId);
+
+    const { from, to } = getRange(page, appConfig.INSTITUTION_REQUESTS_PAGE_SIZE);
+
+    const { data, error } = await this.supabase
+      .from('institution_requests')
+      .select('*, requester:profiles!institution_requests_requested_by_fkey(full_name, email)')
+      .eq('status', status)
+      .order('created_at', { ascending: true })
+      .range(from, to);
+
+    if (error) {
+      this.logger.error('Failed to load institution requests', { error, status });
+      throw new BadRequestException('Failed to load institution requests');
+    }
+
+    return data ?? [];
+  }
+
+  /** Creates the institution from the request's data (+ this call's overrides), marks the request approved. */
+  async approveInstitutionRequest(userId: string, requestId: string, dto: ApproveInstitutionRequestDto, req?: Request) {
+    await this.assertPlatformAdmin(userId);
+
+    const request = await this.getPendingInstitutionRequest(requestId);
+
+    const { data: slugTaken } = await this.supabase
+      .from('institutions')
+      .select('id')
+      .eq('slug', dto.slug)
+      .maybeSingle();
+
+    if (slugTaken) {
+      throw new BadRequestException(`Slug "${dto.slug}" is already in use`);
+    }
+
+    const { data: institution, error: createError } = await this.supabase
+      .from('institutions')
+      .insert({
+        name: request.name,
+        slug: dto.slug,
+        type: request.type,
+        city_code: dto.cityCode ?? request.city_code ?? null,
+        country_code: request.country_code,
+        email_domain: dto.emailDomain ?? request.email_domain ?? null,
+      })
+      .select()
+      .single();
+
+    if (createError || !institution) {
+      this.logger.error('Failed to create institution from request', { error: createError, requestId });
+      throw new BadRequestException('Failed to create the institution. Please try again.');
+    }
+
+    await this.supabase
+      .from('institution_requests')
+      .update({ status: 'approved', reviewed_by: userId, reviewed_at: new Date().toISOString() })
+      .eq('id', requestId);
+
+    this.logger.log(`[INSTITUTION-APPROVED] ${institution.name} (${institution.slug})`);
+
+    await this.audit.log({
+      eventType: AuditEventType.INSTITUTION_REQUEST_APPROVED,
+      actorId: userId,
+      targetId: institution.id,
+      targetType: 'institution',
+      metadata: { request_id: requestId, slug: dto.slug },
+      req,
+    });
+
+    return { institution, message: 'Approved' };
+  }
+
+  async rejectInstitutionRequest(userId: string, requestId: string, dto: RejectInstitutionRequestDto, req?: Request) {
+    await this.assertPlatformAdmin(userId);
+
+    const request = await this.getPendingInstitutionRequest(requestId);
+
+    const { error } = await this.supabase
+      .from('institution_requests')
+      .update({
+        status: 'rejected',
+        reviewed_by: userId,
+        reviewed_at: new Date().toISOString(),
+        rejection_reason: dto.reason,
+      })
+      .eq('id', requestId);
+
+    if (error) {
+      this.logger.error('Failed to reject institution request', { error, requestId });
+      throw new BadRequestException('Failed to reject this request. Please try again.');
+    }
+
+    this.logger.log(`[INSTITUTION-REJECTED] ${request.name} — ${dto.reason}`);
+
+    await this.audit.log({
+      eventType: AuditEventType.INSTITUTION_REQUEST_REJECTED,
+      actorId: userId,
+      targetId: requestId,
+      targetType: 'institution_request',
+      metadata: { name: request.name, reason: dto.reason },
+      req,
+    });
+
+    return { message: 'Rejected' };
+  }
+
+  private async getPendingInstitutionRequest(requestId: string) {
+    const { data: request } = await this.supabase
+      .from('institution_requests')
+      .select('id, name, type, city_code, country_code, email_domain, status')
+      .eq('id', requestId)
+      .maybeSingle();
+
+    if (!request) {
+      throw new NotFoundException('Institution request not found');
+    }
+    if (request.status !== 'pending') {
+      throw new BadRequestException(`This request has already been ${request.status}`);
+    }
+
+    return request;
   }
 
   // ── Internal: access control ─────────────────────────────────────────────

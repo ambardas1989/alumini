@@ -20,11 +20,12 @@ import { VerifyTab } from './VerifyTab';
 import { CodesTab } from './CodesTab';
 import { StatsTab } from './StatsTab';
 import { AdminsTab } from './AdminsTab';
+import { InstitutionRequestsTab } from './InstitutionRequestsTab';
 import styles from './page.module.css';
 
-type Tab = 'overview' | 'verify' | 'codes' | 'stats' | 'admins';
+type Tab = 'overview' | 'verify' | 'codes' | 'stats' | 'admins' | 'requests';
 const TAB_KEY = 'alumtribe_admin_tab';
-const TABS: Tab[] = ['overview', 'verify', 'codes', 'stats', 'admins'];
+const SCHOOL_ADMIN_TABS: Tab[] = ['overview', 'verify', 'codes', 'stats', 'admins'];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -35,20 +36,34 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adminPersona, setAdminPersona] = useState<Persona | null | undefined>(undefined);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const [tab, setTab] = useState<Tab>('overview');
+
+  const tabs = [...SCHOOL_ADMIN_TABS, ...(isPlatformAdmin ? (['requests'] as const) : [])];
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.sessionStorage.getItem(TAB_KEY) as Tab | null;
-    if (stored && TABS.includes(stored)) setTab(stored);
-  }, []);
+    if (stored && tabs.includes(stored)) setTab(stored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlatformAdmin]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const personas = await api.getPersonas();
+      const [personas, profile] = await Promise.all([api.getPersonas(), api.getProfile()]);
       setAdminPersona(personas.find((p) => p.type === 'school_admin') ?? null);
+      setIsPlatformAdmin(profile.isPlatformAdmin);
+      if (profile.isPlatformAdmin) {
+        // Best-effort — a platform admin without a school_admin persona
+        // still needs to see this without the school-admin gate below.
+        api
+          .adminListInstitutionRequests('pending')
+          .then((rows) => setPendingRequestCount(rows.length))
+          .catch(() => undefined);
+      }
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -88,7 +103,10 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (!adminPersona) {
+  // A platform admin with no school_admin persona still gets in — just with
+  // only the Requests tab (the school-admin-scoped tabs all need an
+  // institutionId, which only a school_admin persona provides).
+  if (!adminPersona && !isPlatformAdmin) {
     return (
       <AppShell showNav={false}>
         <PageContainer>
@@ -104,7 +122,20 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (adminPersona.status !== 'active') {
+  if (!adminPersona && isPlatformAdmin) {
+    return (
+      <AppShell showNav={false}>
+        <div className={styles.topBar}>
+          <h1 className={styles.topBarTitle}>{t('title')}</h1>
+        </div>
+        <PageContainer>
+          <InstitutionRequestsTab />
+        </PageContainer>
+      </AppShell>
+    );
+  }
+
+  if (adminPersona!.status !== 'active') {
     return (
       <AppShell showNav={false}>
         <PageContainer noPadding>
@@ -124,7 +155,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const institutionId = adminPersona.institutionId;
+  const institutionId = adminPersona!.institutionId;
   if (!institutionId) return null;
 
   return (
@@ -134,7 +165,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className={styles.tabBar} role="tablist">
-        {TABS.map((tabKey) => (
+        {tabs.map((tabKey) => (
           <button
             key={tabKey}
             type="button"
@@ -143,7 +174,7 @@ export default function AdminDashboardPage() {
             className={`${styles.tab} ${tab === tabKey ? styles.tabActive : ''}`}
             onClick={() => changeTab(tabKey)}
           >
-            {t(`tabs.${tabKey}`)}
+            {tabKey === 'requests' ? t('tabs.requests', { count: pendingRequestCount }) : t(`tabs.${tabKey}`)}
           </button>
         ))}
       </div>
@@ -151,6 +182,7 @@ export default function AdminDashboardPage() {
       <PageContainer>
         {tab === 'overview' && <OverviewTab institutionId={institutionId} />}
         {tab === 'verify' && <VerifyTab institutionId={institutionId} />}
+        {tab === 'requests' && <InstitutionRequestsTab />}
         {tab === 'codes' && <CodesTab institutionId={institutionId} />}
         {tab === 'stats' && <StatsTab institutionId={institutionId} />}
         {tab === 'admins' && <AdminsTab institutionId={institutionId} />}

@@ -216,7 +216,7 @@ Commit: "feat: pending_auto status for early classroom members"
 
 ---
 
-## TASK 05 — Institution request flow [PENDING]
+## TASK 05 — Institution request flow [DONE: migrations 012 (institution_requests table + RLS) and 013 (45 seed institutions, adapted to the real institutions schema — no plain "city" column, only city_code; is_partner used in place of the task's nonexistent is_verified; fixed a slug collision between IIT Kharagpur/Kanpur in the source list) — both need to be run manually in Supabase SQL Editor. Backend: POST/GET /institution/request|my-requests, GET/POST /admin/institution-requests(/:id/approve|reject) — platform-admin-gated via the existing profiles.is_platform_admin + assertPlatformAdmin() pattern; added Profile.isPlatformAdmin (aliased select) so the frontend can check it. Frontend: inline "Can't find your school?" request form on the create-classroom page (409 duplicate → "use this institution" link); admin page gets a new Requests tab, visible to any platform admin even without a school_admin persona (the page previously hard-gated on one).]
 
 Schools and colleges must be approved by the platform admin
 before they appear in the app. Users can request new ones.

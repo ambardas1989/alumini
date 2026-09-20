@@ -33,6 +33,7 @@ import { Request } from 'express';
 
 import { InstitutionService } from './institution.service';
 import { SearchInstitutionsDto } from './dto/search-institutions.dto';
+import { RequestInstitutionDto } from './dto/request-institution.dto';
 import { ClaimInstitutionDto } from './dto/claim-institution.dto';
 import { InviteAdminDto } from './dto/invite-admin.dto';
 import { RemoveAdminDto } from './dto/remove-admin.dto';
@@ -55,6 +56,28 @@ export class InstitutionController {
   @ApiOperation({ summary: 'Institution autocomplete search' })
   async search(@Query() dto: SearchInstitutionsDto) {
     return this.institutionService.searchInstitutions(dto);
+  }
+
+  // ── Institution requests (proposing a new institution) ──────────────────
+
+  @Post('request')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Request a new institution not yet in the database' })
+  async request(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Body() dto: RequestInstitutionDto,
+    @Req() req: Request,
+  ) {
+    return this.institutionService.requestInstitution(authToken.sub, dto, req);
+  }
+
+  @Get('my-requests')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Institution requests the caller has submitted' })
+  async myRequests(@CurrentUser() authToken: AuthTokenPayload) {
+    return this.institutionService.getMyInstitutionRequests(authToken.sub);
   }
 
   // ── Co-admin invite acceptance (public — the token is the credential) ────

@@ -144,6 +144,9 @@ export const AuditEventType = {
   INSTITUTION_CLAIMED: 'institution.claimed',
   INSTITUTION_CLAIM_APPROVED: 'institution.claim.approved',
   INSTITUTION_CLAIM_REJECTED: 'institution.claim.rejected',
+  INSTITUTION_REQUEST_SUBMITTED: 'institution.request.submitted',
+  INSTITUTION_REQUEST_APPROVED: 'institution.request.approved',
+  INSTITUTION_REQUEST_REJECTED: 'institution.request.rejected',
   INSTITUTION_ADMIN_INVITED: 'institution.admin.invited',
   INSTITUTION_ADMIN_ACCEPTED: 'institution.admin.accepted',
   INSTITUTION_ADMIN_REMOVED: 'institution.admin.removed',
@@ -185,6 +188,7 @@ export const ErrorCode = {
   VERIFICATION_CODE_EXPIRED: 'VERIFICATION_CODE_EXPIRED',
   VERIFICATION_CODE_REDEEMED: 'VERIFICATION_CODE_REDEEMED',
   CLASSROOM_DUPLICATE: 'CLASSROOM_DUPLICATE',
+  INSTITUTION_REQUEST_DUPLICATE: 'INSTITUTION_REQUEST_DUPLICATE',
   CLASSROOM_NOT_MEMBER: 'CLASSROOM_NOT_MEMBER',
   CHANNEL_ACCESS_DENIED: 'CHANNEL_ACCESS_DENIED',
 } as const;
@@ -200,6 +204,7 @@ export interface Profile {
   phone?: string;
   mfaEnabled: boolean;
   mfaMethod?: MfaMethod;
+  isPlatformAdmin: boolean;
   activePersona: PersonaType;
   linkedinUrl?: string;
   linkedinVerified: boolean;

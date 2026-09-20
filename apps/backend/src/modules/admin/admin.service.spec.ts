@@ -37,7 +37,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'eq', 'in', 'gte', 'order'].forEach((method) => {
+  ['select', 'insert', 'update', 'eq', 'in', 'gte', 'order', 'range'].forEach((method) => {
     builder[method] = jest.fn(() => builder);
   });
   builder.single = jest.fn(() => Promise.resolve(next()));
@@ -479,6 +479,95 @@ describe('AdminService', () => {
       await service.rejectClaim('platform-admin-1', 'claim-1', { reason: 'Could not verify' } as any);
 
       expect(mockRejectClaim).toHaveBeenCalledWith('platform-admin-1', 'claim-1', { reason: 'Could not verify' }, undefined);
+    });
+  });
+
+  // ── Institution requests (platform admin only) ───────────────────────────
+
+  describe('listInstitutionRequests()', () => {
+    it('throws ForbiddenException for a non-platform-admin', async () => {
+      mockTables({ profiles: chain({ data: { is_platform_admin: false }, error: null }) });
+
+      await expect(service.listInstitutionRequests('user-1')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('lists pending requests for a platform admin', async () => {
+      mockTables({
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
+        institution_requests: chain({ data: [{ id: 'req-1', name: 'New School', status: 'pending' }], error: null }),
+      });
+
+      const result = await service.listInstitutionRequests('platform-admin-1');
+      expect(result).toEqual([{ id: 'req-1', name: 'New School', status: 'pending' }]);
+    });
+  });
+
+  describe('approveInstitutionRequest()', () => {
+    it('throws ForbiddenException for a non-platform-admin', async () => {
+      mockTables({ profiles: chain({ data: { is_platform_admin: false }, error: null }) });
+
+      await expect(
+        service.approveInstitutionRequest('user-1', 'req-1', { slug: 'NEWSCH' } as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws BadRequestException when the request is not pending', async () => {
+      mockTables({
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
+        institution_requests: chain({ data: { id: 'req-1', status: 'approved' }, error: null }),
+      });
+
+      await expect(
+        service.approveInstitutionRequest('platform-admin-1', 'req-1', { slug: 'NEWSCH' } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('creates the institution and marks the request approved', async () => {
+      mockTables({
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
+        institution_requests: chain(
+          { data: { id: 'req-1', name: 'New School', type: 'school', country_code: 'IN', status: 'pending' }, error: null },
+          { data: null, error: null }, // update
+        ),
+        institutions: chain(
+          { data: null, error: null }, // slug not taken
+          { data: { id: 'inst-1', name: 'New School', slug: 'NEWSCH' }, error: null }, // insert
+        ),
+      });
+
+      const result = await service.approveInstitutionRequest('platform-admin-1', 'req-1', { slug: 'NEWSCH' } as any);
+
+      expect(result).toEqual({ institution: { id: 'inst-1', name: 'New School', slug: 'NEWSCH' }, message: 'Approved' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: AuditEventType.INSTITUTION_REQUEST_APPROVED }),
+      );
+    });
+  });
+
+  describe('rejectInstitutionRequest()', () => {
+    it('throws ForbiddenException for a non-platform-admin', async () => {
+      mockTables({ profiles: chain({ data: { is_platform_admin: false }, error: null }) });
+
+      await expect(
+        service.rejectInstitutionRequest('user-1', 'req-1', { reason: 'no' } as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('marks the request rejected with a reason', async () => {
+      mockTables({
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
+        institution_requests: chain(
+          { data: { id: 'req-1', name: 'New School', status: 'pending' }, error: null },
+          { data: null, error: null }, // update
+        ),
+      });
+
+      const result = await service.rejectInstitutionRequest('platform-admin-1', 'req-1', { reason: 'Duplicate' } as any);
+
+      expect(result).toEqual({ message: 'Rejected' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: AuditEventType.INSTITUTION_REQUEST_REJECTED }),
+      );
     });
   });
 });

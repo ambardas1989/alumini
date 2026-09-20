@@ -250,8 +250,26 @@
     "typeUniversity": "University",
     "institutionSearchLabel": "Institution",
     "institutionSearchPlaceholder": "Search for your institution",
-    "notFound": "Not found? We'll add it",
+    "notFound": "Can't find your school?",
     "notFoundToast": "We don't have this one yet — tell us at {email} and we'll add it.",
+    "requestForm": {
+      "title": "Request \"{name}\"",
+      "cityLabel": "City",
+      "countryLabel": "Country code",
+      "websiteLabel": "Website URL (optional)",
+      "relationshipLabel": "Your relationship",
+      "relationship": {
+        "alumni": "Alumni",
+        "teacher": "Teacher",
+        "admin": "Admin"
+      },
+      "notesLabel": "Notes (optional)",
+      "submit": "Submit request",
+      "successMessage": "Thanks! We'll review your request within 24-48 hours and notify you when approved.",
+      "requestId": "Request ID: {id}",
+      "conflictMessage": "A similar institution already exists: {name}.",
+      "useExisting": "Use this institution →"
+    },
     "gradeLabel": "Grade",
     "gradePlaceholder": "Select grade",
     "sectionLabel": "Section",
@@ -619,7 +637,36 @@
       "verify": "Verify",
       "codes": "Codes",
       "stats": "Stats",
-      "admins": "Admins"
+      "admins": "Admins",
+      "requests": "Requests ({count})"
+    },
+    "institutionRequests": {
+      "empty": {
+        "title": "No pending requests",
+        "description": "New institution requests will appear here."
+      },
+      "requestedBy": "Requested by {name}",
+      "submitted": "Submitted {time}",
+      "reject": "Reject",
+      "approve": "Approve",
+      "approvedToast": "Institution created.",
+      "rejectedToast": "Request rejected.",
+      "approveModal": {
+        "title": "Approve {name}",
+        "slugLabel": "Slug",
+        "cityCodeLabel": "City code (optional)",
+        "emailDomainLabel": "Email domain (optional)",
+        "submit": "Create institution"
+      },
+      "rejectModal": {
+        "title": "Reject request",
+        "reasonLabel": "Reason",
+        "submit": "Reject"
+      },
+      "mfaModal": {
+        "title": "Confirm your identity",
+        "description": "Enter your MFA code to confirm this action."
+      }
     },
     "overview": {
       "classrooms": "Classrooms",

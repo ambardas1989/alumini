@@ -5,19 +5,19 @@ import { useRouter } from 'next/navigation';
 import type { Institution } from '@alumini/types';
 import { generateClassroomId } from '@alumini/utils';
 import * as api from '@/lib/api';
-import { ApiError, type ClassroomConflictPayload } from '@/lib/api';
+import { ApiError, type ClassroomConflictPayload, type InstitutionConflictPayload } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useDebounce } from '@/lib/useDebounce';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useTranslations } from '@/lib/useTranslations';
 import { useToast } from '@/components/providers/ToastProvider';
-import { brand } from '@/lib/brand';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageHeader } from '@/components/PageHeader';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea';
 import { Switch } from '@/components/ui/Switch';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -69,6 +69,18 @@ export default function CreateClassroomPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [conflict, setConflict] = useState<ClassroomConflictPayload | null>(null);
   const [joiningConflict, setJoiningConflict] = useState(false);
+
+  // ── Institution request (TASK 05 — "Can't find your school?") ──────────
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [requestCity, setRequestCity] = useState('');
+  const [requestCountryCode, setRequestCountryCode] = useState('IN');
+  const [requestWebsite, setRequestWebsite] = useState('');
+  const [requestRelationship, setRequestRelationship] = useState<'alumni' | 'teacher' | 'admin'>('alumni');
+  const [requestNotes, setRequestNotes] = useState('');
+  const [requesting, setRequesting] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [requestSuccess, setRequestSuccess] = useState<{ requestId: string } | null>(null);
+  const [requestConflict, setRequestConflict] = useState<InstitutionConflictPayload | null>(null);
 
   const resultRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -142,9 +154,52 @@ export default function CreateClassroomPage() {
   };
 
   const handleNotFound = () => {
-    // Same real limitation as app/onboarding/claim/page.tsx — no
-    // propose-a-new-institution endpoint exists yet.
-    showToast(t('notFoundToast', { email: brand.supportEmail }), 'info');
+    setShowRequestForm(true);
+    setRequestSuccess(null);
+    setRequestConflict(null);
+    setRequestError(null);
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!query.trim()) return;
+    setRequesting(true);
+    setRequestError(null);
+    setRequestConflict(null);
+    try {
+      const result = await api.requestInstitution({
+        name: query.trim(),
+        type,
+        city: requestCity.trim() || undefined,
+        countryCode: requestCountryCode.trim().toUpperCase(),
+        websiteUrl: requestWebsite.trim() || undefined,
+        requesterRelationship: requestRelationship,
+        notes: requestNotes.trim() || undefined,
+      });
+      setRequestSuccess({ requestId: result.requestId });
+    } catch (err) {
+      if (err instanceof ApiError && err.statusCode === 409) {
+        setRequestConflict(err.payload as InstitutionConflictPayload);
+      } else {
+        setRequestError(getErrorMessage(err));
+      }
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  const handleUseExistingInstitution = async () => {
+    if (!requestConflict) return;
+    try {
+      const results = await api.searchInstitutions(requestConflict.existingInstitutionName);
+      const match = results.find((i) => i.id === requestConflict.existingInstitutionId);
+      if (match) {
+        handleSelectInstitution(match);
+        setShowRequestForm(false);
+        setRequestConflict(null);
+      }
+    } catch (err) {
+      setRequestError(getErrorMessage(err));
+    }
   };
 
   const handleBatchYearChange = (value: string) => {
@@ -303,10 +358,62 @@ export default function CreateClassroomPage() {
                 </ul>
               )}
 
-              {!searching && debouncedQuery.trim().length >= MIN_QUERY_LENGTH && (
+              {!searching && debouncedQuery.trim().length >= MIN_QUERY_LENGTH && !showRequestForm && (
                 <button type="button" className={styles.notFound} onClick={handleNotFound}>
                   {t('notFound')}
                 </button>
+              )}
+
+              {showRequestForm && (
+                <div className={styles.requestForm}>
+                  {requestSuccess ? (
+                    <div className={styles.requestSuccess}>
+                      <p>{t('requestForm.successMessage')}</p>
+                      <p className={styles.requestId}>{t('requestForm.requestId', { id: requestSuccess.requestId })}</p>
+                    </div>
+                  ) : requestConflict ? (
+                    <div className={styles.requestConflict}>
+                      <p>{t('requestForm.conflictMessage', { name: requestConflict.existingInstitutionName })}</p>
+                      <button type="button" className={styles.changeLink} onClick={handleUseExistingInstitution}>
+                        {t('requestForm.useExisting')}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className={styles.requestFormTitle}>{t('requestForm.title', { name: query.trim() })}</p>
+                      <Input label={t('requestForm.cityLabel')} value={requestCity} onChange={(e) => setRequestCity(e.target.value)} />
+                      <Input
+                        label={t('requestForm.countryLabel')}
+                        value={requestCountryCode}
+                        onChange={(e) => setRequestCountryCode(e.target.value)}
+                      />
+                      <Input
+                        label={t('requestForm.websiteLabel')}
+                        value={requestWebsite}
+                        onChange={(e) => setRequestWebsite(e.target.value)}
+                      />
+                      <Select
+                        label={t('requestForm.relationshipLabel')}
+                        value={requestRelationship}
+                        onChange={(e) => setRequestRelationship(e.target.value as typeof requestRelationship)}
+                      >
+                        <option value="alumni">{t('requestForm.relationship.alumni')}</option>
+                        <option value="teacher">{t('requestForm.relationship.teacher')}</option>
+                        <option value="admin">{t('requestForm.relationship.admin')}</option>
+                      </Select>
+                      <Textarea
+                        label={t('requestForm.notesLabel')}
+                        value={requestNotes}
+                        onChange={(e) => setRequestNotes(e.target.value)}
+                        rows={3}
+                      />
+                      {requestError && <ErrorMessage message={requestError} />}
+                      <Button variant="primary" size="md" fullWidth loading={requesting} onClick={handleSubmitRequest}>
+                        {t('requestForm.submit')}
+                      </Button>
+                    </>
+                  )}
+                </div>
               )}
             </div>
           )}

@@ -88,6 +88,7 @@ export class IdentityService {
       .from('profiles')
       .select(
         'id, email, full_name, avatar_url, phone, mfa_enabled, mfa_method, ' +
+          'isPlatformAdmin:is_platform_admin, ' +
           'active_persona, linkedin_url, linkedin_verified, created_at, updated_at',
       )
       .eq('id', userId)

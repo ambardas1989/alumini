@@ -18,13 +18,15 @@
  * needed here, unlike ClassroomController's :idOrGlobalId vs 'my'.
  */
 
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { AdminService } from './admin.service';
 import { RejectVerificationDocumentDto } from './dto/reject-verification-document.dto';
 import { RejectInstitutionClaimDto } from './dto/reject-institution-claim.dto';
+import { ApproveInstitutionRequestDto } from './dto/approve-institution-request.dto';
+import { RejectInstitutionRequestDto } from './dto/reject-institution-request.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MfaChallengeGuard } from '../auth/guards/mfa-challenge.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -134,5 +136,41 @@ export class AdminController {
     @Req() req: Request,
   ): Promise<void> {
     await this.adminService.rejectClaim(authToken.sub, claimId, dto, req);
+  }
+
+  // ── Institution requests (platform admin only) ───────────────────────────
+
+  @Get('institution-requests')
+  @ApiOperation({ summary: 'List institution requests by status (default pending) — platform admin only' })
+  async institutionRequests(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+  ) {
+    return this.adminService.listInstitutionRequests(authToken.sub, status ?? 'pending', page ? parseInt(page, 10) : 0);
+  }
+
+  @Post('institution-requests/:requestId/approve')
+  @UseGuards(MfaChallengeGuard)
+  @ApiOperation({ summary: 'Approve an institution request — creates the institution — platform admin only, MFA required' })
+  async approveInstitutionRequest(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('requestId') requestId: string,
+    @Body() dto: ApproveInstitutionRequestDto,
+    @Req() req: Request,
+  ) {
+    return this.adminService.approveInstitutionRequest(authToken.sub, requestId, dto, req);
+  }
+
+  @Post('institution-requests/:requestId/reject')
+  @UseGuards(MfaChallengeGuard)
+  @ApiOperation({ summary: 'Reject an institution request — platform admin only, MFA required' })
+  async rejectInstitutionRequest(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('requestId') requestId: string,
+    @Body() dto: RejectInstitutionRequestDto,
+    @Req() req: Request,
+  ) {
+    return this.adminService.rejectInstitutionRequest(authToken.sub, requestId, dto, req);
   }
 }

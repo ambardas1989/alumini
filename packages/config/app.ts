@@ -202,6 +202,9 @@ export const appConfig = {
   /** Number of classrooms returned per page in teacher filing cabinet */
   CLASSROOMS_PAGE_SIZE: 20,
 
+  /** Number of institution requests returned per page in the admin review queue */
+  INSTITUTION_REQUESTS_PAGE_SIZE: 20,
+
   // ── Content Redaction ─────────────────────────────────────────────────────
 
   /**

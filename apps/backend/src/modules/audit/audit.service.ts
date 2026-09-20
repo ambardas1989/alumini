@@ -34,7 +34,7 @@ export interface AuditLogParams {
   targetId?: string;
 
   /** Type of the affected entity */
-  targetType?: 'user' | 'classroom' | 'institution' | 'membership' | 'verification' | 'code' | 'message' | 'event';
+  targetType?: 'user' | 'classroom' | 'institution' | 'institution_request' | 'membership' | 'verification' | 'code' | 'message' | 'event';
 
   /**
    * Additional event-specific data.

@@ -114,6 +114,50 @@ describe('InstitutionService', () => {
     });
   });
 
+  // ── requestInstitution() / getMyInstitutionRequests() ───────────────────
+
+  describe('requestInstitution()', () => {
+    const dto = {
+      name: 'New School',
+      type: 'school' as const,
+      countryCode: 'IN',
+      requesterRelationship: 'alumni' as const,
+    };
+
+    it('throws ConflictException with existing institution details when a similar name already exists', async () => {
+      mockTables({
+        institutions: chain({ data: { id: 'inst-1', name: 'New School', slug: 'NEWSCH', type: 'school' }, error: null }),
+      });
+
+      await expect(service.requestInstitution('user-1', dto)).rejects.toThrow(ConflictException);
+    });
+
+    it('creates a pending request and audits it when no similar institution exists', async () => {
+      mockTables({
+        institutions: chain({ data: null, error: null }),
+        institution_requests: chain({ data: { id: 'req-1' }, error: null }),
+      });
+
+      const result = await service.requestInstitution('user-1', dto);
+
+      expect(result).toEqual({ message: 'Request submitted', requestId: 'req-1' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: AuditEventType.INSTITUTION_REQUEST_SUBMITTED }),
+      );
+    });
+  });
+
+  describe('getMyInstitutionRequests()', () => {
+    it('returns the caller’s own requests', async () => {
+      mockTables({
+        institution_requests: chain({ data: [{ id: 'req-1', name: 'New School', status: 'pending' }], error: null }),
+      });
+
+      const result = await service.getMyInstitutionRequests('user-1');
+      expect(result).toEqual([{ id: 'req-1', name: 'New School', status: 'pending' }]);
+    });
+  });
+
   // ── submitClaim() ────────────────────────────────────────────────────────
 
   describe('submitClaim()', () => {

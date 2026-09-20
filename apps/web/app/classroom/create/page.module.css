@@ -88,6 +88,38 @@
   font-weight: 600;
 }
 
+.requestForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-cream);
+}
+
+.requestFormTitle {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.requestSuccess,
+.requestConflict {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.requestId {
+  font-family: monospace;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .selectedCard {
   display: flex;
   align-items: center;
