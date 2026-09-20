@@ -75,16 +75,15 @@
   line-height: 1;
 }
 
+/* Border/background/padding/radius come from the global .card/.card-sm
+   utility classes composed alongside this in JSX (TASK 10) — this module
+   only owns the feed-item-specific flex layout. */
 .feedItem {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   width: 100%;
-  padding: 12px 14px;
   margin-block-end: 8px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
   text-align: start;
 }
 

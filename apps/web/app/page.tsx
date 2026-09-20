@@ -33,6 +33,18 @@ function flatten(
   return groups.flatMap((group) => group.classes.map((c) => ({ ...c, institution: group.institution }) as FlatClassroom));
 }
 
+type DateGroup = 'today' | 'yesterday' | 'earlier';
+
+function dateGroupOf(iso: string): DateGroup {
+  const d = new Date(iso);
+  const now = new Date();
+  const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86_400_000);
+  if (diffDays <= 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  return 'earlier';
+}
+
 function greetingKey(): 'morning' | 'afternoon' | 'evening' {
   const hour = new Date().getHours();
   if (hour < 12) return 'morning';
@@ -202,24 +214,28 @@ export default function HomePage() {
 
             {!loading &&
               feed.length > 0 &&
-              feed.map((item) => {
+              feed.map((item, index) => {
                 const { icon, accent } = feedAccent(item.type);
+                const group = dateGroupOf(item.created_at);
+                const showGroupHeading = index === 0 || dateGroupOf(feed[index - 1]!.created_at) !== group;
                 return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`${styles.feedItem} ${accent === 'success' ? styles.feedItemSuccess : ''}`}
-                    onClick={() => handleFeedItemTap(item)}
-                  >
-                    <span className={styles.feedIcon} aria-hidden="true">
-                      {icon}
-                    </span>
-                    <span className={styles.feedText}>
-                      <span className={styles.feedTitle}>{item.title}</span>
-                      {item.body && <span className={styles.feedBody}>{item.body}</span>}
-                    </span>
-                    <span className={styles.feedTime}>{formatRelativeTime(item.created_at)}</span>
-                  </button>
+                  <div key={item.id}>
+                    {showGroupHeading && <p className="section-heading">{t(`dateGroup.${group}`)}</p>}
+                    <button
+                      type="button"
+                      className={`card card-sm ${styles.feedItem} ${accent === 'success' ? styles.feedItemSuccess : ''}`}
+                      onClick={() => handleFeedItemTap(item)}
+                    >
+                      <span className={styles.feedIcon} aria-hidden="true">
+                        {icon}
+                      </span>
+                      <span className={styles.feedText}>
+                        <span className={styles.feedTitle}>{item.title}</span>
+                        {item.body && <span className={styles.feedBody}>{item.body}</span>}
+                      </span>
+                      <span className={styles.feedTime}>{formatRelativeTime(item.created_at)}</span>
+                    </button>
+                  </div>
                 );
               })}
 

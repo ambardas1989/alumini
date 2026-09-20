@@ -4,7 +4,7 @@
   border-radius: 13px;
   border: 1px solid var(--color-border);
   padding: 13px 15px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   text-decoration: none;
   cursor: pointer;
   transition: border-color 0.15s;
@@ -20,7 +20,7 @@
 }
 
 .institution {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);

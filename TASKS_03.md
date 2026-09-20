@@ -568,7 +568,7 @@ Commit: "feat: verification badges across app, nudge banner in classroom"
 
 ---
 
-## TASK 10 — Feature: UI polish pass [PENDING]
+## TASK 10 — Feature: UI polish pass [DONE: alumini-demo.html referenced by the task doesn't exist anywhere in the repo (confirmed, same finding as TASKS_02 TASK 10) — polished against the concrete itemized list instead. .card/.card-sm already existed from a prior session; added missing .section-heading. Home feed: date-group headers + .card-sm items (was plain list). Classes: gap 8px, institution label 10px. Classroom header/tabs/bubbles/input/empty-state already matched spec; fixed empty-state copy to exact "Say hello!". Verify: number circle 30px primary/white (was 24px gray), added complete=green-border/active=primary-border card states (skipped a fictional "locked" state — nothing in this app's verification model marks a method unavailable). Persona: switched list to a real 2-col grid (was single column), active card now solid primary bg/white text (was light tint). Teacher page already fully matched spec, no changes]
 
 Apply consistent design system across all pages.
 Read alumini-demo.html as the design reference before starting.

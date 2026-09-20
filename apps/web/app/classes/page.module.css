@@ -19,7 +19,6 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   margin-block-start: 14px;
   padding-block-end: 88px;
 }

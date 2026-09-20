@@ -25,7 +25,11 @@ export function MethodAccordion({ number, title, status, headerExtra, expanded, 
   const contentRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className={styles.card}>
+    <div
+      className={`${styles.card} ${
+        status === 'complete' ? styles.cardComplete : expanded ? styles.cardActive : ''
+      }`}
+    >
       <button
         type="button"
         className={styles.header}

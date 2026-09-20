@@ -284,6 +284,11 @@
       "cta": "Find your batch"
     },
     "noActivity": "No recent activity yet. Start a conversation in your classroom.",
+    "dateGroup": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "earlier": "Earlier"
+    },
     "suggested": {
       "joinButton": "Join",
       "mutualAlumni": "{count, plural, one {# mutual alumni} other {# mutual alumni}}"
@@ -380,7 +385,7 @@
       "verifyNow": "Verify now →"
     },
     "messages": {
-      "empty": "No messages yet. Be the first to say hello!",
+      "empty": "Say hello!",
       "deleted": "Message deleted",
       "redacted": "Verify your membership to read messages",
       "inputPlaceholder": "Write a message...",

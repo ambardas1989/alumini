@@ -396,6 +396,21 @@ video {
   height: 44px;
   font-size: 16px;
 }
+
+/* TASK 10 PART B — section heading, e.g. date-group headers on the home
+   feed (Today / Yesterday / Earlier). */
+.section-heading {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+.section-heading:first-child {
+  margin-top: 0;
+}
 .avatar-xl {
   width: 56px;
   height: 56px;
