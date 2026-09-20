@@ -29,10 +29,12 @@
 .md {
   font-size: 14px;
   padding: 10px 18px;
+  min-height: var(--min-touch-target);
 }
 .lg {
   font-size: 16px;
   padding: 13px 22px;
+  min-height: var(--min-touch-target);
 }
 
 .fullWidth {

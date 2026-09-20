@@ -56,6 +56,9 @@ export function ClassroomCard({ classroom, onTap, loading = false }: ClassroomCa
           {classroom.batchYear} &middot; {tCard('memberCount', { count: classroom.memberCount ?? 0 })}
         </span>
         {statusVariant && <Badge variant={statusVariant} label={tStatus(statusVariant)} />}
+        <span className={styles.chevron} aria-hidden="true">
+          ›
+        </span>
       </div>
     </Link>
   );

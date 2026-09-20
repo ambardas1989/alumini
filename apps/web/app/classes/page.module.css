@@ -12,6 +12,10 @@
   color: var(--color-text-primary);
 }
 
+.filterRow {
+  margin-block-start: 12px;
+}
+
 .list {
   display: flex;
   flex-direction: column;

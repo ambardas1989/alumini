@@ -11,11 +11,16 @@
   color: var(--color-text-secondary);
 }
 
+/* Shared by Input, Select, AND Textarea (see their own comments) — min-height
+   rather than a fixed height, so a multi-row <textrea rows="4"> can still
+   grow past 48px instead of being clipped to a single input's height. */
 .input {
   width: 100%;
+  min-height: 48px;
   font-family: var(--font-primary);
-  font-size: 14px;
-  padding: 11px 13px;
+  /* 16px minimum prevents iOS Safari auto-zooming the page on focus */
+  font-size: 16px;
+  padding: 13px;
   border-radius: 10px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);

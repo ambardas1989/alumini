@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
 import { ClassroomCreateForm } from '@/components/ClassroomCreateForm';
+import { FilterChips } from '@/components/ui/FilterChips';
 import styles from './page.module.css';
 
 interface FlatClassroom extends Classroom {
@@ -43,11 +44,13 @@ export default function ClassesPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const t = useTranslations('classes');
+  const tCommon = useTranslations('common');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [classrooms, setClassrooms] = useState<FlatClassroom[]>([]);
   const [query, setQuery] = useState('');
+  const [institutionFilter, setInstitutionFilter] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   // Teacher mode already has its own dedicated filing-cabinet view
@@ -77,13 +80,20 @@ export default function ClassesPage() {
     load();
   }, [ready, load]);
 
+  const institutionOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const c of classrooms) seen.set(c.institution.id, c.institution.name);
+    return Array.from(seen, ([value, label]) => ({ value, label }));
+  }, [classrooms]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return classrooms;
-    return classrooms.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.institution.name.toLowerCase().includes(q),
-    );
-  }, [classrooms, query]);
+    return classrooms.filter((c) => {
+      const matchesQuery = !q || c.name.toLowerCase().includes(q) || c.institution.name.toLowerCase().includes(q);
+      const matchesInstitution = !institutionFilter || c.institution.id === institutionFilter;
+      return matchesQuery && matchesInstitution;
+    });
+  }, [classrooms, query, institutionFilter]);
 
   const handleCreated = (globalId: string) => {
     setShowCreateForm(false);
@@ -107,6 +117,17 @@ export default function ClassesPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
+
+        {institutionOptions.length > 1 && (
+          <div className={styles.filterRow}>
+            <FilterChips
+              options={institutionOptions}
+              value={institutionFilter}
+              onChange={setInstitutionFilter}
+              allLabel={tCommon('all')}
+            />
+          </div>
+        )}
 
         {error && <ErrorMessage message={error} onRetry={load} />}
 

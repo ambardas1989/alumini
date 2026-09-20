@@ -4,7 +4,9 @@
   align-items: flex-start;
   gap: 10px;
   padding: 10px 14px;
-  background: var(--color-primary);
+  /* Reuses the auth split-screen's brand gradient tokens for the same dark
+     purple treatment, rather than inventing a second gradient pair. */
+  background: linear-gradient(135deg, var(--auth-gradient-from), var(--auth-gradient-to));
 }
 
 /* No explicit min-width/min-height override here — the global

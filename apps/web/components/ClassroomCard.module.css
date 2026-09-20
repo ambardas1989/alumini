@@ -12,10 +12,17 @@
 
 .card:hover {
   border-color: var(--color-primary-mid);
+  box-shadow: 0 1px 6px rgba(18, 6, 58, 0.06);
+}
+
+.card:active {
+  transform: scale(0.99);
 }
 
 .institution {
-  font-size: 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--color-text-muted);
   margin-bottom: 3px;
 }
@@ -36,5 +43,10 @@
 
 .stat {
   font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.chevron {
+  flex-shrink: 0;
   color: var(--color-text-muted);
 }

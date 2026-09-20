@@ -287,3 +287,129 @@ video {
 .auth-google-button:hover:not(:disabled) {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
+
+/**
+ * ── TASK 10 PART A — shared card/badge/chip/avatar/tag utility classes ──
+ * Plain (non-CSS-Module) global classes, usable directly in JSX className
+ * or composed with a component's own CSS-module classes via a template
+ * string — same pattern as .auth-input/.auth-primary-button above. Existing
+ * per-component *.module.css badge/card-ish styles (Badge.module.css,
+ * ClassroomCard.module.css, admin's Tab.module.css, ...) are left as-is
+ * rather than force-migrated everywhere in one pass — these are additive,
+ * for anything reaching for a plain card/badge/chip/avatar next.
+ */
+.card {
+  background: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  padding: 14px;
+  transition: border-color 0.15s;
+}
+.card:hover {
+  border-color: var(--color-text-muted);
+}
+.card-sm {
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+.card-lg {
+  padding: 18px 20px;
+  border-radius: 14px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-verified {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+.badge-pending {
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+}
+.badge-early {
+  background: var(--color-info-light);
+  color: var(--color-info);
+}
+.badge-rejected {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+.badge-teacher {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+.badge-admin {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+.badge-neutral {
+  background: var(--color-cream);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.chip {
+  padding: 5px 14px;
+  border-radius: 99px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip-active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.avatar {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.avatar-sm {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+}
+.avatar-md {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+.avatar-lg {
+  width: 44px;
+  height: 44px;
+  font-size: 16px;
+}
+.avatar-xl {
+  width: 56px;
+  height: 56px;
+  font-size: 20px;
+}
+
+.tag {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tag-dot::before {
+  content: '·';
+  margin: 0 2px;
+}
