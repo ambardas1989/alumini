@@ -32,12 +32,15 @@ import styles from './page.module.css';
 const POLL_INTERVAL_MS = 5000;
 const SCROLL_BOTTOM_THRESHOLD_PX = 60;
 const MEMBER_STATS_MAX_PAGES = 8; // caps at 200 members — see loadMemberStats()'s own comment
-// FRONTEND FIX 2: pollOnce() used to retry forever on failure — a channel
-// that consistently 403'd/500'd (e.g. the PGRST201 bug, or the role
-// mismatch above) meant an open tab made one request every 5s indefinitely
-// (200+ requests inside 20 minutes). Stop after this many CONSECUTIVE
-// failures and require an explicit manual retry instead.
+// FRONTEND FIX 2 / TASKS_03 TASK 03 step 3: pollOnce() used to retry every
+// POLL_INTERVAL_MS forever on failure — a channel that consistently
+// 403'd/500'd (e.g. the PGRST201 bug, or a role mismatch) meant an open tab
+// made one request every 5s indefinitely (200+ requests inside 20 minutes).
+// Now backs off exponentially (1s, 2s, 4s) across up to MAX_POLL_FAILURES
+// consecutive misses, then stops scheduling entirely and requires an
+// explicit manual retry — never auto-retries indefinitely.
 const MAX_POLL_FAILURES = 3;
+const POLL_BACKOFF_MS = [1000, 2000, 4000];
 
 type ClassroomDetail = Classroom & { institution: Institution };
 
@@ -127,7 +130,7 @@ export default function ClassroomPage() {
 
   // FRONTEND FIX 2 — see MAX_POLL_FAILURES above.
   const pollFailureCountRef = useRef(0);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pollingStopped, setPollingStopped] = useState(false);
 
   const [members, setMembers] = useState<ClassroomMember[]>([]);
@@ -293,46 +296,51 @@ export default function ClassroomPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classroom, membership.isMember, activeChannel, canAccessActive]);
 
-  const pollOnce = useCallback(async () => {
-    if (!classroom) return;
+  // Returns the delay (ms) before the NEXT poll should run: the steady
+  // 5s cadence after a clean poll, or the next exponential-backoff step
+  // (1s/2s/4s) after a failure — null once MAX_POLL_FAILURES is reached,
+  // meaning "stop, don't schedule anything else."
+  const pollOnce = useCallback(async (): Promise<number | null> => {
+    if (!classroom) return null;
     try {
       const data = await api.getMessages(classroom.id, activeChannel, 0);
       pollFailureCountRef.current = 0;
       const fresh = toAscending(data, classroom.id, activeChannel);
       const knownIds = new Set(messagesRef.current.filter((m) => !m.clientId).map((m) => m.id));
       const newOnes = fresh.filter((m) => !knownIds.has(m.id));
-      if (newOnes.length === 0) return;
+      if (newOnes.length > 0) {
+        setMessages((prev) => [...prev, ...newOnes]);
 
-      setMessages((prev) => [...prev, ...newOnes]);
+        if (isScrolledToBottomRef.current) {
+          requestAnimationFrame(() => {
+            const el = listRef.current;
+            if (el) el.scrollTop = el.scrollHeight;
+          });
+        } else {
+          setNewMessageCount((n) => n + newOnes.length);
+        }
 
-      if (isScrolledToBottomRef.current) {
-        requestAnimationFrame(() => {
-          const el = listRef.current;
-          if (el) el.scrollTop = el.scrollHeight;
-        });
-      } else {
-        setNewMessageCount((n) => n + newOnes.length);
+        // A new event_card message means a new event exists — refresh the map.
+        if (newOnes.some((m) => m.messageType === MessageType.EVENT_CARD)) {
+          loadEvents();
+        }
       }
-
-      // A new event_card message means a new event exists — refresh the map.
-      if (newOnes.some((m) => m.messageType === MessageType.EVENT_CARD)) {
-        loadEvents();
-      }
+      return POLL_INTERVAL_MS;
     } catch (err) {
-      // Silent to the UI (per-poll) — a single blip shouldn't interrupt the
-      // reading experience with an error banner — but still logged for
+      // Silent to the UI per-attempt — a single blip shouldn't interrupt
+      // the reading experience with an error banner — but still logged for
       // debugging, and counted: after MAX_POLL_FAILURES consecutive misses
-      // this stops polling entirely rather than retrying forever (FIX 2).
+      // (each retried sooner than the last via POLL_BACKOFF_MS) this stops
+      // polling entirely rather than retrying forever (FIX 2).
       // eslint-disable-next-line no-console
       console.error('[CLASSROOM-ERROR] Poll failed', { classroomId: classroom.id, channel: activeChannel, err });
+      const attempt = pollFailureCountRef.current;
       pollFailureCountRef.current += 1;
       if (pollFailureCountRef.current >= MAX_POLL_FAILURES) {
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
         setPollingStopped(true);
+        return null;
       }
+      return POLL_BACKOFF_MS[attempt] ?? POLL_BACKOFF_MS[POLL_BACKOFF_MS.length - 1]!;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classroom, activeChannel]);
@@ -340,25 +348,28 @@ export default function ClassroomPage() {
   useEffect(() => {
     if (!classroom || !membership.isMember || !canAccessActive || pollingStopped) return;
 
-    const start = () => {
-      if (pollIntervalRef.current) return;
-      pollIntervalRef.current = setInterval(pollOnce, POLL_INTERVAL_MS);
-    };
-    const stop = () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
+    let cancelled = false;
+
+    const scheduleNext = (delayMs: number) => {
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = setTimeout(async () => {
+        if (cancelled || document.visibilityState !== 'visible') {
+          // Tab is hidden — don't burn a request, just check again shortly
+          // once it might be visible instead of firing blind.
+          if (!cancelled) scheduleNext(POLL_INTERVAL_MS);
+          return;
+        }
+        const nextDelay = await pollOnce();
+        if (!cancelled && nextDelay !== null) scheduleNext(nextDelay);
+      }, delayMs);
     };
 
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') start();
-      else stop();
-    };
+    scheduleNext(POLL_INTERVAL_MS);
 
-    if (document.visibilityState === 'visible') start();
-    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
-      stop();
-      document.removeEventListener('visibilitychange', handleVisibility);
+      cancelled = true;
+      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
     };
   }, [classroom, membership.isMember, activeChannel, canAccessActive, pollingStopped, pollOnce]);
 

@@ -92,7 +92,7 @@ Commit: "fix: session expired banner only shows when URL param is set"
 
 ---
 
-## TASK 03 — Fix: PGRST201 messages and members queries [PENDING]
+## TASK 03 — Fix: PGRST201 messages and members queries [DONE: steps 1-2 (FK hints on corridor.service.ts's messages query and classroom.service.ts's getMembers() — memberships has no separate members query of its own in membership.service.ts) were already fixed in a prior session. Step 3: upgraded the classroom page's failed-poll retry from a flat "stop after 3 tries" to real exponential backoff (1s/2s/4s) between attempts — a setTimeout self-scheduler replacing the old setInterval, still capped at MAX_POLL_FAILURES=3 consecutive misses before requiring a manual Retry, still never auto-retrying indefinitely.]
 
 Both corridor and classroom queries fail with:
 PGRST201 — ambiguous foreign key to profiles table.
