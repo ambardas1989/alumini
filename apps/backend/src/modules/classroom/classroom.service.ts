@@ -35,6 +35,18 @@ import { CreateClassroomDto } from './dto/create-classroom.dto';
 import { UpdateClassroomDto } from './dto/update-classroom.dto';
 import { Request } from 'express';
 
+/**
+ * PostgREST column aliasing (`camelName:snake_column`) so query results
+ * come back matching apps/web's Classroom type directly — see the BUG FIX
+ * comment on createClassroom()'s insert().select() for why this exists
+ * instead of the plain `*`/`.select()` this file used before.
+ */
+const CLASSROOM_SELECT_COLUMNS =
+  'id, globalId:global_id, institutionId:institution_id, name, batchYear:batch_year, grade, section, program, hasStaffRoom:has_staff_room, hasStudentAlley:has_student_alley, requireVerification:require_verification, createdBy:created_by, memberCount:member_count, createdAt:created_at';
+
+/** Same reasoning as CLASSROOM_SELECT_COLUMNS, for the institution row joined into getByGlobalId()/getById(). */
+const INSTITUTION_JOIN_COLUMNS = 'id, name, slug, type, cityCode:city_code, countryCode:country_code';
+
 @Injectable()
 export class ClassroomService {
   private readonly logger = new Logger(ClassroomService.name);
@@ -124,6 +136,20 @@ export class ClassroomService {
     }
 
     // 4. Create the classroom
+    //
+    // BUG FIX: this used to be a plain .select() (no column list), which
+    // returns Supabase's raw snake_case row shape (global_id, batch_year,
+    // ...) — but every consumer of this response (apps/web's Classroom
+    // type, and this exact method's own callers) expects camelCase
+    // (globalId, batchYear, ...). TypeScript's `as T` cast in the
+    // frontend's request() never actually checks this at runtime, so
+    // `classroom.globalId` silently read as `undefined` and
+    // `router.push('/classroom/undefined')` followed. Aliasing the
+    // select (`camelName:snake_column`) has PostgREST return the exact
+    // shape the frontend already expects, so no frontend change is
+    // needed — see CLASSROOM_SELECT_COLUMNS below, shared with
+    // getByGlobalId()/getById() so the same fix covers loading a
+    // classroom back after creating it.
     const { data: classroom, error: createError } = await this.supabase
       .from('classrooms')
       .insert({
@@ -139,7 +165,7 @@ export class ClassroomService {
         require_verification: dto.requireVerification ?? true,
         created_by:           creatorId,
       })
-      .select()
+      .select(CLASSROOM_SELECT_COLUMNS)
       .single();
 
     if (createError || !classroom) {
@@ -202,9 +228,9 @@ export class ClassroomService {
     const { data, error } = await this.supabase
       .from('classrooms')
       .select(`
-        *,
+        ${CLASSROOM_SELECT_COLUMNS},
         institution:institutions (
-          id, name, slug, type, city_code, country_code
+          ${INSTITUTION_JOIN_COLUMNS}
         )
       `)
       .eq('global_id', globalId.toUpperCase())
@@ -304,9 +330,9 @@ export class ClassroomService {
     const { data, error } = await this.supabase
       .from('classrooms')
       .select(`
-        *,
+        ${CLASSROOM_SELECT_COLUMNS},
         institution:institutions (
-          id, name, slug, type, city_code, country_code
+          ${INSTITUTION_JOIN_COLUMNS}
         )
       `)
       .eq('id', classroomId)

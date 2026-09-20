@@ -78,15 +78,34 @@ describe('ClassroomService', () => {
     type: 'school',
   };
 
+  // Matches CLASSROOM_SELECT_COLUMNS' aliased shape — createClassroom(),
+  // getByGlobalId(), and getById() all now request columns aliased to
+  // this camelCase shape (see the BUG FIX comment on the service's
+  // CLASSROOM_SELECT_COLUMNS constant), so this simulates what a real
+  // aliased PostgREST response looks like, not the raw table row.
   const mockClassroom = {
     id: 'class-001',
-    global_id: 'IN-KOL-MPBIRLA-9A-2012',
-    institution_id: 'inst-001',
+    globalId: 'IN-KOL-MPBIRLA-9A-2012',
+    institutionId: 'inst-001',
     name: 'MP Birla Class 9A 2012',
-    batch_year: 2012,
+    batchYear: 2012,
     grade: '9',
     section: 'A',
-    member_count: 0,
+    memberCount: 0,
+  };
+
+  // The institution row as joined into getByGlobalId()/getById() — also
+  // aliased (INSTITUTION_JOIN_COLUMNS). Distinct from mockInstitution
+  // above, which simulates createClassroom()'s own separate, unaliased
+  // institution lookup (it only ever reads institution.country_code/
+  // city_code directly, not through the join).
+  const mockJoinedInstitution = {
+    id: 'inst-001',
+    name: 'MP Birla',
+    slug: 'MPBIRLA',
+    type: 'school',
+    cityCode: 'KOL',
+    countryCode: 'IN',
   };
 
   beforeEach(async () => {
@@ -134,7 +153,7 @@ describe('ClassroomService', () => {
 
       const result = await service.createClassroom('user-123', validDto as any);
 
-      expect(result.global_id).toBe('IN-KOL-MPBIRLA-9A-2012');
+      expect(result.globalId).toBe('IN-KOL-MPBIRLA-9A-2012');
     });
 
     it('should throw BadRequestException when neither grade nor program is provided', async () => {
@@ -212,7 +231,7 @@ describe('ClassroomService', () => {
         type: 'university',
       };
 
-      const uniClassroom = { ...mockClassroom, id: 'class-002', global_id: 'US-UCDAVIS-MBA-2025' };
+      const uniClassroom = { ...mockClassroom, id: 'class-002', globalId: 'US-UCDAVIS-MBA-2025' };
 
       const uniDto = {
         institutionId:   'inst-002',
@@ -231,7 +250,7 @@ describe('ClassroomService', () => {
       });
 
       const result = await service.createClassroom('user-123', uniDto as any);
-      expect(result.global_id).toBe('US-UCDAVIS-MBA-2025');
+      expect(result.globalId).toBe('US-UCDAVIS-MBA-2025');
     });
   });
 
@@ -240,12 +259,13 @@ describe('ClassroomService', () => {
   describe('getByGlobalId()', () => {
     it('should return classroom with institution details', async () => {
       mockTables({
-        classrooms: chain({ data: { ...mockClassroom, institution: mockInstitution }, error: null }),
+        classrooms: chain({ data: { ...mockClassroom, institution: mockJoinedInstitution }, error: null }),
       });
 
       const result = await service.getByGlobalId('IN-KOL-MPBIRLA-9A-2012');
-      expect(result.global_id).toBe('IN-KOL-MPBIRLA-9A-2012');
+      expect(result.globalId).toBe('IN-KOL-MPBIRLA-9A-2012');
       expect(result.institution).toBeDefined();
+      expect((result.institution as any).cityCode).toBe('KOL');
     });
 
     it('should throw NotFoundException when classroom does not exist', async () => {
@@ -258,7 +278,7 @@ describe('ClassroomService', () => {
   describe('getById()', () => {
     it('should return classroom with institution details', async () => {
       mockTables({
-        classrooms: chain({ data: { ...mockClassroom, institution: mockInstitution }, error: null }),
+        classrooms: chain({ data: { ...mockClassroom, institution: mockJoinedInstitution }, error: null }),
       });
 
       const result = await service.getById('class-001');
