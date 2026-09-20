@@ -144,7 +144,7 @@ export default function ClassroomPage() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [earlyMemberBannerDismissed, setEarlyMemberBannerDismissed] = useState(false);
+  const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
 
   // ── Load classroom + membership ─────────────────────────────────────────
   //
@@ -182,21 +182,22 @@ export default function ClassroomPage() {
     loadClassroomAndMembership();
   }, [ready, loadClassroomAndMembership]);
 
-  const earlyMemberBannerKey = `alumini_early_member_banner_dismissed_${globalId}`;
+  // TASKS_03.md TASK 09 — exact key format the spec requires.
+  const verifyBannerKey = `dismissed_verify_banner_${globalId}`;
 
   useEffect(() => {
     try {
-      setEarlyMemberBannerDismissed(window.localStorage.getItem(earlyMemberBannerKey) === '1');
+      setVerifyBannerDismissed(window.localStorage.getItem(verifyBannerKey) === '1');
     } catch {
       // localStorage unavailable (private mode, etc.) — banner just stays visible.
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [globalId]);
 
-  const dismissEarlyMemberBanner = () => {
-    setEarlyMemberBannerDismissed(true);
+  const dismissVerifyBanner = () => {
+    setVerifyBannerDismissed(true);
     try {
-      window.localStorage.setItem(earlyMemberBannerKey, '1');
+      window.localStorage.setItem(verifyBannerKey, '1');
     } catch {
       // Best-effort — worst case it reappears next visit.
     }
@@ -572,15 +573,18 @@ export default function ClassroomPage() {
         />
       ) : (
         <div className={styles.channelBody}>
-          {membership.verificationStatus === 'pending_auto' && !earlyMemberBannerDismissed && (
-            <div className={styles.earlyMemberBanner}>
-              <span>{tMembership('earlyMemberBanner')}</span>
-              <a href={`/verify?classroomId=${globalId}`}>{tMembership('verifyNow')}</a>
-              <button type="button" className={styles.dismissButton} onClick={dismissEarlyMemberBanner} aria-label={tCommon('dismiss')}>
-                ✕
-              </button>
-            </div>
-          )}
+          {(membership.verificationStatus === 'pending' || membership.verificationStatus === 'pending_auto') &&
+            !verifyBannerDismissed && (
+              <div className={styles.verifyNudgeBanner}>
+                <span>
+                  {tMembership('verifyNudge')}{' '}
+                  <a href={`/verify?classroomId=${globalId}`}>{tMembership('completeVerification')}</a>
+                </span>
+                <button type="button" className={styles.dismissButton} onClick={dismissVerifyBanner} aria-label={tCommon('dismiss')}>
+                  ✕
+                </button>
+              </div>
+            )}
 
           {showRedactedBanner && (
             <div className={styles.verifyBanner}>
@@ -696,6 +700,7 @@ export default function ClassroomPage() {
           members={members}
           currentUserId={user.id}
           viewerIsVerified={membership.isVerified}
+          creatorId={classroom.createdBy}
           onClose={() => setShowMemberModal(false)}
         />
       )}

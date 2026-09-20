@@ -59,10 +59,11 @@
   padding-inline: 6px;
 }
 
-.roleBadge {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  text-transform: capitalize;
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-block-start: 3px;
 }
 
 .actions {
@@ -70,33 +71,4 @@
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.statusBadge {
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 700;
-  border-radius: 20px;
-  padding: 2px 8px;
-  white-space: nowrap;
-}
-
-.badgeVerified {
-  color: var(--color-success);
-  background: var(--color-success-light);
-}
-
-.badgePending {
-  color: var(--color-warning);
-  background: var(--color-warning-light);
-}
-
-.badgeEarly {
-  color: var(--color-info);
-  background: var(--color-info-light);
-}
-
-.badgeRejected {
-  color: var(--color-error);
-  background: var(--color-error-light);
 }

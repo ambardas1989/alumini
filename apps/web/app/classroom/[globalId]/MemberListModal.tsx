@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from '@/lib/useTranslations';
 import { useToast } from '@/components/providers/ToastProvider';
 import { Avatar } from '@/components/ui/Avatar';
+import { Badge, type BadgeVariant } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SheetModal } from '@/components/ui/SheetModal';
 import styles from './MemberListModal.module.css';
@@ -17,14 +18,30 @@ interface MemberListModalProps {
   members: ClassroomMember[];
   currentUserId: string;
   viewerIsVerified: boolean;
+  /** classroom.createdBy — the one member who gets the 'creator' badge alongside their role. */
+  creatorId?: string | null;
   onClose: () => void;
 }
 
 type Filter = 'all' | 'verified' | 'pending';
 
-export function MemberListModal({ classroomId, members, currentUserId, viewerIsVerified, onClose }: MemberListModalProps) {
+const ROLE_VARIANT: Record<string, BadgeVariant> = {
+  student: 'student',
+  teacher: 'teacher',
+  admin: 'admin',
+};
+
+export function MemberListModal({
+  classroomId,
+  members,
+  currentUserId,
+  viewerIsVerified,
+  creatorId,
+  onClose,
+}: MemberListModalProps) {
   const router = useRouter();
   const t = useTranslations('classroom.memberList');
+  const tStatus = useTranslations('status');
   const { showToast } = useToast();
   const [filter, setFilter] = useState<Filter>('all');
   const [vouchedIds, setVouchedIds] = useState<Set<string>>(new Set());
@@ -80,10 +97,18 @@ export function MemberListModal({ classroomId, members, currentUserId, viewerIsV
                   {member.fullName}
                   {isSelf && <span className={styles.youTag}>{t('you')}</span>}
                 </p>
-                <span className={styles.roleBadge}>{member.role}</span>
+                <div className={styles.badgeRow}>
+                  {member.userId === creatorId && <Badge variant="creator" label={tStatus('creator')} size="sm" />}
+                  <Badge variant={ROLE_VARIANT[member.role] ?? 'student'} label={tStatus(member.role)} size="sm" />
+                  <Badge
+                    variant={member.verificationStatus as BadgeVariant}
+                    label={tStatus(member.verificationStatus)}
+                    size="sm"
+                  />
+                </div>
               </div>
               <div className={styles.actions}>
-                {canVouch ? (
+                {canVouch && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -93,20 +118,6 @@ export function MemberListModal({ classroomId, members, currentUserId, viewerIsV
                   >
                     {alreadyVouched ? t('vouched') : t('vouchFor', { name: member.fullName ?? '' })}
                   </Button>
-                ) : (
-                  <span
-                    className={`${styles.statusBadge} ${
-                      member.verificationStatus === 'verified'
-                        ? styles.badgeVerified
-                        : member.verificationStatus === 'pending_auto'
-                          ? styles.badgeEarly
-                          : member.verificationStatus === 'rejected'
-                            ? styles.badgeRejected
-                            : styles.badgePending
-                    }`}
-                  >
-                    {t(`status.${member.verificationStatus}`)}
-                  </span>
                 )}
                 {!isSelf && (
                   <Button variant="ghost" size="sm" onClick={() => router.push(`/messages?userId=${member.userId}`)}>

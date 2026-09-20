@@ -32,10 +32,14 @@
     "profile": "Profile"
   },
   "status": {
-    "verified": "Verified",
-    "pending": "Pending",
-    "pending_auto": "Early member",
-    "rejected": "Rejected"
+    "verified": "✓ Verified",
+    "pending": "⏳ Pending",
+    "pending_auto": "⚡ Early member",
+    "rejected": "✗ Rejected",
+    "creator": "★ Creator",
+    "teacher": "Teacher",
+    "admin": "Admin",
+    "student": "Student"
   },
   "session": {
     "expiringTitle": "Session expiring soon",
@@ -430,12 +434,6 @@
         "verified": "Verified",
         "pending": "Pending"
       },
-      "status": {
-        "verified": "Verified",
-        "pending": "Pending",
-        "pending_auto": "Early member",
-        "rejected": "Rejected"
-      },
       "vouchFor": "Vouch for {name}",
       "vouched": "Vouched ✓",
       "vouchSent": "Vouch sent to {name}",
@@ -443,8 +441,8 @@
     }
   },
   "membership": {
-    "earlyMemberBanner": "You joined early — complete verification to become fully trusted by your batchmates.",
-    "verifyNow": "Verify now"
+    "verifyNudge": "⏳ You're not verified yet —",
+    "completeVerification": "Complete verification →"
   },
   "verification": {
     "title": "Verify your membership",

@@ -517,7 +517,7 @@ Commit: "feat: institution request flow in classroom creation and admin"
 
 ---
 
-## TASK 09 — Feature: Verification badges [PENDING]
+## TASK 09 — Feature: Verification badges [DONE: Badge.tsx rewritten with exact hex colors/labels (sm/md sizes, creator variant added); MemberListModal.tsx now shows role+verification+creator badges together (was vouch-button-OR-status, never both); verify nudge banner unified to trigger on pending+pending_auto (was pending_auto only), exact copy/colors/localStorage key dismissed_verify_banner_[classroomId]; classes/profile pages' ClassroomCard badge already existed from a prior session]
 
 Show clear verification status throughout the app.
 
