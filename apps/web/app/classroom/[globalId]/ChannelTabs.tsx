@@ -2,13 +2,11 @@
 
 import { ChannelType } from '@alumini/types';
 import { brand } from '@/lib/brand';
-import { useTranslations } from '@/lib/useTranslations';
 import styles from './ChannelTabs.module.css';
 
 interface ChannelTabsProps {
   active: ChannelType;
   onChange: (channel: ChannelType) => void;
-  onInfoClick: () => void;
 }
 
 const TABS: Array<{ channel: ChannelType; brandKey: 'main' | 'staff' | 'student' }> = [
@@ -17,16 +15,17 @@ const TABS: Array<{ channel: ChannelType; brandKey: 'main' | 'staff' | 'student'
   { channel: ChannelType.STUDENT_ALLEY, brandKey: 'student' },
 ];
 
-export function ChannelTabs({ active, onChange, onInfoClick }: ChannelTabsProps) {
-  const t = useTranslations('classroom.header');
-
+// FIX 3: the standalone "ℹ" icon that used to float between tabs (shown
+// only on the active tab) was removed — it looked out of place and wasn't
+// an obviously tappable target there. The classroom-info panel it opened
+// is now reached via the "Details" link in ClassroomHeader instead (below
+// the stats row), which is the more conventional/discoverable location.
+export function ChannelTabs({ active, onChange }: ChannelTabsProps) {
   return (
     <div className={styles.tabs} role="tablist">
       {TABS.map((tab) => {
         const isActive = tab.channel === active;
         return (
-          // Two sibling buttons, not one nested inside the other (invalid
-          // HTML) — same fix as app/page.tsx's verification nudge banner.
           <div key={tab.channel} className={`${styles.tabWrap} ${isActive ? styles.tabWrapActive : ''}`}>
             <button
               type="button"
@@ -37,16 +36,6 @@ export function ChannelTabs({ active, onChange, onInfoClick }: ChannelTabsProps)
             >
               {brand.channels[tab.brandKey]}
             </button>
-            {isActive && (
-              <button
-                type="button"
-                className={styles.infoIcon}
-                aria-label={t('channelInfo')}
-                onClick={onInfoClick}
-              >
-                ℹ
-              </button>
-            )}
           </div>
         );
       })}

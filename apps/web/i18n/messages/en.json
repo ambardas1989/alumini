@@ -340,21 +340,21 @@
     },
     "header": {
       "back": "Back",
+      "classroomBatch": "{name} · {year} batch",
       "members": "{count, plural, one {# member} other {# members}}",
       "teachers": "{count, plural, one {# teacher} other {# teachers}}",
       "verified": "{count, plural, one {# verified} other {# verified}}",
-      "yearsSince": "{years}yr",
-      "channelInfo": "Channel info"
+      "details": "Details"
     },
     "locked": {
       "staff_room": {
         "title": "Staff Room",
-        "subtitle": "This channel is for teachers only",
+        "subtitle": "This channel is for teachers only.",
         "description": "Only verified faculty can read and post here"
       },
       "student_alley": {
         "title": "Student Alley",
-        "subtitle": "This channel is for students only",
+        "subtitle": "This channel is for students only.",
         "description": "A private space for students to connect"
       }
     },
@@ -363,7 +363,7 @@
       "verifyNow": "Verify now →"
     },
     "messages": {
-      "empty": "No messages yet. Say hello!",
+      "empty": "No messages yet. Be the first to say hello!",
       "deleted": "Message deleted",
       "redacted": "Verify your membership to read messages",
       "inputPlaceholder": "Write a message...",

@@ -44,6 +44,9 @@
   font-size: var(--text-xs);
   color: rgba(255, 255, 255, 0.65);
   margin-block-start: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statsRow {
@@ -54,6 +57,19 @@
   padding-inline-start: 44px;
   margin-block-start: 4px;
   font-size: 10px;
+  color: rgba(255, 255, 255, 0.75);
+  background: none;
+  border: none;
+  text-align: start;
+  justify-content: flex-start;
+}
+
+.detailsLink {
+  flex-basis: 100%;
+  padding-inline-start: 44px;
+  margin-block-start: 2px;
+  font-size: 10px;
+  font-weight: 600;
   color: rgba(255, 255, 255, 0.75);
   background: none;
   border: none;

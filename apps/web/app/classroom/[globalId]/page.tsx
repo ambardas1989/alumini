@@ -253,6 +253,8 @@ export default function ClassroomPage() {
         if (el) el.scrollTop = el.scrollHeight;
       });
     } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[CLASSROOM-ERROR] Failed to load messages', { classroomId: classroom.id, channel: activeChannel, err });
       setMessagesError(getErrorMessage(err));
     } finally {
       setMessagesLoading(false);
@@ -290,8 +292,11 @@ export default function ClassroomPage() {
       if (newOnes.some((m) => m.messageType === MessageType.EVENT_CARD)) {
         loadEvents();
       }
-    } catch {
-      // Silent — polling failures shouldn't interrupt the reading experience with an error banner.
+    } catch (err) {
+      // Silent to the UI — polling failures shouldn't interrupt the reading
+      // experience with an error banner — but still logged for debugging.
+      // eslint-disable-next-line no-console
+      console.error('[CLASSROOM-ERROR] Poll failed', { classroomId: classroom.id, channel: activeChannel, err });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classroom, activeChannel]);
@@ -498,7 +503,7 @@ export default function ClassroomPage() {
         verifiedCount={memberStats.verifiedCount}
         onStatsClick={() => setShowInfoSheet(true)}
       />
-      <ChannelTabs active={activeChannel} onChange={setActiveChannel} onInfoClick={() => setShowInfoSheet(true)} />
+      <ChannelTabs active={activeChannel} onChange={setActiveChannel} />
 
       {!canAccessActive ? (
         <LockedChannel
@@ -533,9 +538,21 @@ export default function ClassroomPage() {
                 <LoadingSpinner size="md" />
               </div>
             )}
-            {messagesError && <ErrorMessage message={messagesError} onRetry={loadMessages} />}
+            {/* fullPage — ErrorMessage's non-fullPage variant renders bare
+                red text with no retry button at all (BUG: "never show a
+                blank page with just red error text" — this was exactly
+                that bug). Only shown for a genuine fetch failure; an empty
+                array from a successful call goes to the empty state below instead. */}
+            {messagesError && (
+              <ErrorMessage message={messagesError} onRetry={loadMessages} fullPage />
+            )}
             {!messagesLoading && !messagesError && messages.length === 0 && (
-              <p className={styles.emptyMessages}>{t('messages.empty')}</p>
+              <div className={styles.emptyMessages}>
+                <span className={styles.emptyMessagesIcon} aria-hidden="true">
+                  👋
+                </span>
+                <p>{t('messages.empty')}</p>
+              </div>
             )}
             {messages.map((message) =>
               message.messageType === MessageType.EVENT_CARD ? (

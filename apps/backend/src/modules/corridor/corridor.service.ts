@@ -215,11 +215,21 @@ export class CorridorService {
 
     const { from, to } = getRange(page, appConfig.MESSAGES_PAGE_SIZE);
 
+    // BUG FIX (FIX 1 — "Something went wrong" on every tab): `messages` has
+    // TWO foreign keys into `profiles` (sender_id and deleted_by), so a bare
+    // `sender:profiles(...)` embed is ambiguous to PostgREST — it can't tell
+    // which FK to join through and every single call to this method failed
+    // with a Supabase relationship error, regardless of channel. The
+    // `!messages_sender_id_fkey` hint disambiguates it. Same fix pattern
+    // already established in this codebase for the identical situation —
+    // see admin.service.ts's `requester:profiles!institution_requests_requested_by_fkey(...)`.
+    // (Postgres auto-names an unnamed FK constraint `<table>_<column>_fkey`
+    // — 001_initial_schema.sql never names this one explicitly.)
     const { data: messages, error } = await this.supabase
       .from('messages')
       .select(
         'id, classroom_id, channel, sender_id, content, message_type, metadata, ' +
-          'is_deleted, deleted_by, deleted_at, created_at, sender:profiles(id, full_name, avatar_url)',
+          'is_deleted, deleted_by, deleted_at, created_at, sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)',
       )
       .eq('classroom_id', classroomId)
       .eq('channel', channel)
@@ -227,8 +237,11 @@ export class CorridorService {
       .range(from, to);
 
     if (error) {
-      this.logger.error('Failed to load messages', { error, classroomId, channel });
-      throw new BadRequestException('Failed to load messages');
+      this.logger.error('[CLASSROOM-ERROR] Failed to load messages', { error, classroomId, channel });
+      throw new BadRequestException({
+        message: 'Failed to load messages',
+        error: ErrorCode.MESSAGES_LOAD_FAILED,
+      });
     }
 
     return (messages ?? []).map((m: any) => this.presentMessage(m, redact));

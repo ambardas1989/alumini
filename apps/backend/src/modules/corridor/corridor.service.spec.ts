@@ -23,7 +23,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { CorridorService } from './corridor.service';
 import { AuditService } from '../audit/audit.service';
 import { MembershipService } from '../membership/membership.service';
-import { AuditEventType, ChannelType, MessageType } from '@alumini/types';
+import { AuditEventType, ChannelType, ErrorCode, MessageType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
 import { redactName } from '@alumini/utils';
 
@@ -172,6 +172,21 @@ describe('CorridorService', () => {
 
       expect(result[0].content).toBeNull();
       expect(result[0].sender).toBeNull();
+    });
+
+    it('throws a BadRequestException carrying a recognisable ErrorCode when the query itself fails (FIX 1 regression)', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      mockTables({ messages: chain({ data: null, error: { message: 'relationship ambiguous' } }) });
+
+      let caught: BadRequestException | undefined;
+      try {
+        await service.getMessages('user-1', 'class-1', ChannelType.CLASSROOM);
+      } catch (err) {
+        caught = err as BadRequestException;
+      }
+
+      expect(caught).toBeInstanceOf(BadRequestException);
+      expect(caught!.getResponse()).toMatchObject({ error: ErrorCode.MESSAGES_LOAD_FAILED });
     });
   });
 

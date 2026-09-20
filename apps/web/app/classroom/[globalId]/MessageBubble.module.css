@@ -50,8 +50,8 @@
 }
 
 .bubbleOwn {
-  background: var(--color-primary-light);
-  color: var(--color-text-primary);
+  background: var(--color-primary);
+  color: #fff;
   border-radius: 14px 4px 14px 14px;
 }
 

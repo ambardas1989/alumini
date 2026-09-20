@@ -14,6 +14,20 @@ interface ClassroomHeaderProps {
   onStatsClick: () => void;
 }
 
+/**
+ * FIX 4 — was rendering the classroom name (e.g. "Grade 9A") as the bold
+ * top line and cramming "{institutionName} · {batchYear}" into an
+ * unprotected subtitle with no wrap/truncation guard, so a longer
+ * institution name (e.g. "KV Fort William") wrapped word-by-word with the
+ * "·" separator stranded on its own line. Institution name is now the
+ * (truncated, single-line) top line; the classroom identity + batch year
+ * moved to the subtitle, which now has the same nowrap/ellipsis guard.
+ *
+ * The old 4th stat ("{years}yr", e.g. "18yr") was ambiguous —
+ * indistinguishable from a member-style count — and now-redundant with the
+ * batch year already shown in the subtitle, so it's removed rather than
+ * relabeled.
+ */
 export function ClassroomHeader({
   name,
   institutionName,
@@ -25,7 +39,6 @@ export function ClassroomHeader({
 }: ClassroomHeaderProps) {
   const router = useRouter();
   const t = useTranslations('classroom.header');
-  const yearsSince = Math.max(0, new Date().getFullYear() - batchYear);
 
   return (
     <header className={styles.header}>
@@ -33,9 +46,9 @@ export function ClassroomHeader({
         ←
       </button>
       <div className={styles.titleBlock}>
-        <p className={styles.name}>{name}</p>
+        <p className={styles.name}>{institutionName}</p>
         <p className={styles.subtitle}>
-          {institutionName} · {batchYear}
+          {t('classroomBatch', { name, year: batchYear })}
         </p>
       </div>
       <button type="button" className={styles.statsRow} onClick={onStatsClick}>
@@ -44,8 +57,9 @@ export function ClassroomHeader({
         <span>{t('teachers', { count: teacherCount })}</span>
         <span>·</span>
         <span>{t('verified', { count: verifiedCount })}</span>
-        <span>·</span>
-        <span>{t('yearsSince', { years: yearsSince })}</span>
+      </button>
+      <button type="button" className={styles.detailsLink} onClick={onStatsClick}>
+        ⓘ {t('details')}
       </button>
     </header>
   );
