@@ -40,7 +40,8 @@
   flex-direction: column;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
+  border-radius: 14px;
+  overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
 }
 
@@ -66,6 +67,12 @@
 }
 
 .list {
+  /* flex:1 + min-height:0 is what actually makes overflow-y:auto kick in —
+     without it a flex column child won't shrink below its content height,
+     so a long notification list would grow the panel past max-height:480px
+     instead of scrolling inside it. */
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 

@@ -386,7 +386,7 @@ supabase/migrations/015_direct_messages.sql
 
 ---
 
-## TASK 07 — Feature: Notifications dropdown [PENDING]
+## TASK 07 — Feature: Notifications dropdown [DONE: bell isn't in AppShell.tsx (that file has no header at all, by design) — it's the pre-existing NotificationBell.tsx on the home page, which already matched this task's spec (state, badge, GET/POST endpoints, mark-read, empty/loading states, positioning) almost exactly; fixed one real bug — .list was missing flex:1/min-height:0 so the panel would grow past max-height:480px instead of scrolling internally — plus border-radius 12px→14px to match spec]
 
 Bell icon in AppShell has no UI. Build the dropdown.
 
