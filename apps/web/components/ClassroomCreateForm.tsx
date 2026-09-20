@@ -8,6 +8,7 @@ import { ApiError, type ClassroomConflictPayload, type InstitutionConflictPayloa
 import { getErrorMessage } from '@/lib/errors';
 import { useDebounce } from '@/lib/useDebounce';
 import { useTranslations } from '@/lib/useTranslations';
+import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -21,7 +22,7 @@ import styles from './ClassroomCreateForm.module.css';
 
 type InstitutionType = 'school' | 'college' | 'university';
 
-const MIN_QUERY_LENGTH = 2;
+const MIN_QUERY_LENGTH = 3;
 const DEBOUNCE_MS = 300;
 const MAX_RESULTS = 8;
 const MIN_BATCH_YEAR = 1950;
@@ -44,6 +45,7 @@ interface ClassroomCreateFormProps {
  * same component, so any existing link to it keeps working unchanged).
  */
 export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
+  const { user } = useAuth();
   const { showToast } = useToast();
   const t = useTranslations('classroomCreate');
   const tCommon = useTranslations('common');
@@ -76,6 +78,7 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
 
   // ── Institution request (TASK 05 — "Can't find your school?") ──────────
   const [showRequestForm, setShowRequestForm] = useState(false);
+  const [requestName, setRequestName] = useState('');
   const [requestCity, setRequestCity] = useState('');
   const [requestCountryCode, setRequestCountryCode] = useState('IN');
   const [requestWebsite, setRequestWebsite] = useState('');
@@ -159,21 +162,24 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
 
   const handleNotFound = () => {
     setShowRequestForm(true);
+    setRequestName(query.trim());
     setRequestSuccess(null);
     setRequestConflict(null);
     setRequestError(null);
   };
 
+  const canSubmitRequest = !!requestName.trim() && !!requestCity.trim();
+
   const handleSubmitRequest = async () => {
-    if (!query.trim()) return;
+    if (!canSubmitRequest) return;
     setRequesting(true);
     setRequestError(null);
     setRequestConflict(null);
     try {
       const result = await api.requestInstitution({
-        name: query.trim(),
+        name: requestName.trim(),
         type,
-        city: requestCity.trim() || undefined,
+        city: requestCity.trim(),
         countryCode: requestCountryCode.trim().toUpperCase(),
         websiteUrl: requestWebsite.trim() || undefined,
         requesterRelationship: requestRelationship,
@@ -357,17 +363,20 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
             </ul>
           )}
 
-          {!searching && debouncedQuery.trim().length >= MIN_QUERY_LENGTH && !showRequestForm && (
-            <button type="button" className={styles.notFound} onClick={handleNotFound}>
-              {t('notFound')}
-            </button>
+          {!searching && results.length === 0 && debouncedQuery.trim().length >= MIN_QUERY_LENGTH && !showRequestForm && (
+            <div className={styles.notFoundWrap}>
+              <p className={styles.notFoundText}>{t('notFound')}</p>
+              <button type="button" className={styles.notFound} onClick={handleNotFound}>
+                {t('requestForm.cta')}
+              </button>
+            </div>
           )}
 
           {showRequestForm && (
             <div className={styles.requestForm}>
               {requestSuccess ? (
                 <div className={styles.requestSuccess}>
-                  <p>{t('requestForm.successMessage')}</p>
+                  <p>{t('requestForm.successMessage', { email: user?.email ?? '' })}</p>
                   <p className={styles.requestId}>{t('requestForm.requestId', { id: requestSuccess.requestId })}</p>
                 </div>
               ) : requestConflict ? (
@@ -379,8 +388,16 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                 </div>
               ) : (
                 <>
-                  <p className={styles.requestFormTitle}>{t('requestForm.title', { name: query.trim() })}</p>
-                  <Input label={t('requestForm.cityLabel')} value={requestCity} onChange={(e) => setRequestCity(e.target.value)} />
+                  <Input
+                    label={t('requestForm.nameLabel')}
+                    value={requestName}
+                    onChange={(e) => setRequestName(e.target.value)}
+                  />
+                  <Input
+                    label={t('requestForm.cityLabel')}
+                    value={requestCity}
+                    onChange={(e) => setRequestCity(e.target.value)}
+                  />
                   <Input
                     label={t('requestForm.countryLabel')}
                     value={requestCountryCode}
@@ -388,6 +405,7 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                   />
                   <Input
                     label={t('requestForm.websiteLabel')}
+                    placeholder="https://..."
                     value={requestWebsite}
                     onChange={(e) => setRequestWebsite(e.target.value)}
                   />
@@ -405,11 +423,24 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                     value={requestNotes}
                     onChange={(e) => setRequestNotes(e.target.value)}
                     rows={3}
+                    maxLength={500}
                   />
                   {requestError && <ErrorMessage message={requestError} />}
-                  <Button variant="primary" size="md" fullWidth loading={requesting} onClick={handleSubmitRequest}>
-                    {t('requestForm.submit')}
-                  </Button>
+                  <div className={styles.requestFormActions}>
+                    <Button variant="ghost" size="md" onClick={() => setShowRequestForm(false)} disabled={requesting}>
+                      {tCommon('cancel')}
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="md"
+                      fullWidth
+                      disabled={!canSubmitRequest}
+                      loading={requesting}
+                      onClick={handleSubmitRequest}
+                    >
+                      {t('requestForm.submit')}
+                    </Button>
+                  </div>
                 </>
               )}
             </div>

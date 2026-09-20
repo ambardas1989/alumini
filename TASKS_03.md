@@ -457,7 +457,7 @@ Commit: "feat: notifications dropdown with mark-read"
 
 ---
 
-## TASK 08 — Feature: Institution request flow [PENDING]
+## TASK 08 — Feature: Institution request flow [DONE: ClassroomCreateForm.tsx + admin/InstitutionRequestsTab.tsx already existed (prior session) and mostly matched spec; fixed real bugs — "Can't find your school?" link showed even when results WERE found (missing results.length===0 check), min-chars was 2 not 3, name/city weren't real required form fields (submit used raw query, no city validation), success message didn't include userEmail; kept country as ISO-2 code (not "India" text) since backend DTO requires it]
 
 When creating a classroom, allow users to request a new
 institution if theirs is not in the database.

@@ -78,9 +78,21 @@
   flex-shrink: 0;
 }
 
-.notFound {
+.notFoundWrap {
   align-self: center;
   margin-block-start: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.notFoundText {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.notFound {
   background: none;
   border: none;
   color: var(--color-primary);
@@ -98,10 +110,10 @@
   background: var(--color-cream);
 }
 
-.requestFormTitle {
-  font-size: var(--text-sm);
-  font-weight: 700;
-  color: var(--color-text-primary);
+.requestFormActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .requestSuccess,

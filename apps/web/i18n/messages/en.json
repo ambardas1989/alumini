@@ -295,7 +295,8 @@
     "notFound": "Can't find your school?",
     "notFoundToast": "We don't have this one yet — tell us at {email} and we'll add it.",
     "requestForm": {
-      "title": "Request \"{name}\"",
+      "cta": "Request it to be added →",
+      "nameLabel": "Institution name",
       "cityLabel": "City",
       "countryLabel": "Country code",
       "websiteLabel": "Website URL (optional)",
@@ -307,7 +308,7 @@
       },
       "notesLabel": "Notes (optional)",
       "submit": "Submit request",
-      "successMessage": "Thanks! We'll review your request within 24-48 hours and notify you when approved.",
+      "successMessage": "Request submitted! We'll review it within 24-48 hours and notify you at {email} when approved.",
       "requestId": "Request ID: {id}",
       "conflictMessage": "A similar institution already exists: {name}.",
       "useExisting": "Use this institution →"
@@ -696,7 +697,7 @@
     },
     "institutionRequests": {
       "empty": {
-        "title": "No pending requests",
+        "title": "No pending institution requests.",
         "description": "New institution requests will appear here."
       },
       "requestedBy": "Requested by {name}",
