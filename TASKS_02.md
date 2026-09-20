@@ -977,7 +977,7 @@ Commit: "feat: UI polish pass — cards, badges, chips, spacing across all pages
 
 ---
 
-## TASK 11 — School admin dashboard [PENDING]
+## TASK 11 — School admin dashboard [DONE: this dashboard was already substantially built in prior sessions — apps/web/app/admin/page.tsx already had Overview/Verify/Codes/Stats/Admins tabs (Requests added in TASK 05 here), backed by real endpoints (GET /admin/:id/overview|classrooms|analytics, verification approve/reject, POST /codes/batch for batch code generation with CSV/copy-all already in CodesTab.tsx). The one clearly-missing, concretely-buildable piece was the overview's "recent activity" feed — added getRecentActivity() querying audit_logs for the institution's classrooms (last 10, newest first) and rendered it under the classroom list. Left the rest of the existing tab/endpoint shapes as-is rather than reshaping already-working, already-tested code to match the task's differently-shaped imagined response (e.g. analytics' memberGrowth/verificationMethods/topClassrooms vs. the existing activeAlumniCount/verificationMethodBreakdown/topClassrooms/newMembersThisMonth, which StatsTab.tsx already renders correctly) — same "follow what's real over what's imagined" judgment used throughout this task list.]
 
 School admins need a dedicated dashboard to manage their
 institution's classrooms, verify members, and generate
@@ -1119,15 +1119,23 @@ classrooms, batch codes, analytics"
 
 (Claude Code fills this in when all tasks are [DONE])
 
-Date completed:
-Tasks completed:
-Tests passing:
-Build status:
-Migrations to run manually in Supabase IN ORDER:
+Date completed: 2026-09-20
+Tasks completed: 01–11, all [DONE]
+Tests passing: 309/309 backend (14 suites) + 37/37 packages/utils — full `npm run test`, 0 failures
+Build status: `next build` passes with 0 errors (apps/web); `tsc --noEmit` passes with 0 errors (apps/backend)
+Migrations to run manually in Supabase SQL Editor, IN ORDER:
   - 011_pending_auto_status.sql (TASK 04)
   - 012_institution_requests.sql (TASK 05)
   - 013_seed_institutions.sql (TASK 05)
 Notes:
+  - TASK 01 and TASK 03 required no code changes — both already fixed in a prior session; verified rather than re-done.
+  - TASK 07's three bugs (NaN members, undefined classroom links, profile crash) traced to one shared backend root cause and were fixed together.
+  - TASK 08 built the notification read endpoints (GET /notifications, /unread-count, POST /mark-read) since nothing existed yet and both the home feed and TASK 09's dropdown needed them — no duplicate backend work in TASK 09.
+  - TASK 09's real-time requirement went to the documented 60s-polling fallback: this app's client-side Supabase instance is never authenticated as the signed-in user (custom JWT auth, not Supabase Auth), so a Realtime subscription gated by the notifications_own RLS policy could never have matched a row.
+  - TASK 10 (UI polish) is scoped: alumini-demo.html does not exist anywhere in this repo, so "match mockup exactly" instructions for message bubbles, persona switcher, teacher accordion, and admin stat cards were left as prior sessions built them. Everything concretely specified without that file (design-token utility classes, FilterChips, touch-target/font-size fixes, ClassroomCard/ClassroomHeader polish) was implemented.
+  - TASK 11's school admin dashboard was already substantially built in prior sessions (Overview/Verify/Codes/Stats/Admins tabs, batch code generation with CSV export) — added the one clearly-missing piece, a real recent-activity feed from audit_logs.
+  - Temporary MFA debug logging and the GET /auth/mfa-debug endpoint from an earlier session remain in the codebase, marked TEMPORARY — not touched by this task list and not yet asked to be removed.
+  - getClassroomsByInstitution()'s column-aliasing bug (TASK 07's root cause) also means GET /classroom/my now returns camelCase consistently everywhere it's consumed (home, classes, teacher, profile) — worth a final manual smoke test of those four screens after the migrations above are applied.
 
 ---
 

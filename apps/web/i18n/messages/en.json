@@ -714,7 +714,8 @@
         "title": "No classrooms yet",
         "description": "Classrooms at this institution will appear here."
       },
-      "memberSummary": "{verified} verified · {pending} pending · {total} total"
+      "memberSummary": "{verified} verified · {pending} pending · {total} total",
+      "recentActivity": "Recent activity"
     },
     "verify": {
       "empty": {

@@ -672,12 +672,22 @@ export function getPremiumFeatures(): Promise<unknown[]> {
 
 // ── ADMIN ────────────────────────────────────────────────────────────────
 
+export interface AdminActivityEntry {
+  id: string;
+  eventType: string;
+  actorId: string | null;
+  classroomId: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 export interface AdminOverview {
   totalClassrooms: number;
   totalVerifiedMembers: number;
   pendingVerifications: number;
   activeCodes: number;
   totalAdmins: number;
+  recentActivity: AdminActivityEntry[];
 }
 
 export function getOverview(institutionId: string): Promise<AdminOverview> {

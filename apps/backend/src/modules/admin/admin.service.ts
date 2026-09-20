@@ -156,7 +156,42 @@ export class AdminService {
       pendingVerifications,
       activeCodes:        await this.countActiveCodes(institutionId),
       totalAdmins:        totalAdminsResult.count ?? 0,
+      recentActivity:     await this.getRecentActivity(classroomIds),
     };
+  }
+
+  /**
+   * TASK 11's "recentActivity: last 10 events across classrooms" — audit_logs
+   * rows whose target is one of this institution's classrooms, newest first.
+   * Not every AuditEventType carries a classroom as its target (e.g. auth
+   * events target a user), so this is necessarily a subset of "everything
+   * that happened," not literally everything — the same scoping getOverview()
+   * already applies to member/verification counts above.
+   */
+  private async getRecentActivity(classroomIds: string[]) {
+    if (classroomIds.length === 0) return [];
+
+    const { data, error } = await this.supabase
+      .from('audit_logs')
+      .select('id, event_type, actor_id, target_id, metadata, created_at')
+      .eq('target_type', 'classroom')
+      .in('target_id', classroomIds)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      this.logger.error('Failed to load recent activity', { error });
+      return [];
+    }
+
+    return (data ?? []).map((row) => ({
+      id: row.id,
+      eventType: row.event_type,
+      actorId: row.actor_id,
+      classroomId: row.target_id,
+      metadata: row.metadata,
+      createdAt: row.created_at,
+    }));
   }
 
   // ── Classrooms view ──────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatNumber } from '@/lib/format';
+import { formatNumber, formatRelativeTime } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -15,6 +15,16 @@ import tabStyles from './Tab.module.css';
 
 interface OverviewTabProps {
   institutionId: string;
+}
+
+// event_type values are dotted (e.g. "classroom.joined") — colliding with
+// next-intl's own dot-based nested-key lookup, so this stays a plain JS
+// transform rather than going through i18n for something this mechanical.
+function humanizeEventType(eventType: string): string {
+  return eventType
+    .split('.')
+    .join(' ')
+    .replace(/^./, (c) => c.toUpperCase());
 }
 
 export function OverviewTab({ institutionId }: OverviewTabProps) {
@@ -113,6 +123,18 @@ export function OverviewTab({ institutionId }: OverviewTabProps) {
       <Button variant="secondary" size="md" fullWidth onClick={() => router.push('/classroom/create')}>
         {t('addClass')}
       </Button>
+
+      {overview.recentActivity.length > 0 && (
+        <>
+          <p className={tabStyles.sectionLabel}>{t('recentActivity')}</p>
+          {overview.recentActivity.map((entry) => (
+            <div key={entry.id} className={styles.activityRow}>
+              <span className={styles.activityText}>{humanizeEventType(entry.eventType)}</span>
+              <span className={styles.activityTime}>{formatRelativeTime(entry.createdAt)}</span>
+            </div>
+          ))}
+        </>
+      )}
     </>
   );
 }

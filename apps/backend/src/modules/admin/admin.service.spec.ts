@@ -37,7 +37,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'update', 'eq', 'in', 'gte', 'order', 'range'].forEach((method) => {
+  ['select', 'insert', 'update', 'eq', 'in', 'gte', 'order', 'range', 'limit'].forEach((method) => {
     builder[method] = jest.fn(() => builder);
   });
   builder.single = jest.fn(() => Promise.resolve(next()));
@@ -118,7 +118,33 @@ describe('AdminService', () => {
         pendingVerifications: 0,
         activeCodes: 0,
         totalAdmins: 3,
+        recentActivity: [],
       });
+    });
+
+    it('includes recent activity for the institution\'s classrooms', async () => {
+      mockTables({
+        personas: chain({ data: { id: 'p1' }, error: null }, { data: null, error: null, count: 1 }),
+        classrooms: chain(
+          { data: [{ id: 'c1' }], error: null },
+          { data: null, error: null, count: 1 },
+        ),
+        memberships: chain({ data: null, error: null, count: 5 }),
+        verifications: chain({ data: null, error: null, count: 0 }),
+        institution_codes: chain({ data: [], error: null }),
+        audit_logs: chain({
+          data: [
+            { id: 'log1', event_type: 'classroom.joined', actor_id: 'u1', target_id: 'c1', metadata: { role: 'student' }, created_at: '2024-01-01' },
+          ],
+          error: null,
+        }),
+      });
+
+      const result = await service.getOverview('admin-1', 'inst-1');
+
+      expect(result.recentActivity).toEqual([
+        { id: 'log1', eventType: 'classroom.joined', actorId: 'u1', classroomId: 'c1', metadata: { role: 'student' }, createdAt: '2024-01-01' },
+      ]);
     });
   });
 
