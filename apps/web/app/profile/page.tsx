@@ -7,6 +7,7 @@ import type { Classroom, Institution, Profile } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { clearSession } from '@/lib/auth';
+import { formatDate } from '@/lib/format';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useToast } from '@/components/providers/ToastProvider';
@@ -53,6 +54,8 @@ export default function ProfilePage() {
 
   const [showMfaResetConfirm, setShowMfaResetConfirm] = useState(false);
   const [mfaResetSending, setMfaResetSending] = useState(false);
+
+  const [passwordResetSending, setPasswordResetSending] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,12 +121,25 @@ export default function ProfilePage() {
     setMfaResetSending(true);
     try {
       await api.requestMfaRecovery(profile.email);
-      showToast(t('security.resetSentToast'), 'success');
+      showToast(t('account.resetSentToast'), 'success');
     } catch {
       // requestMfaRecovery() always resolves 200 from the backend's own privacy-preserving design — this is unreachable in practice.
     } finally {
       setMfaResetSending(false);
       setShowMfaResetConfirm(false);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!profile) return;
+    setPasswordResetSending(true);
+    try {
+      await api.forgotPassword(profile.email);
+      showToast(t('account.resetLinkSentToast'), 'success');
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setPasswordResetSending(false);
     }
   };
 
@@ -158,14 +174,7 @@ export default function ProfilePage() {
     );
   }
 
-  // "location" doesn't exist anywhere in the Profile schema/UpdateProfileDto
-  // (packages/types' Profile interface has no such field) — dropped from
-  // both view and edit mode rather than shown as an input that silently
-  // discards whatever's typed into it on save. Profile-completion below is
-  // adjusted to 3 real fields instead of the spec's 4 (name/location/phone/
-  // linkedin at 25% each) for the same reason.
-  const filledCount = [profile.fullName, profile.phone, profile.linkedinUrl].filter(Boolean).length;
-  const completionPercent = Math.round((filledCount / 3) * 100);
+  const verifiedCount = classrooms.filter((c) => c.verificationStatus === 'verified').length;
 
   return (
     <AppShell>
@@ -181,6 +190,10 @@ export default function ProfilePage() {
             <>
               <Avatar avatarUrl={profile.avatarUrl} fullName={profile.fullName} size="xl" />
               <p className={styles.name}>{profile.fullName}</p>
+              <p className={styles.email}>{profile.email}</p>
+              <p className={styles.memberSince}>
+                {t('memberSince', { date: formatDate(profile.createdAt, undefined, { month: 'short', year: 'numeric' }) })}
+              </p>
             </>
           ) : (
             <>
@@ -220,13 +233,14 @@ export default function ProfilePage() {
               <p className={styles.statLabel}>{t('stats.classrooms')}</p>
             </div>
             <div className={styles.statItem}>
-              <p className={styles.statNumber}>0</p>
-              <p className={styles.statLabel}>{t('stats.connections')}</p>
-              <p className={styles.statNote}>{t('stats.comingSoon')}</p>
+              <p className={styles.statNumber}>{verifiedCount}</p>
+              <p className={styles.statLabel}>{t('stats.verifiedIn')}</p>
             </div>
             <div className={styles.statItem}>
-              <p className={styles.statNumber}>{completionPercent}%</p>
-              <p className={styles.statLabel}>{t('stats.profile')}</p>
+              <p className={styles.statNumber}>
+                {formatDate(profile.createdAt, undefined, { month: 'short', year: 'numeric' })}
+              </p>
+              <p className={styles.statLabel}>{t('stats.memberSince')}</p>
             </div>
           </div>
         )}
@@ -240,7 +254,7 @@ export default function ProfilePage() {
                 title={t('noClassroomsTitle')}
                 description={t('noClassroomsDescription')}
                 ctaLabel={t('findMyBatch')}
-                onCta={() => router.push('/classroom/create')}
+                onCta={() => router.push('/classes')}
               />
             ) : (
               classrooms.map((c) => (
@@ -290,35 +304,44 @@ export default function ProfilePage() {
               )}
             </div>
 
+            <p className={styles.sectionLabel}>{t('account.sectionLabel')}</p>
+
             {profile.mfaEnabled && (
-              <>
-                <p className={styles.sectionLabel}>{t('security.sectionLabel')}</p>
-                <div className={styles.securityRow}>
-                  <span className={styles.securityLabel}>{t('security.twoFactorLabel')}</span>
-                  <span className={styles.securityBadge}>{t('security.enabledBadge')}</span>
-                  <Button variant="ghost" size="sm" onClick={() => setShowMfaResetConfirm(true)}>
-                    {t('security.resetButton')}
-                  </Button>
-                </div>
-              </>
+              <div className={styles.accountRow}>
+                <span className={styles.accountLabel}>{t('account.twoFactorLabel')}</span>
+                <span className={styles.securityBadge}>{t('account.enabledBadge')}</span>
+                <Button variant="ghost" size="sm" onClick={() => setShowMfaResetConfirm(true)}>
+                  {t('account.resetButton')}
+                </Button>
+              </div>
             )}
 
-            <Button variant="ghost" size="md" fullWidth className={styles.signOutButton} onClick={() => setShowSignOutConfirm(true)}>
-              {t('signOut')}
-            </Button>
+            <div className={styles.accountRow}>
+              <span className={styles.accountLabel}>{t('account.changePasswordLabel')}</span>
+              <Button variant="ghost" size="sm" loading={passwordResetSending} onClick={handlePasswordReset}>
+                {t('account.sendResetLinkButton')}
+              </Button>
+            </div>
+
+            <div className={styles.accountRow}>
+              <span className={styles.accountLabel}>{t('account.signOutLabel')}</span>
+              <Button variant="danger" size="sm" onClick={() => setShowSignOutConfirm(true)}>
+                {t('account.signOutButton')}
+              </Button>
+            </div>
           </>
         )}
       </PageContainer>
 
       {showMfaResetConfirm && (
-        <Modal title={t('security.resetConfirmTitle')} onClose={() => setShowMfaResetConfirm(false)}>
-          <p>{t('security.resetConfirmBody')}</p>
+        <Modal title={t('account.resetConfirmTitle')} onClose={() => setShowMfaResetConfirm(false)}>
+          <p>{t('account.resetConfirmBody')}</p>
           <div className={styles.confirmActions}>
             <Button variant="ghost" size="md" onClick={() => setShowMfaResetConfirm(false)} disabled={mfaResetSending}>
               {tCommon('cancel')}
             </Button>
             <Button variant="danger" size="md" loading={mfaResetSending} onClick={handleMfaReset}>
-              {t('security.resetButton')}
+              {t('account.resetButton')}
             </Button>
           </div>
         </Modal>

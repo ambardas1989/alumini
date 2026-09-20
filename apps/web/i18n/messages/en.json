@@ -550,12 +550,12 @@
     "yourClassrooms": "Your classrooms",
     "noClassroomsTitle": "No classrooms yet",
     "noClassroomsDescription": "Find your batch to get started",
-    "findMyBatch": "Find my batch",
+    "findMyBatch": "Find your batch",
+    "memberSince": "Member since {date}",
     "stats": {
       "classrooms": "Classrooms",
-      "connections": "Connections",
-      "comingSoon": "Coming soon",
-      "profile": "Profile"
+      "verifiedIn": "Verified in",
+      "memberSince": "Member since"
     },
     "linkedin": {
       "verifiedBadge": "Verified",
@@ -564,14 +564,19 @@
       "usageNote": "Used for verification and profile visibility",
       "comingSoonToast": "Coming soon"
     },
-    "security": {
-      "sectionLabel": "Security",
+    "account": {
+      "sectionLabel": "Account",
       "twoFactorLabel": "Two-factor authentication",
       "enabledBadge": "Enabled",
-      "resetButton": "Reset",
+      "resetButton": "Reset authenticator",
       "resetConfirmTitle": "Reset your authenticator?",
       "resetConfirmBody": "This will remove your current authenticator. You will need to set up a new one on next login. Are you sure?",
-      "resetSentToast": "A reset link has been sent to your email."
+      "resetSentToast": "Recovery email sent",
+      "changePasswordLabel": "Change password",
+      "sendResetLinkButton": "Send reset link",
+      "resetLinkSentToast": "Reset link sent to your email",
+      "signOutLabel": "Sign out",
+      "signOutButton": "Sign out"
     }
   },
   "personaTypes": {

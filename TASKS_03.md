@@ -186,7 +186,7 @@ Commit: "fix: channel access rules — staff room and student alley"
 
 ---
 
-## TASK 05 — Fix: profile page [PENDING]
+## TASK 05 — Fix: profile page [DONE: header card gains email + "Member since {month year}"; stats row changed from Classrooms/Connections(coming soon)/Profile% to the spec's Classrooms/Verified in/Member since; empty-state CTA now correctly points at /classes (was /classroom/create); the old ad-hoc "Security" section (only ever showing when mfaEnabled) is now a proper "Account" section with three rows — Two-factor authentication (unchanged behavior), a new Change password row (POST /auth/forgot-password via the already-existing api.forgotPassword(), toast "Reset link sent to your email"), and Sign out (now a destructive-red button in the section instead of a bare full-width ghost button at the page bottom). Kept the existing inline sign-out implementation (api.logout() + clearSession() + redirect) rather than inventing a signOut() export in lib/auth.ts as literally requested — that file is imported BY lib/api.ts already, so having it import api.ts back would be a circular dependency; the 3-line block is already duplicated identically in AuthProvider.tsx for the same structural reason.]
 
 Profile page shows "Unable to load your profile" because
 of the is_platform_admin bug (fixed in TASK 01).

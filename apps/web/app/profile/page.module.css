@@ -35,6 +35,16 @@
   margin-block-start: 8px;
 }
 
+.email {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.memberSince {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .avatarEditWrap {
   position: relative;
   background: none;
@@ -92,13 +102,6 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   margin-block-start: 2px;
-}
-
-.statNote {
-  font-size: 9px;
-  color: var(--color-text-muted);
-  opacity: 0.8;
-  margin-block-start: 1px;
 }
 
 .sectionLabel {
@@ -193,7 +196,7 @@
   text-align: center;
 }
 
-.securityRow {
+.accountRow {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -201,10 +204,14 @@
   border-radius: 12px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
-  margin-block-end: 16px;
+  margin-block-end: 8px;
 }
 
-.securityLabel {
+.accountRow:last-child {
+  margin-block-end: 24px;
+}
+
+.accountLabel {
   flex: 1;
   font-size: var(--text-sm);
   font-weight: 700;
@@ -219,11 +226,6 @@
   background: var(--color-success-light);
   border-radius: 20px;
   padding-inline: 8px;
-}
-
-.signOutButton {
-  color: var(--color-error);
-  margin-block-end: 24px;
 }
 
 .confirmActions {
