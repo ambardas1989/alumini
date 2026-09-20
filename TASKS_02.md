@@ -680,7 +680,7 @@ correct tab structure matching original mockup"
 
 ---
 
-## TASK 09 — Notifications dropdown [PENDING]
+## TASK 09 — Notifications dropdown [DONE: backend read endpoints (GET /notifications, /notifications/unread-count, POST /notifications/mark-read) were already built in TASK 08 since the home feed needed them first — confirmed here they return the right shape. Frontend: new components/NotificationBell.tsx (bell + dropdown, unread badge, mark-all-read, per-item mark-read-on-click, empty/loading states, navigates via data.classroom_id), wired into the home page in place of the static bell. Real-time: went straight to the documented 60s unread-count polling fallback rather than attempting Supabase Realtime — lib/supabase.ts's client is only ever used anonymously (document uploads), never authenticated as the signed-in user (this app uses its own custom JWT, not Supabase Auth sessions), so a Realtime subscription gated by the notifications_own RLS policy (auth.uid()-based) could not have matched any rows — this is the exact "JWT mismatch known issue" the task's own fallback text anticipates.]
 
 The bell icon exists but has no UI behind it.
 Build the notifications dropdown.

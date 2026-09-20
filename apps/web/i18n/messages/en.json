@@ -227,6 +227,12 @@
       "goHomeButton": "Go to home"
     }
   },
+  "notifications": {
+    "bellLabel": "Notifications",
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "empty": "You're all caught up"
+  },
   "messages": {
     "title": "Messages",
     "comingSoonTitle": "Direct messages coming soon",

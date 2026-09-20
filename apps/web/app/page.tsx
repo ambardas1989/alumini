@@ -13,6 +13,7 @@ import { useTranslations } from '@/lib/useTranslations';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { UserMenu } from '@/components/UserMenu';
+import { NotificationBell } from '@/components/NotificationBell';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -122,12 +123,7 @@ export default function HomePage() {
             {t('subtitle', { classrooms: classrooms.length, unread: unreadCount })}
           </p>
         </div>
-        {/* Placeholder — the real dropdown is TASK 09's job; this still just
-            links visually via the badge count, no click handler yet. */}
-        <span className={styles.bellIcon} title={t('notificationsComingSoon')}>
-          <BellIcon />
-          {unreadCount > 0 && <span className={styles.bellBadge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
-        </span>
+        <NotificationBell />
       </div>
 
       {firstPending && !nudgeDismissed && (
@@ -203,14 +199,5 @@ export default function HomePage() {
         )}
       </PageContainer>
     </AppShell>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </svg>
   );
 }
