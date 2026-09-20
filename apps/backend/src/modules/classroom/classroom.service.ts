@@ -256,22 +256,28 @@ export class ClassroomService {
    * }[]
    */
   async getClassroomsByInstitution(userId: string) {
+    // BUG FIX (TASK 07 — "NaN members" on classroom cards / "/classroom/
+    // undefined" links): this used to select classroom/institution columns
+    // by their raw snake_case names and spread the row straight into the
+    // response. apps/web's Classroom/Institution types (and every screen
+    // that renders this — home, teacher filing cabinet, profile) expect
+    // camelCase (globalId, batchYear, memberCount, cityCode, countryCode),
+    // so those fields silently read as undefined client-side: `undefined ??
+    // 0` never ran (no such guard existed) so ICU plural formatting saw
+    // NaN, and `/classroom/${undefined}` produced the broken link. Same
+    // root cause and same fix pattern as createClassroom()/getByGlobalId()/
+    // getById() above — reusing their CLASSROOM_SELECT_COLUMNS/
+    // INSTITUTION_JOIN_COLUMNS aliases here instead of a third copy of the
+    // same list.
     const { data: memberships, error } = await this.supabase
       .from('memberships')
       .select(`
         role,
         verification_status,
         classroom:classrooms (
-          id,
-          global_id,
-          name,
-          batch_year,
-          grade,
-          section,
-          program,
-          member_count,
+          ${CLASSROOM_SELECT_COLUMNS},
           institution:institutions (
-            id, name, slug, type, city_code, country_code
+            ${INSTITUTION_JOIN_COLUMNS}
           )
         )
       `)
@@ -300,7 +306,7 @@ export class ClassroomService {
         userRole:           m.role,
         verificationStatus: m.verification_status,
         // Active window is config-driven, not hardcoded (appConfig.CLASSROOM_ACTIVE_YEAR_WINDOW)
-        isActive:           m.classroom.batch_year >= currentYear - appConfig.CLASSROOM_ACTIVE_YEAR_WINDOW,
+        isActive:           m.classroom.batchYear >= currentYear - appConfig.CLASSROOM_ACTIVE_YEAR_WINDOW,
       });
 
       return acc;
@@ -310,7 +316,7 @@ export class ClassroomService {
     for (const inst of Object.values(byInstitution)) {
       inst.classes.sort((a, b) => {
         if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
-        return b.batch_year - a.batch_year;
+        return b.batchYear - a.batchYear;
       });
     }
 

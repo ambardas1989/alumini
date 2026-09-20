@@ -76,7 +76,7 @@ export default function TeacherHomePage() {
   // twice here — there's no "distinct students taught" endpoint to derive
   // an exact figure from, so this is a documented approximation.
   const totalStudents = useMemo(
-    () => allClasses.reduce((sum, c) => sum + Math.max(0, c.memberCount - 1), 0),
+    () => allClasses.reduce((sum, c) => sum + Math.max(0, (c.memberCount ?? 0) - 1), 0),
     [allClasses],
   );
   const yearsTeaching = useMemo(() => new Set(allClasses.map((c) => c.batchYear)).size, [allClasses]);

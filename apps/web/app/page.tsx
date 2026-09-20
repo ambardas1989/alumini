@@ -95,8 +95,10 @@ export default function HomePage() {
         <UserMenu />
         <h1 className={styles.topBarTitle}>{t('title')}</h1>
         {/* Placeholder — no notifications screen exists yet, so this is
-            decorative rather than a fake-functional button. */}
-        <span className={styles.bellIcon} aria-hidden="true">
+            decorative rather than a fake-functional button. title gives it
+            a hover tooltip rather than a silent dead click (TASK 09 builds
+            the real dropdown). */}
+        <span className={styles.bellIcon} title={t('notificationsComingSoon')}>
           <BellIcon />
         </span>
       </div>

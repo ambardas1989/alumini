@@ -232,6 +232,7 @@
     "welcomeBanner": "Some bonds never graduate. Find your batch below.",
     "verificationNudge": "Complete verification to post and read messages →",
     "activeClassrooms": "Active classrooms",
+    "notificationsComingSoon": "Notifications coming soon",
     "suggestedForYou": "Suggested for you",
     "createClassroomFab": "Create a classroom",
     "empty": {
@@ -302,7 +303,7 @@
   },
   "classroom": {
     "card": {
-      "memberCount": "{count, plural, one {# member} other {# members}}"
+      "memberCount": "{count, plural, =0 {Be the first to join} one {# member} other {# members}}"
     },
     "header": {
       "back": "Back",

@@ -19,7 +19,7 @@ export function ClassRow({ classroom }: ClassRowProps) {
         {classroom.name}
       </span>
       <span className={styles.meta}>
-        {t('memberCount', { count: classroom.memberCount })}
+        {t('memberCount', { count: classroom.memberCount ?? 0 })}
       </span>
       <span className={`${styles.badge} ${classroom.isActive ? styles.badgeActive : styles.badgeAlumni}`}>
         {classroom.isActive ? t('activeBadge') : t('alumniBadge')}

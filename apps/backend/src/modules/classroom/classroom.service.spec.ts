@@ -333,17 +333,17 @@ describe('ClassroomService', () => {
             {
               role: 'student',
               verification_status: 'verified',
-              classroom: { id: 'c1', batch_year: currentYear - 5, institution: { id: 'inst-1', name: 'A' } },
+              classroom: { id: 'c1', batchYear: currentYear - 5, institution: { id: 'inst-1', name: 'A' } },
             },
             {
               role: 'student',
               verification_status: 'verified',
-              classroom: { id: 'c2', batch_year: currentYear, institution: { id: 'inst-1', name: 'A' } },
+              classroom: { id: 'c2', batchYear: currentYear, institution: { id: 'inst-1', name: 'A' } },
             },
             {
               role: 'teacher',
               verification_status: 'verified',
-              classroom: { id: 'c3', batch_year: currentYear - 2, institution: { id: 'inst-1', name: 'A' } },
+              classroom: { id: 'c3', batchYear: currentYear - 2, institution: { id: 'inst-1', name: 'A' } },
             },
           ],
           error: null,
@@ -357,6 +357,31 @@ describe('ClassroomService', () => {
       expect(result[0].classes.map((c: any) => c.id)).toEqual(['c2', 'c3', 'c1']);
       expect(result[0].classes[0].isActive).toBe(true);
       expect(result[0].classes[1].isActive).toBe(false);
+    });
+
+    it('surfaces globalId and memberCount in camelCase — TASK 07 regression: these silently read as undefined before CLASSROOM_SELECT_COLUMNS aliasing was applied here', async () => {
+      mockTables({
+        memberships: chain({
+          data: [
+            {
+              role: 'student',
+              verification_status: 'verified',
+              classroom: {
+                id: 'c1',
+                globalId: 'IN-KOL-MPBIRLA-9A-2012',
+                batchYear: new Date().getFullYear(),
+                memberCount: 12,
+                institution: { id: 'inst-1', name: 'A' },
+              },
+            },
+          ],
+          error: null,
+        }),
+      });
+
+      const result: any = await service.getClassroomsByInstitution('user-1');
+      expect(result[0].classes[0].globalId).toBe('IN-KOL-MPBIRLA-9A-2012');
+      expect(result[0].classes[0].memberCount).toBe(12);
     });
   });
 

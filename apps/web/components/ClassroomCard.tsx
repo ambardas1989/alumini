@@ -53,7 +53,7 @@ export function ClassroomCard({ classroom, onTap, loading = false }: ClassroomCa
             next-intl formats the number itself while resolving the plural
             category, so it takes the raw number, not a pre-formatted string. */}
         <span className={styles.stat}>
-          {classroom.batchYear} &middot; {tCard('memberCount', { count: classroom.memberCount })}
+          {classroom.batchYear} &middot; {tCard('memberCount', { count: classroom.memberCount ?? 0 })}
         </span>
         {statusVariant && <Badge variant={statusVariant} label={tStatus(statusVariant)} />}
       </div>

@@ -449,7 +449,7 @@ Commit: "feat: warmer auth screen copy"
 
 ---
 
-## TASK 07 — Bug fixes: NaN members, undefined classroom, profile crash [PENDING]
+## TASK 07 — Bug fixes: NaN members, undefined classroom, profile crash [DONE: all three (BUG 1/2/3) traced to one root cause — classroom.service.ts's getClassroomsByInstitution() (backs GET /classroom/my, used by home, teacher, and profile) selected raw snake_case columns and spread them unaliased, so memberCount/globalId read as undefined on every screen that consumes it: NaN in the ICU plural on classroom cards, "/classroom/undefined" links on home+teacher, and — most likely — the profile crash itself (an undefined count arg into next-intl's ICU plural formatter throws, caught by the global error.tsx as "Something went wrong"). Fixed by reusing the same CLASSROOM_SELECT_COLUMNS/INSTITUTION_JOIN_COLUMNS aliases createClassroom()/getByGlobalId()/getById() already use, plus defensive `?? 0` guards on ClassroomCard/ClassRow/teacher stats and an =0 {Be the first to join} ICU branch. Bell icon was already non-interactive (no onClick) from a prior session; added a hover tooltip instead of leaving it bare.]
 
 These are blocking bugs found during manual testing.
 Read every affected file before making changes.
