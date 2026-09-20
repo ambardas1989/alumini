@@ -193,6 +193,34 @@
   text-align: center;
 }
 
+.securityRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  margin-block-end: 16px;
+}
+
+.securityLabel {
+  flex: 1;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.securityBadge {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-success);
+  background: var(--color-success-light);
+  border-radius: 20px;
+  padding-inline: 8px;
+}
+
 .signOutButton {
   color: var(--color-error);
   margin-block-end: 24px;

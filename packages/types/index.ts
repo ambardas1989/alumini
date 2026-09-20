@@ -55,6 +55,7 @@ export type MemberRole = (typeof MemberRole)[keyof typeof MemberRole];
 
 export const VerificationStatus = {
   PENDING: 'pending',
+  PENDING_AUTO: 'pending_auto',
   VERIFIED: 'verified',
   REJECTED: 'rejected',
 } as const;

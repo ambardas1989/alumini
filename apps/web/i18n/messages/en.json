@@ -33,6 +33,7 @@
   "status": {
     "verified": "Verified",
     "pending": "Pending",
+    "pending_auto": "Early member",
     "rejected": "Rejected"
   },
   "session": {
@@ -362,10 +363,20 @@
         "verified": "Verified",
         "pending": "Pending"
       },
+      "status": {
+        "verified": "Verified",
+        "pending": "Pending",
+        "pending_auto": "Early member",
+        "rejected": "Rejected"
+      },
       "vouchFor": "Vouch for {name}",
       "vouched": "Vouched ✓",
       "vouchSent": "Vouch sent to {name}"
     }
+  },
+  "membership": {
+    "earlyMemberBanner": "You joined early — complete verification to become fully trusted by your batchmates.",
+    "verifyNow": "Verify now"
   },
   "verification": {
     "title": "Verify your membership",
@@ -492,6 +503,15 @@
       "connectButton": "Connect LinkedIn",
       "usageNote": "Used for verification and profile visibility",
       "comingSoonToast": "Coming soon"
+    },
+    "security": {
+      "sectionLabel": "Security",
+      "twoFactorLabel": "Two-factor authentication",
+      "enabledBadge": "Enabled",
+      "resetButton": "Reset",
+      "resetConfirmTitle": "Reset your authenticator?",
+      "resetConfirmBody": "This will remove your current authenticator. You will need to set up a new one on next login. Are you sure?",
+      "resetSentToast": "A reset link has been sent to your email."
     }
   },
   "personaTypes": {

@@ -85,12 +85,17 @@ export class MembershipService {
   // ── Channel access (used by other modules, e.g. corridor) ────────────────
 
   /**
-   * Returns true only if `userId` is a VERIFIED member of `classroomId`
-   * whose role is allowed to fully read+post `channel` (SPEC.md §7.3).
-   * Non-members and unverified members always get false here, regardless
-   * of channel — see the module-level comment for why "unverified but
-   * allowed a redacted peek at the classroom channel" is NOT expressed by
-   * this method.
+   * Returns true only if `userId` is a VERIFIED (or, for the classroom/
+   * student_alley channels, 'pending_auto' — see 011_pending_auto_status.sql)
+   * member of `classroomId` whose role is allowed to fully read+post
+   * `channel` (SPEC.md §7.3). Non-members and rejected/plain-pending members
+   * always get false here, regardless of channel — see the module-level
+   * comment for why "unverified but allowed a redacted peek at the
+   * classroom channel" is NOT expressed by this method.
+   *
+   * staff_room stays verified-only unconditionally: pending_auto exists to
+   * unblock a brand-new classroom's early joiners, not to grant early
+   * access to the teacher-only room.
    */
   async canAccessChannel(userId: string, classroomId: string, channel: ChannelType): Promise<boolean> {
     const { data: membership } = await this.supabase
@@ -100,17 +105,18 @@ export class MembershipService {
       .eq('classroom_id', classroomId)
       .maybeSingle();
 
-    if (!membership || membership.verification_status !== 'verified') {
-      return false;
-    }
+    if (!membership) return false;
+
+    const isVerified = membership.verification_status === 'verified';
+    const isEarlyMember = membership.verification_status === 'pending_auto';
 
     switch (channel) {
       case ChannelType.CLASSROOM:
-        return true; // any verified member, any role
+        return isVerified || isEarlyMember; // any full/early member, any role
       case ChannelType.STAFF_ROOM:
-        return membership.role === MemberRole.TEACHER || membership.role === MemberRole.ADMIN;
+        return isVerified && (membership.role === MemberRole.TEACHER || membership.role === MemberRole.ADMIN);
       case ChannelType.STUDENT_ALLEY:
-        return membership.role === MemberRole.STUDENT;
+        return (isVerified || isEarlyMember) && membership.role === MemberRole.STUDENT;
       default:
         return false;
     }

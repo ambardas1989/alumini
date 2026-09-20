@@ -441,7 +441,7 @@ describe('ClassroomService', () => {
 
     it('joins as student when the user has no teacher persona at this institution', async () => {
       mockTables({
-        classrooms: chain({ data: { id: 'class-001', institution_id: 'inst-001' }, error: null }),
+        classrooms: chain({ data: { id: 'class-001', institution_id: 'inst-001', member_count: 10 }, error: null }),
         memberships: chain(
           { data: null, error: null }, // no duplicate
           { data: { id: 'membership-1', role: 'student' }, error: null }, // insert
@@ -466,7 +466,7 @@ describe('ClassroomService', () => {
 
     it('joins as teacher when the user has an active teacher persona at this institution', async () => {
       mockTables({
-        classrooms: chain({ data: { id: 'class-001', institution_id: 'inst-001' }, error: null }),
+        classrooms: chain({ data: { id: 'class-001', institution_id: 'inst-001', member_count: 10 }, error: null }),
         memberships: chain(
           { data: null, error: null },
           { data: { id: 'membership-1', role: 'teacher' }, error: null },
@@ -477,6 +477,42 @@ describe('ClassroomService', () => {
       const result = await service.joinClassroom('user-1', 'class-001');
 
       expect(result.role).toBe('teacher');
+    });
+
+    it('marks an early joiner (member_count <= 3) as pending_auto with verification_method early_member', async () => {
+      const membershipsChain = chain(
+        { data: null, error: null },
+        { data: { id: 'membership-1', role: 'student' }, error: null },
+      );
+      mockTables({
+        classrooms: chain({ data: { id: 'class-001', institution_id: 'inst-001', member_count: 3 }, error: null }),
+        memberships: membershipsChain,
+        personas: chain({ data: null, error: null }),
+      });
+
+      await service.joinClassroom('user-1', 'class-001');
+
+      expect(membershipsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ verification_status: 'pending_auto', verification_method: 'early_member' }),
+      );
+    });
+
+    it('marks a later joiner (member_count > 3) as plain pending', async () => {
+      const membershipsChain = chain(
+        { data: null, error: null },
+        { data: { id: 'membership-1', role: 'student' }, error: null },
+      );
+      mockTables({
+        classrooms: chain({ data: { id: 'class-001', institution_id: 'inst-001', member_count: 4 }, error: null }),
+        memberships: membershipsChain,
+        personas: chain({ data: null, error: null }),
+      });
+
+      await service.joinClassroom('user-1', 'class-001');
+
+      expect(membershipsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ verification_status: 'pending', verification_method: null }),
+      );
     });
   });
 

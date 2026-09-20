@@ -51,6 +51,9 @@ export default function ProfilePage() {
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  const [showMfaResetConfirm, setShowMfaResetConfirm] = useState(false);
+  const [mfaResetSending, setMfaResetSending] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -108,6 +111,20 @@ export default function ProfilePage() {
 
   const handleConnectLinkedIn = () => {
     showToast(t('linkedin.comingSoonToast'), 'info');
+  };
+
+  const handleMfaReset = async () => {
+    if (!profile) return;
+    setMfaResetSending(true);
+    try {
+      await api.requestMfaRecovery(profile.email);
+      showToast(t('security.resetSentToast'), 'success');
+    } catch {
+      // requestMfaRecovery() always resolves 200 from the backend's own privacy-preserving design — this is unreachable in practice.
+    } finally {
+      setMfaResetSending(false);
+      setShowMfaResetConfirm(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -273,12 +290,39 @@ export default function ProfilePage() {
               )}
             </div>
 
+            {profile.mfaEnabled && (
+              <>
+                <p className={styles.sectionLabel}>{t('security.sectionLabel')}</p>
+                <div className={styles.securityRow}>
+                  <span className={styles.securityLabel}>{t('security.twoFactorLabel')}</span>
+                  <span className={styles.securityBadge}>{t('security.enabledBadge')}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setShowMfaResetConfirm(true)}>
+                    {t('security.resetButton')}
+                  </Button>
+                </div>
+              </>
+            )}
+
             <Button variant="ghost" size="md" fullWidth className={styles.signOutButton} onClick={() => setShowSignOutConfirm(true)}>
               {t('signOut')}
             </Button>
           </>
         )}
       </PageContainer>
+
+      {showMfaResetConfirm && (
+        <Modal title={t('security.resetConfirmTitle')} onClose={() => setShowMfaResetConfirm(false)}>
+          <p>{t('security.resetConfirmBody')}</p>
+          <div className={styles.confirmActions}>
+            <Button variant="ghost" size="md" onClick={() => setShowMfaResetConfirm(false)} disabled={mfaResetSending}>
+              {tCommon('cancel')}
+            </Button>
+            <Button variant="danger" size="md" loading={mfaResetSending} onClick={handleMfaReset}>
+              {t('security.resetButton')}
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       {showSignOutConfirm && (
         <Modal title={t('signOutConfirmTitle', { brand: brand.name })} onClose={() => setShowSignOutConfirm(false)}>

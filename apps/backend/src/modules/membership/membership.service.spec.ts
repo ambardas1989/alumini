@@ -117,6 +117,26 @@ describe('MembershipService', () => {
       mockTables({ memberships: chain({ data: membership, error: null }) });
       expect(await service.canAccessChannel('u1', 'class-1', ChannelType.STUDENT_ALLEY)).toBe(false);
     });
+
+    it('lets a pending_auto (early-joiner) student into classroom and student_alley, not staff_room', async () => {
+      const membership = { role: MemberRole.STUDENT, verification_status: 'pending_auto' };
+
+      mockTables({ memberships: chain({ data: membership, error: null }) });
+      expect(await service.canAccessChannel('u1', 'class-1', ChannelType.CLASSROOM)).toBe(true);
+
+      mockTables({ memberships: chain({ data: membership, error: null }) });
+      expect(await service.canAccessChannel('u1', 'class-1', ChannelType.STUDENT_ALLEY)).toBe(true);
+
+      mockTables({ memberships: chain({ data: membership, error: null }) });
+      expect(await service.canAccessChannel('u1', 'class-1', ChannelType.STAFF_ROOM)).toBe(false);
+    });
+
+    it('does not let a pending_auto teacher into staff_room — that stays verified-only', async () => {
+      const membership = { role: MemberRole.TEACHER, verification_status: 'pending_auto' };
+
+      mockTables({ memberships: chain({ data: membership, error: null }) });
+      expect(await service.canAccessChannel('u1', 'class-1', ChannelType.STAFF_ROOM)).toBe(false);
+    });
   });
 
   // ── getMembership() / getVerificationStatus() ────────────────────────────

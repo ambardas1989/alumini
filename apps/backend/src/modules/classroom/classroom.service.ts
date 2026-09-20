@@ -444,7 +444,7 @@ export class ClassroomService {
   async joinClassroom(userId: string, classroomId: string, req?: Request) {
     const { data: classroom } = await this.supabase
       .from('classrooms')
-      .select('id, institution_id')
+      .select('id, institution_id, member_count')
       .eq('id', classroomId)
       .maybeSingle();
 
@@ -475,13 +475,23 @@ export class ClassroomService {
 
     const role = teacherPersona ? 'teacher' : 'student';
 
+    // Cold start: the classroom's creator is its only verified member at
+    // first, so early joiners have nobody to vouch for them (peer_vouch)
+    // and no one to approve a document — they'd be stuck read-only
+    // indefinitely. member_count <= 3 means this join is at most the 4th
+    // member overall (creator + 3 early joiners), which gets a distinct
+    // 'pending_auto' status: still nudged to verify properly, but treated
+    // as verified for messaging access (see 011_pending_auto_status.sql).
+    const isEarlyJoiner = (classroom.member_count ?? 0) <= 3;
+
     const { data: membership, error } = await this.supabase
       .from('memberships')
       .insert({
-        user_id:      userId,
-        classroom_id: classroomId,
+        user_id:             userId,
+        classroom_id:        classroomId,
         role,
-        // verification_status defaults to 'pending' at the DB level.
+        verification_status: isEarlyJoiner ? 'pending_auto' : 'pending',
+        verification_method: isEarlyJoiner ? 'early_member' : null,
       })
       .select()
       .single();

@@ -59,10 +59,13 @@ function toAscending(data: Array<Message | RedactedMessage>, classroomId: string
   return [...data].reverse().map((m) => toUiMessage(m, classroomId, channel));
 }
 
-function canAccessChannel(role: string | null, isVerified: boolean, channel: ChannelType): boolean {
+function canAccessChannel(role: string | null, verificationStatus: string | null, channel: ChannelType): boolean {
+  // pending_auto gets full classroom/student_alley access (early-joiner cold-start fix) but
+  // not staff_room — mirrors MembershipService.canAccessChannel() on the backend.
+  const hasFullAccess = verificationStatus === 'verified' || verificationStatus === 'pending_auto';
   if (channel === ChannelType.CLASSROOM) return true; // unverified gets the degraded/redacted view, not a lock
-  if (channel === ChannelType.STAFF_ROOM) return isVerified && (role === 'teacher' || role === 'admin');
-  if (channel === ChannelType.STUDENT_ALLEY) return isVerified && (role === 'student' || role === 'admin');
+  if (channel === ChannelType.STAFF_ROOM) return verificationStatus === 'verified' && (role === 'teacher' || role === 'admin');
+  if (channel === ChannelType.STUDENT_ALLEY) return hasFullAccess && (role === 'student' || role === 'admin');
   return false;
 }
 
@@ -75,11 +78,17 @@ export default function ClassroomPage() {
   const { showToast } = useToast();
   const t = useTranslations('classroom');
   const tCommon = useTranslations('common');
+  const tMembership = useTranslations('membership');
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [classroom, setClassroom] = useState<ClassroomDetail | null>(null);
-  const [membership, setMembership] = useState<MembershipInfo>({ isMember: false, isVerified: false, userRole: null });
+  const [membership, setMembership] = useState<MembershipInfo>({
+    isMember: false,
+    isVerified: false,
+    verificationStatus: null,
+    userRole: null,
+  });
   const [joining, setJoining] = useState(false);
 
   const [activeChannel, setActiveChannel] = useState<ChannelType>(ChannelType.CLASSROOM);
@@ -108,6 +117,7 @@ export default function ClassroomPage() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [earlyMemberBannerDismissed, setEarlyMemberBannerDismissed] = useState(false);
 
   // ── Load classroom + membership ─────────────────────────────────────────
   //
@@ -130,6 +140,7 @@ export default function ClassroomPage() {
       setMembership({
         isMember: !!match,
         isVerified: match?.verificationStatus === 'verified',
+        verificationStatus: match?.verificationStatus ?? null,
         userRole: (match?.userRole as string | undefined) ?? null,
       });
     } catch (err) {
@@ -143,6 +154,26 @@ export default function ClassroomPage() {
     if (!ready) return;
     loadClassroomAndMembership();
   }, [ready, loadClassroomAndMembership]);
+
+  const earlyMemberBannerKey = `alumini_early_member_banner_dismissed_${globalId}`;
+
+  useEffect(() => {
+    try {
+      setEarlyMemberBannerDismissed(window.localStorage.getItem(earlyMemberBannerKey) === '1');
+    } catch {
+      // localStorage unavailable (private mode, etc.) — banner just stays visible.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalId]);
+
+  const dismissEarlyMemberBanner = () => {
+    setEarlyMemberBannerDismissed(true);
+    try {
+      window.localStorage.setItem(earlyMemberBannerKey, '1');
+    } catch {
+      // Best-effort — worst case it reappears next visit.
+    }
+  };
 
   const handleJoin = async () => {
     if (!classroom) return;
@@ -206,7 +237,7 @@ export default function ClassroomPage() {
   }, [classroom, membership.isMember, loadEvents]);
 
   // ── Messages: load on channel switch, poll while active + verified ─────
-  const canAccessActive = canAccessChannel(membership.userRole, membership.isVerified, activeChannel);
+  const canAccessActive = canAccessChannel(membership.userRole, membership.verificationStatus, activeChannel);
 
   const loadMessages = useCallback(async () => {
     if (!classroom) return;
@@ -450,7 +481,11 @@ export default function ClassroomPage() {
     );
   }
 
-  const showRedactedBanner = activeChannel === ChannelType.CLASSROOM && !membership.isVerified;
+  // pending_auto counts as full access for messaging (see canAccessChannel()'s own comment) —
+  // only a plain 'pending'/'rejected'/no membership sees the redacted, read-only view.
+  const hasFullAccess =
+    membership.verificationStatus === 'verified' || membership.verificationStatus === 'pending_auto';
+  const showRedactedBanner = activeChannel === ChannelType.CLASSROOM && !hasFullAccess;
 
   return (
     <AppShell showNav={false}>
@@ -473,6 +508,16 @@ export default function ClassroomPage() {
         />
       ) : (
         <div className={styles.channelBody}>
+          {membership.verificationStatus === 'pending_auto' && !earlyMemberBannerDismissed && (
+            <div className={styles.earlyMemberBanner}>
+              <span>{tMembership('earlyMemberBanner')}</span>
+              <a href={`/verify?classroomId=${globalId}`}>{tMembership('verifyNow')}</a>
+              <button type="button" className={styles.dismissButton} onClick={dismissEarlyMemberBanner} aria-label={tCommon('dismiss')}>
+                ✕
+              </button>
+            </div>
+          )}
+
           {showRedactedBanner && (
             <div className={styles.verifyBanner}>
               <span>{t('messages.redacted')}</span>
@@ -518,7 +563,7 @@ export default function ClassroomPage() {
             </button>
           )}
 
-          {membership.isVerified && <MessageInput onSend={handleSend} />}
+          {hasFullAccess && <MessageInput onSend={handleSend} />}
         </div>
       )}
 

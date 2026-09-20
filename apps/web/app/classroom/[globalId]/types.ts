@@ -26,5 +26,7 @@ export interface UiMessage {
 export interface MembershipInfo {
   isMember: boolean;
   isVerified: boolean;
+  /** Raw status — needed alongside isVerified because 'pending_auto' gets classroom/student_alley access but isn't "verified" for display purposes (see canAccessChannel() in page.tsx). */
+  verificationStatus: string | null;
   userRole: string | null;
 }

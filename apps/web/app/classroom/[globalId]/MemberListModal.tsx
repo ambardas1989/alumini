@@ -92,9 +92,18 @@ export function MemberListModal({ classroomId, members, currentUserId, viewerIsV
                 </Button>
               ) : (
                 <span
-                  className={`${styles.statusDot} ${member.verificationStatus === 'verified' ? styles.dotVerified : styles.dotPending}`}
-                  aria-label={member.verificationStatus}
-                />
+                  className={`${styles.statusBadge} ${
+                    member.verificationStatus === 'verified'
+                      ? styles.badgeVerified
+                      : member.verificationStatus === 'pending_auto'
+                        ? styles.badgeEarly
+                        : member.verificationStatus === 'rejected'
+                          ? styles.badgeRejected
+                          : styles.badgePending
+                  }`}
+                >
+                  {t(`status.${member.verificationStatus}`)}
+                </span>
               )}
             </li>
           );

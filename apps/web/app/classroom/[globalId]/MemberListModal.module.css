@@ -65,17 +65,31 @@
   text-transform: capitalize;
 }
 
-.statusDot {
+.statusBadge {
   flex-shrink: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 2px 8px;
+  white-space: nowrap;
 }
 
-.dotVerified {
-  background: var(--color-success);
+.badgeVerified {
+  color: var(--color-success);
+  background: var(--color-success-light);
 }
 
-.dotPending {
-  background: var(--color-warning);
+.badgePending {
+  color: var(--color-warning);
+  background: var(--color-warning-light);
+}
+
+.badgeEarly {
+  color: var(--color-info);
+  background: var(--color-info-light);
+}
+
+.badgeRejected {
+  color: var(--color-error);
+  background: var(--color-error-light);
 }

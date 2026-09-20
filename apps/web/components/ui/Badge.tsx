@@ -1,6 +1,6 @@
 import styles from './Badge.module.css';
 
-export type BadgeVariant = 'verified' | 'pending' | 'rejected' | 'teacher' | 'admin' | 'student';
+export type BadgeVariant = 'verified' | 'pending' | 'pending_auto' | 'rejected' | 'teacher' | 'admin' | 'student';
 
 interface BadgeProps {
   variant: BadgeVariant;

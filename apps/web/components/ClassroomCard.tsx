@@ -25,6 +25,7 @@ interface ClassroomCardProps {
 const STATUS_VARIANT: Record<VerificationStatus, BadgeVariant> = {
   verified: 'verified',
   pending: 'pending',
+  pending_auto: 'pending_auto',
   rejected: 'rejected',
 };
 
