@@ -404,6 +404,9 @@ export interface InstitutionConflictPayload {
   existingInstitutionId: string;
   existingInstitutionName: string;
   existingInstitutionSlug: string;
+  existingInstitutionType: string;
+  existingInstitutionCityCode: string | null;
+  existingInstitutionCountryCode: string;
 }
 
 export function requestInstitution(dto: RequestInstitutionInput): Promise<{ message: string; requestId: string }> {

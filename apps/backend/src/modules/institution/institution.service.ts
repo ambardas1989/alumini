@@ -136,17 +136,27 @@ export class InstitutionService {
   async requestInstitution(userId: string, dto: RequestInstitutionDto, req?: Request) {
     const { data: existing } = await this.supabase
       .from('institutions')
-      .select('id, name, slug, type')
+      .select('id, name, slug, type, city_code, country_code')
       .ilike('name', `%${dto.name}%`)
       .maybeSingle();
 
     if (existing) {
+      // FIX 3F: include enough of the existing institution's own shape
+      // (type/cityCode/countryCode, not just id/name/slug) so the frontend
+      // can build a complete Institution object straight from this 409
+      // body and select it directly — no follow-up search call needed
+      // (that follow-up call is what used to silently break "Use this
+      // institution"; see AllExceptionsFilter's own fix for why these
+      // extra fields previously never reached the client at all).
       throw new ConflictException({
         message: `A similar institution already exists: ${existing.name}.`,
         error: ErrorCode.INSTITUTION_REQUEST_DUPLICATE,
         existingInstitutionId: existing.id,
         existingInstitutionName: existing.name,
         existingInstitutionSlug: existing.slug,
+        existingInstitutionType: existing.type,
+        existingInstitutionCityCode: existing.city_code,
+        existingInstitutionCountryCode: existing.country_code,
       });
     }
 

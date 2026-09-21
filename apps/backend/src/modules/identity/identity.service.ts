@@ -104,12 +104,25 @@ export class IdentityService {
     // eslint-disable-next-line no-console
     console.log('[PROFILE-DEBUG] userId from JWT:', userId);
 
+    // BUG FIX (FIX 2 — profile page errors despite a 200 response): every
+    // field here except isPlatformAdmin was selected under its raw
+    // snake_case column name, so the response body was
+    // { full_name, avatar_url, active_persona, created_at, ... } while the
+    // frontend's Profile type (and every render site) reads camelCase
+    // (profile.fullName, profile.createdAt, ...). Those all came back
+    // `undefined` — most silently, but profile.createdAt feeding
+    // formatDate() -> new Date(undefined) -> Intl.DateTimeFormat.format()
+    // throws RangeError: Invalid time value, which is what actually
+    // crashed the page render. Every field now gets the same
+    // alias:column treatment isPlatformAdmin already had.
     const { data: profile, error } = await this.supabase
       .from('profiles')
       .select(
-        'id, email, full_name, avatar_url, phone, mfa_enabled, mfa_method, ' +
+        'id, email, fullName:full_name, avatarUrl:avatar_url, phone, ' +
+          'mfaEnabled:mfa_enabled, mfaMethod:mfa_method, ' +
           'isPlatformAdmin:is_platform_admin, ' +
-          'active_persona, linkedin_url, linkedin_verified, created_at, updated_at',
+          'activePersona:active_persona, linkedinUrl:linkedin_url, linkedinVerified:linkedin_verified, ' +
+          'createdAt:created_at, updatedAt:updated_at',
       )
       .eq('id', userId)
       .single();
@@ -146,7 +159,10 @@ export class IdentityService {
       .from('profiles')
       .update(patch)
       .eq('id', userId)
-      .select('id, email, full_name, avatar_url, phone, active_persona, linkedin_url, updated_at')
+      .select(
+        'id, email, fullName:full_name, avatarUrl:avatar_url, phone, ' +
+          'activePersona:active_persona, linkedinUrl:linkedin_url, updatedAt:updated_at',
+      )
       .single();
 
     if (error || !data) {

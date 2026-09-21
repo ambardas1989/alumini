@@ -36,6 +36,20 @@
   position: relative;
 }
 
+/* FIX 1 — small, muted, centered restricted note for staff_room+student,
+   deliberately lighter than LockedChannel's big-icon treatment (no input
+   box, no lock icon — just the message). */
+.staffRoomRestricted {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .postRestrictedNote {
   flex-shrink: 0;
   text-align: center;

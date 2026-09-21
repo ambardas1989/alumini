@@ -68,17 +68,16 @@ function toAscending(data: Array<Message | RedactedMessage>, classroomId: string
   return [...data].reverse().map((m) => toUiMessage(m, classroomId, channel));
 }
 
-// TASKS_03 TASK 04 — READ and POST access are no longer the same question
-// for every channel. staff_room: students CAN read (teachers being visible
-// to students is the point) but only teacher/admin can POST there.
-// student_alley: the opposite asymmetry — teachers/admins get NO read
-// access at all (a hard lock, not just a posting restriction, since it's
-// explicitly private to students). Mirrors corridor.service.ts's
-// getMessages()/canAccessChannel() split exactly — see their own comments.
+// FIX 1 — staff_room and student_alley are now SYMMETRIC hard locks:
+// staff_room is teacher/admin-only (students get 403, not a degraded
+// view), student_alley is student-only (teachers/admins get 403).
+// Reversed from an earlier design that let students read staff_room.
+// Mirrors corridor.service.ts's getMessages()/canAccessChannel() split
+// exactly — see their own comments.
 function canReadChannel(role: string | null, verificationStatus: string | null, channel: ChannelType): boolean {
   const hasFullAccess = verificationStatus === 'verified' || verificationStatus === 'pending_auto';
   if (channel === ChannelType.CLASSROOM) return true; // unverified gets the degraded/redacted view, not a lock
-  if (channel === ChannelType.STAFF_ROOM) return hasFullAccess; // any role, including students
+  if (channel === ChannelType.STAFF_ROOM) return hasFullAccess && (role === 'teacher' || role === 'admin');
   if (channel === ChannelType.STUDENT_ALLEY) return hasFullAccess && role === 'student';
   return false;
 }
@@ -549,6 +548,13 @@ export default function ClassroomPage() {
     membership.verificationStatus === 'verified' || membership.verificationStatus === 'pending_auto';
   const showRedactedBanner = activeChannel === ChannelType.CLASSROOM && !hasFullAccess;
 
+  // FIX 1 — a verified/pending_auto student hitting staff_room's lock gets
+  // a small role-specific note, not the full LockedChannel treatment
+  // (which stays for "you need to verify first" and for student_alley's
+  // teacher/admin lock — that copy is still accurate for those cases).
+  const staffRoomRoleLocked =
+    activeChannel === ChannelType.STAFF_ROOM && hasFullAccess && membership.userRole === 'student';
+
   return (
     <AppShell showNav={false}>
       <ClassroomHeader
@@ -566,11 +572,17 @@ export default function ClassroomPage() {
       <ChannelTabs active={activeChannel} onChange={setActiveChannel} onInfoClick={() => setShowInfoSheet(true)} />
 
       {!canReadActive ? (
-        <LockedChannel
-          title={t(`locked.${activeChannel}.title`)}
-          subtitle={t(`locked.${activeChannel}.subtitle`)}
-          description={t(`locked.${activeChannel}.description`)}
-        />
+        staffRoomRoleLocked ? (
+          <div className={styles.staffRoomRestricted}>
+            <p>{t('locked.staff_room.studentMessage')}</p>
+          </div>
+        ) : (
+          <LockedChannel
+            title={t(`locked.${activeChannel}.title`)}
+            subtitle={t(`locked.${activeChannel}.subtitle`)}
+            description={t(`locked.${activeChannel}.description`)}
+          />
+        )
       ) : (
         <div className={styles.channelBody}>
           {(membership.verificationStatus === 'pending' || membership.verificationStatus === 'pending_auto') &&
@@ -656,11 +668,13 @@ export default function ClassroomPage() {
             <MessageInput onSend={handleSend} />
           ) : (
             hasFullAccess && (
-              // Reachable only for staff_room+student today — a verified
-              // member who CAN read this channel but isn't allowed to post
-              // in it (student_alley+teacher/admin is locked at the read
-              // level above instead, and classroom's own "can't post yet"
-              // case is the verifyBanner nudge above, not this).
+              // FIX 1: staff_room now requires teacher/admin to even READ,
+              // so this is reachable only for a pending_auto (early-member)
+              // teacher/admin — canReadChannel() accepts pending_auto,
+              // canPostChannel() requires strictly 'verified' for staff_room.
+              // classroom's own "can't post yet" case is the verifyBanner
+              // nudge above, not this; student_alley's read/post rules are
+              // identical so it never reaches here either.
               <p className={styles.postRestrictedNote}>
                 {t(`postRestricted.${activeChannel}`)}
               </p>

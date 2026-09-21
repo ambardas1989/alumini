@@ -134,11 +134,30 @@ describe('CorridorService', () => {
       expect((result[0] as any).isRedacted).toBe(true);
     });
 
-    // TASKS_03 TASK 04 — staff_room: students can READ (only posting is
-    // teacher/admin-only, enforced separately in sendMessage()).
-    it('lets a verified student READ staff_room — reading and posting are gated separately', async () => {
+    // FIX 1 — staff_room is now a hard lock for students, symmetric with
+    // student_alley's own hard lock for teachers/admins below. Reversed
+    // from an earlier design that let students read staff_room.
+    it('throws ForbiddenException for staff_room when the member is a verified student — hard lock, not a degraded view', async () => {
+      mockTables({ memberships: chain({ data: { role: 'student', verification_status: 'verified' }, error: null }) });
+
+      await expect(
+        service.getMessages('user-1', 'class-1', ChannelType.STAFF_ROOM),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('lets a verified teacher READ staff_room', async () => {
       mockTables({
-        memberships: chain({ data: { role: 'student', verification_status: 'verified' }, error: null }),
+        memberships: chain({ data: { role: 'teacher', verification_status: 'verified' }, error: null }),
+        messages: chain({ data: [rawMessage], error: null }),
+      });
+
+      const result = await service.getMessages('user-1', 'class-1', ChannelType.STAFF_ROOM);
+      expect(result[0].content).toBe('Hello everyone');
+    });
+
+    it('lets a verified admin READ staff_room', async () => {
+      mockTables({
+        memberships: chain({ data: { role: 'admin', verification_status: 'verified' }, error: null }),
         messages: chain({ data: [rawMessage], error: null }),
       });
 
@@ -147,16 +166,16 @@ describe('CorridorService', () => {
     });
 
     it('throws ForbiddenException for staff_room when the member is unverified — no degraded mode there', async () => {
-      mockTables({ memberships: chain({ data: { role: 'student', verification_status: 'pending' }, error: null }) });
+      mockTables({ memberships: chain({ data: { role: 'teacher', verification_status: 'pending' }, error: null }) });
 
       await expect(
         service.getMessages('user-1', 'class-1', ChannelType.STAFF_ROOM),
       ).rejects.toThrow(ForbiddenException);
     });
 
-    // TASKS_03 TASK 04 — student_alley: the opposite asymmetry. Students
-    // read+post; teachers/admins get NO read access at all (a hard lock,
-    // not just a posting restriction — this channel is private to students).
+    // TASKS_03 TASK 04 — student_alley: students read+post; teachers/admins
+    // get NO read access at all (a hard lock, not just a posting
+    // restriction — this channel is private to students).
     it('lets a verified student READ student_alley', async () => {
       mockTables({
         memberships: chain({ data: { role: 'student', verification_status: 'verified' }, error: null }),
@@ -181,6 +200,16 @@ describe('CorridorService', () => {
       await expect(
         service.getMessages('user-1', 'class-1', ChannelType.STUDENT_ALLEY),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('lets all verified/pending_auto members access the classroom channel regardless of role', async () => {
+      mockTables({
+        memberships: chain({ data: { role: 'admin', verification_status: 'pending_auto' }, error: null }),
+        messages: chain({ data: [rawMessage], error: null }),
+      });
+
+      const result = await service.getMessages('user-1', 'class-1', ChannelType.CLASSROOM);
+      expect(result[0].content).toBe('Hello everyone');
     });
 
     it('tombstones a deleted message even for a fully-verified viewer', async () => {

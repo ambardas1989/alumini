@@ -36,6 +36,22 @@ interface ErrorResponseBody {
   error: string;
   message: string | string[];
   timestamp: string;
+  /**
+   * BUG FIX: this filter used to rebuild the response body from scratch as
+   * exactly `{ statusCode, error, message, timestamp }` — any OTHER field a
+   * throw site attached (e.g. `throw new ConflictException({ message,
+   * error, existingInstitutionId, existingInstitutionName, ... })`) was
+   * silently discarded here, even though `exception.getResponse()` still
+   * had it. Every "here's the conflicting resource, do something with it"
+   * flow in the app was broken by this — InstitutionService.requestInstitution()'s
+   * 409 (existingInstitutionId/Name/Slug) and ClassroomService.createClassroom()'s
+   * 409 (existingClassroomId/globalId/memberCount/action) both throw exactly
+   * this shape, and both "use this duplicate instead" frontend actions
+   * silently no-opped or mis-called an endpoint with `undefined` because
+   * their custom fields never survived the trip. Any extra fields are now
+   * spread onto the response so callers see everything the throw site sent.
+   */
+  [key: string]: unknown;
 }
 
 @Catch()
@@ -66,6 +82,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // rather than re-deriving them.
     let message: string | string[] = exception.message;
     let error: string = exception.name;
+    let extra: Record<string, unknown> = {};
 
     if (payload && typeof payload === 'object') {
       const payloadObject = payload as Record<string, unknown>;
@@ -75,11 +92,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (typeof payloadObject.error === 'string') {
         error = payloadObject.error;
       }
+      // Preserve any other custom fields the throw site attached — see the
+      // ErrorResponseBody index-signature comment above for why this exists.
+      const { message: _m, error: _e, statusCode: _s, timestamp: _t, ...rest } = payloadObject;
+      extra = rest;
     } else if (typeof payload === 'string') {
       message = payload;
     }
 
-    return { statusCode, message, error, timestamp: new Date().toISOString() };
+    return { statusCode, message, error, timestamp: new Date().toISOString(), ...extra };
   }
 
   /** Anything that isn't an HttpException — an unexpected bug, always a 500, never shown verbatim to the client. */

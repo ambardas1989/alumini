@@ -30,11 +30,40 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const GENERIC_FALLBACK = 'Something went wrong. Please try again.';
+const SERVER_ERROR_FALLBACK = 'Server error. Please try again in a moment.';
+const NETWORK_ERROR_FALLBACK = 'No connection. Please check your internet.';
 
-/** Returns a mapped, user-facing message for an ApiError — never the raw API string. */
+/**
+ * Returns a mapped, user-facing message for an ApiError — never the raw
+ * API string. FIX 3E — beyond the known ErrorCode map, falls back by
+ * status class rather than always the same generic string:
+ * - statusCode 0 (network/timeout failure, set in lib/api.ts's request()
+ *   catch block): that ApiError's own .message is already a specific,
+ *   user-safe string ("Could not reach the server...", "Request timed
+ *   out...") — never the generic fallback.
+ * - 5xx: a distinct "try again in a moment" message — this is the app's
+ *   fault, not the user's input.
+ * - 409: the backend always hand-writes 409 messages as user-safe copy
+ *   (e.g. "A similar institution already exists: X.") — never a
+ *   class-validator array — so it's safe to show directly.
+ * - 400: class-validator's array-of-field-errors (e.g. "q must be a
+ *   string") is NEVER safe to show verbatim — stays the generic fallback
+ *   unless a specific errorCode was mapped above.
+ */
 export function getErrorMessage(error: ApiError | unknown): string {
-  if (error instanceof ApiError && error.errorCode) {
-    return ERROR_MESSAGES[error.errorCode] ?? GENERIC_FALLBACK;
+  if (!(error instanceof ApiError)) return GENERIC_FALLBACK;
+
+  if (error.errorCode && ERROR_MESSAGES[error.errorCode]) {
+    return ERROR_MESSAGES[error.errorCode]!;
+  }
+  if (error.statusCode === 0) {
+    return error.message || NETWORK_ERROR_FALLBACK;
+  }
+  if (error.statusCode >= 500) {
+    return SERVER_ERROR_FALLBACK;
+  }
+  if (error.statusCode === 409) {
+    return error.message || GENERIC_FALLBACK;
   }
   return GENERIC_FALLBACK;
 }

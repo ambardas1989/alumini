@@ -175,6 +175,15 @@ export class ClassroomService {
 
     // 5. Auto-add creator as verified admin
     // Creator bypasses verification — they are implicitly trusted as classroom admin
+    //
+    // FIX 1 investigation: confirmed this is intentional, not a bug — SPEC's
+    // "creator is always admin" rule, unconditional on whatever persona
+    // they hold. joinClassroom() (below) is the one that derives role from
+    // the SECOND+ user's actual persona ('teacher' if they hold an active
+    // teacher persona at this institution, 'student' otherwise) — it never
+    // defaults to 'admin'. A user who creates a classroom rather than
+    // joining an existing one becomes its admin regardless of their
+    // intended role; that's this rule working as designed, not the bug.
     const { error: memberError } = await this.supabase
       .from('memberships')
       .insert({

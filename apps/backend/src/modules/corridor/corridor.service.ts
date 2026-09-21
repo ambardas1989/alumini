@@ -7,13 +7,13 @@
  * - WRITES always go through MembershipService.canAccessChannel(), which
  *   only returns true for a VERIFIED member with the right role for that
  *   channel. There is no degraded "post while unverified" mode anywhere.
- * - READS are gated separately and more permissively — see getMessages()'s
- *   own doc comment. classroom: unverified members get a redacted read
- *   rather than a lock (SPEC.md §7.4). staff_room: students CAN read
- *   (teachers being visible to students is the point) even though only
- *   teacher/admin can POST there. student_alley: the opposite asymmetry —
- *   teachers/admins get NO read access at all, a hard lock, since it's
- *   explicitly private to students (TASKS_03.md TASK 04).
+ * - READS are gated separately from POST access — see getMessages()'s own
+ *   doc comment. classroom: unverified members get a redacted read rather
+ *   than a lock (SPEC.md §7.4). staff_room and student_alley are now
+ *   SYMMETRIC hard locks: staff_room is teacher/admin-only (students get
+ *   403, not a degraded view), student_alley is student-only (teachers/
+ *   admins get 403) — reversed from an earlier design that let students
+ *   read staff_room; see this file's own [CHANNEL-DEBUG] fix for why.
  *
  * REDACTION vs DELETION — two independent transforms, see presentMessage():
  * - A DELETED message (is_deleted=true) reads as a tombstone — content and
@@ -174,23 +174,22 @@ export class CorridorService {
   /**
    * Paginated messages for one channel.
    *
-   * READ access is intentionally more permissive than POST access
-   * (canAccessChannel(), used by sendMessage() below) for two channels —
-   * TASKS_03.md TASK 04:
+   * READ access only differs from POST access (canAccessChannel(), used by
+   * sendMessage() below) for the 'classroom' channel:
    * - classroom: any verified/pending_auto member reads normally; a plain
    *   'pending'/'rejected' member (or one who hasn't verified yet) still
    *   gets a degraded, redacted read rather than a hard lock (SPEC.md §7.4).
-   * - staff_room: students CAN read (teachers being visible to students is
-   *   the point) — only POSTING there is teacher/admin-only. Unverified
-   *   members of any role still get no access at all (no redacted mode
-   *   here, unlike classroom).
-   * - student_alley: the opposite asymmetry — teachers/admins get NO read
-   *   access at all (a hard lock, not just a posting restriction) since
-   *   this channel is explicitly private to students.
+   * - staff_room: teacher/admin only, same as POST — a student gets a hard
+   *   403, not a degraded view. Unverified teachers/admins also get no
+   *   access until they verify.
+   * - student_alley: student only, same as POST — teachers/admins get a
+   *   hard 403 (privacy: this channel is explicitly private to students).
    *
    * Reads the membership row directly rather than going through
    * MembershipService.canAccessChannel() (which only answers the stricter
-   * "may fully read+post" question) — same established cross-module
+   * "may fully read+post" question — reading it here separately still lets
+   * the classroom channel's degraded/redacted mode exist without teaching
+   * canAccessChannel() about it) — same established cross-module
    * table-access pattern every module since auth has used.
    */
   async getMessages(userId: string, classroomId: string, channel: ChannelType, page = 0) {
@@ -208,6 +207,14 @@ export class CorridorService {
       });
     }
 
+    // eslint-disable-next-line no-console
+    console.log(
+      '[CHANNEL-DEBUG] userId:', userId,
+      'classroomId:', classroomId,
+      'role:', membership.role,
+      'channel:', channel,
+    );
+
     const hasFullAccess =
       membership.verification_status === 'verified' || membership.verification_status === 'pending_auto';
 
@@ -220,8 +227,12 @@ export class CorridorService {
         redact = !hasFullAccess;
         break;
       case ChannelType.STAFF_ROOM:
-        // Any verified/pending_auto member, any role — students included.
-        canRead = hasFullAccess;
+        // FIX 1 — was `hasFullAccess` alone (any role, students included).
+        // Staff Room is now a hard lock for students, symmetric with
+        // student_alley's own hard lock for teachers/admins below —
+        // membership.role is read from THIS classroom_id's own row, never
+        // a cross-classroom/global role.
+        canRead = hasFullAccess && (membership.role === MemberRole.TEACHER || membership.role === MemberRole.ADMIN);
         break;
       case ChannelType.STUDENT_ALLEY:
         // Students only — teachers/admins are locked out entirely, not

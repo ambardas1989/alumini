@@ -306,8 +306,13 @@
     "requestForm": {
       "cta": "Request it to be added →",
       "nameLabel": "Institution name",
+      "typeLabel": "Type",
       "cityLabel": "City",
-      "countryLabel": "Country code",
+      "countryLabel": "Country",
+      "commonCountries": "Common countries",
+      "otherCountries": "All other countries",
+      "noMatch": "No match found — fill in details below",
+      "requiredHint": "* Required fields",
       "websiteLabel": "Website URL (optional)",
       "relationshipLabel": "Your relationship",
       "relationship": {
@@ -367,7 +372,8 @@
       "staff_room": {
         "title": "Staff Room",
         "subtitle": "Verify your membership to see this channel.",
-        "description": "Students can read Staff Room once verified — only posting stays teacher/admin-only"
+        "description": "Only teachers and admins can access Staff Room.",
+        "studentMessage": "🍎 Teachers only in here. No students allowed!"
       },
       "student_alley": {
         "title": "Student Alley",
@@ -377,7 +383,7 @@
     },
     "postRestricted": {
       "classroom": "",
-      "staff_room": "🍎 The teachers' lounge is off-limits, kiddo.",
+      "staff_room": "⏳ Complete verification to post here.",
       "student_alley": "🎒 This is the students' space. We'll leave them to it."
     },
     "nonMember": {

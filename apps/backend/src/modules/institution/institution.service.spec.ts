@@ -20,6 +20,8 @@
  *   inactive target rejected, successful atomic-in-practice swap
  */
 
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -35,6 +37,7 @@ import { InstitutionService } from './institution.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditEventType, PersonaType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
+import { SearchInstitutionsDto } from './dto/search-institutions.dto';
 
 // ── Supabase mock (sequenced per table — see identity.service.spec.ts for the same pattern) ──
 
@@ -112,6 +115,19 @@ describe('InstitutionService', () => {
       const result = await service.searchInstitutions({ q: 'birla' } as any);
       expect(result).toEqual([]);
     });
+
+    // FIX 4 — "Search with no query → throws validation error (not 400 to
+    // user)". Validation happens at the DTO/ValidationPipe layer, before
+    // the service method is ever called (searchInstitutions() above trusts
+    // an already-valid dto) — so this exercises the DTO directly rather
+    // than the service, the same layer that actually rejects the request.
+    it('SearchInstitutionsDto rejects a missing/empty q instead of silently accepting it', async () => {
+      const dto = plainToInstance(SearchInstitutionsDto, {});
+      const errors = await validate(dto);
+
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some((e) => e.property === 'q')).toBe(true);
+    });
   });
 
   // ── requestInstitution() / getMyInstitutionRequests() ───────────────────
@@ -126,10 +142,39 @@ describe('InstitutionService', () => {
 
     it('throws ConflictException with existing institution details when a similar name already exists', async () => {
       mockTables({
-        institutions: chain({ data: { id: 'inst-1', name: 'New School', slug: 'NEWSCH', type: 'school' }, error: null }),
+        institutions: chain({
+          data: {
+            id: 'inst-1',
+            name: 'New School',
+            slug: 'NEWSCH',
+            type: 'school',
+            city_code: 'DEL',
+            country_code: 'IN',
+          },
+          error: null,
+        }),
       });
 
-      await expect(service.requestInstitution('user-1', dto)).rejects.toThrow(ConflictException);
+      let caught: ConflictException | undefined;
+      try {
+        await service.requestInstitution('user-1', dto);
+      } catch (err) {
+        caught = err as ConflictException;
+      }
+
+      // FIX 3F — the frontend's "Use this institution" button builds a
+      // full Institution object straight from this payload, with no
+      // follow-up search call, so every field it needs must actually be
+      // here (not just id/name/slug).
+      expect(caught).toBeInstanceOf(ConflictException);
+      expect(caught!.getResponse()).toMatchObject({
+        existingInstitutionId: 'inst-1',
+        existingInstitutionName: 'New School',
+        existingInstitutionSlug: 'NEWSCH',
+        existingInstitutionType: 'school',
+        existingInstitutionCityCode: 'DEL',
+        existingInstitutionCountryCode: 'IN',
+      });
     });
 
     it('creates a pending request and audits it when no similar institution exists', async () => {

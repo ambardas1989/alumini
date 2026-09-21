@@ -116,6 +116,18 @@
   gap: 10px;
 }
 
+.searchFieldWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.requiredHint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .requestSuccess,
 .requestConflict {
   display: flex;

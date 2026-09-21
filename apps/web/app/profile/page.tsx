@@ -82,7 +82,7 @@ export default function ProfilePage() {
 
   const startEditing = () => {
     if (!profile) return;
-    setFullName(profile.fullName);
+    setFullName(profile.fullName ?? '');
     setPhone(profile.phone ?? '');
     setSaveError(null);
     setEditing(true);
@@ -176,6 +176,21 @@ export default function ProfilePage() {
 
   const verifiedCount = classrooms.filter((c) => c.verificationStatus === 'verified').length;
 
+  // FIX 2 — belt-and-suspenders: the actual root cause was
+  // identity.service.ts's getProfile()/updateProfile() returning
+  // snake_case field names (full_name, created_at, ...) while every field
+  // here reads camelCase, so profile.createdAt was `undefined` and
+  // formatDate(undefined, ...) -> new Date(undefined) -> Invalid Date ->
+  // Intl.DateTimeFormat.format() throwing RangeError, which is what
+  // actually crashed the render (now fixed at the source with alias:column
+  // selects). These fallbacks are cheap insurance against the same crash
+  // shape if any field is ever legitimately absent (e.g. a genuinely new
+  // account with no avatar/phone/linkedin set).
+  const safeFullName = profile.fullName ?? 'Unknown';
+  const safeEmail = profile.email ?? '';
+  const safeCreatedAt = profile.createdAt ?? new Date().toISOString();
+  const memberSinceLabel = formatDate(safeCreatedAt, undefined, { month: 'short', year: 'numeric' });
+
   return (
     <AppShell>
       <PageContainer>
@@ -188,17 +203,15 @@ export default function ProfilePage() {
 
           {!editing ? (
             <>
-              <Avatar avatarUrl={profile.avatarUrl} fullName={profile.fullName} size="xl" />
-              <p className={styles.name}>{profile.fullName}</p>
-              <p className={styles.email}>{profile.email}</p>
-              <p className={styles.memberSince}>
-                {t('memberSince', { date: formatDate(profile.createdAt, undefined, { month: 'short', year: 'numeric' }) })}
-              </p>
+              <Avatar avatarUrl={profile.avatarUrl ?? null} fullName={safeFullName} size="xl" />
+              <p className={styles.name}>{safeFullName}</p>
+              <p className={styles.email}>{safeEmail}</p>
+              <p className={styles.memberSince}>{t('memberSince', { date: memberSinceLabel })}</p>
             </>
           ) : (
             <>
               <button type="button" className={styles.avatarEditWrap} onClick={handleAvatarTap}>
-                <Avatar avatarUrl={profile.avatarUrl} fullName={profile.fullName} size="xl" />
+                <Avatar avatarUrl={profile.avatarUrl ?? null} fullName={safeFullName} size="xl" />
                 <span className={styles.avatarOverlay} aria-hidden="true">
                   📷
                 </span>
@@ -237,9 +250,7 @@ export default function ProfilePage() {
               <p className={styles.statLabel}>{t('stats.verifiedIn')}</p>
             </div>
             <div className={styles.statItem}>
-              <p className={styles.statNumber}>
-                {formatDate(profile.createdAt, undefined, { month: 'short', year: 'numeric' })}
-              </p>
+              <p className={styles.statNumber}>{memberSinceLabel}</p>
               <p className={styles.statLabel}>{t('stats.memberSince')}</p>
             </div>
           </div>

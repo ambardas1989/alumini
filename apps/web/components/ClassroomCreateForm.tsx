@@ -10,6 +10,7 @@ import { useDebounce } from '@/lib/useDebounce';
 import { useTranslations } from '@/lib/useTranslations';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useToast } from '@/components/providers/ToastProvider';
+import { COMMON_COUNTRIES, OTHER_COUNTRIES } from '@/lib/countries';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
@@ -28,10 +29,32 @@ const MAX_RESULTS = 8;
 const MIN_BATCH_YEAR = 1950;
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_BATCH_YEAR = CURRENT_YEAR + 5;
+// FIX 3B — the batch-year dropdown's own range (current year down to
+// 1960), a narrower band than MIN/MAX_BATCH_YEAR above (which stay as the
+// broader validation bounds — every dropdown value already satisfies them).
+const BATCH_YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - 1960 + 1 }, (_, i) => CURRENT_YEAR - i);
 
 const GRADES = Array.from({ length: 12 }, (_, i) => String(i + 1));
 const SECTIONS = ['A', 'B', 'C', 'D', 'E', 'F'];
 const PROGRAM_SUGGESTIONS = ['MBA', 'B.Tech', 'MBBS', 'B.Com', 'BA', 'B.Sc', 'LLB', 'M.Tech'];
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * FIX 3E — a 400 from /institutions/search is always class-validator's raw
+ * field-error array (e.g. "q must be longer than or equal to 2
+ * characters"), never safe to show verbatim; this context knows exactly
+ * why that 400 would happen here, so it can give a more specific message
+ * than lib/errors.ts's generic shared 400 fallback.
+ */
+function institutionSearchErrorMessage(err: unknown): string {
+  if (err instanceof ApiError && err.statusCode === 400) {
+    return 'Please enter a valid institution name.';
+  }
+  return getErrorMessage(err);
+}
 
 interface ClassroomCreateFormProps {
   /** Called with the resulting classroom's globalId after a successful create OR after joining an existing (409-conflict) classroom instead. */
@@ -89,6 +112,14 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
   const [requestSuccess, setRequestSuccess] = useState<{ requestId: string } | null>(null);
   const [requestConflict, setRequestConflict] = useState<InstitutionConflictPayload | null>(null);
 
+  // FIX 3D — the request form's own institution-name field re-checks for a
+  // match as the user edits it (they may tweak the pre-filled name to
+  // something that now matches an existing institution), separate from the
+  // outer search box above.
+  const debouncedRequestName = useDebounce(requestName, DEBOUNCE_MS);
+  const [nameSearchResults, setNameSearchResults] = useState<Institution[]>([]);
+  const [nameSearching, setNameSearching] = useState(false);
+
   const resultRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   // Institution search — client-side filtered by `type`: SearchInstitutionsDto
@@ -111,7 +142,7 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
         setHighlighted(-1);
       })
       .catch((err) => {
-        if (!cancelled) setSearchError(getErrorMessage(err));
+        if (!cancelled) setSearchError(institutionSearchErrorMessage(err));
       })
       .finally(() => {
         if (!cancelled) setSearching(false);
@@ -120,6 +151,32 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
       cancelled = true;
     };
   }, [debouncedQuery, selectedInstitution, type]);
+
+  // FIX 3D — live re-check while the request form is open and not yet
+  // resolved (no point searching once a conflict was already found or the
+  // request already submitted).
+  useEffect(() => {
+    if (!showRequestForm || requestSuccess || requestConflict || debouncedRequestName.trim().length < MIN_QUERY_LENGTH) {
+      setNameSearchResults([]);
+      return;
+    }
+    let cancelled = false;
+    setNameSearching(true);
+    api
+      .searchInstitutions(debouncedRequestName.trim())
+      .then((data) => {
+        if (!cancelled) setNameSearchResults(data.slice(0, MAX_RESULTS));
+      })
+      .catch(() => {
+        if (!cancelled) setNameSearchResults([]);
+      })
+      .finally(() => {
+        if (!cancelled) setNameSearching(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedRequestName, showRequestForm, requestSuccess, requestConflict]);
 
   const handleTypeChange = (next: InstitutionType) => {
     setType(next);
@@ -189,6 +246,12 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
     } catch (err) {
       if (err instanceof ApiError && err.statusCode === 409) {
         setRequestConflict(err.payload as InstitutionConflictPayload);
+      } else if (err instanceof ApiError && err.statusCode === 400) {
+        // FIX 3E — class-validator's array of field errors is never safe
+        // to show verbatim; every field here is already client-validated
+        // (dropdowns for country/type, required-field checks below), so
+        // this is an edge case, not the common path.
+        setRequestError('Please check your input and try again.');
       } else {
         setRequestError(getErrorMessage(err));
       }
@@ -197,19 +260,33 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
     }
   };
 
-  const handleUseExistingInstitution = async () => {
+  /**
+   * FIX 3F — this used to re-search by existingInstitutionName and hunt for
+   * a matching id in the results. That request could 400 with no q param
+   * at all: existingInstitutionName/existingInstitutionId came from the
+   * 409's payload, which AllExceptionsFilter (see its own fix) used to
+   * strip down to just { statusCode, error, message, timestamp } — every
+   * custom field this handler depended on was actually undefined at
+   * runtime, so `api.searchInstitutions(undefined)` sent a query with no
+   * `q` at all. Now that the filter preserves those fields (and the
+   * backend's 409 includes type/cityCode/countryCode too), this builds the
+   * Institution directly with no network call.
+   */
+  const handleUseExistingInstitution = () => {
     if (!requestConflict) return;
-    try {
-      const results = await api.searchInstitutions(requestConflict.existingInstitutionName);
-      const match = results.find((i) => i.id === requestConflict.existingInstitutionId);
-      if (match) {
-        handleSelectInstitution(match);
-        setShowRequestForm(false);
-        setRequestConflict(null);
-      }
-    } catch (err) {
-      setRequestError(getErrorMessage(err));
-    }
+    handleSelectInstitution({
+      id: requestConflict.existingInstitutionId,
+      name: requestConflict.existingInstitutionName,
+      slug: requestConflict.existingInstitutionSlug,
+      type: requestConflict.existingInstitutionType as Institution['type'],
+      cityCode: requestConflict.existingInstitutionCityCode ?? undefined,
+      countryCode: requestConflict.existingInstitutionCountryCode,
+      isPartner: false,
+      isClaimed: false,
+      createdAt: new Date().toISOString(),
+    });
+    setShowRequestForm(false);
+    setRequestConflict(null);
   };
 
   const handleBatchYearChange = (value: string) => {
@@ -388,21 +465,75 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                 </div>
               ) : (
                 <>
+                  <div className={styles.searchFieldWrap}>
+                    <Input
+                      label={`${t('requestForm.nameLabel')} *`}
+                      value={requestName}
+                      onChange={(e) => setRequestName(e.target.value)}
+                    />
+                    {nameSearching && (
+                      <div className={styles.searchStatus}>
+                        <LoadingSpinner size="sm" />
+                      </div>
+                    )}
+                    {!nameSearching && nameSearchResults.length > 0 && (
+                      <ul className={styles.results} role="listbox">
+                        {nameSearchResults.map((institution) => (
+                          <li key={institution.id}>
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={false}
+                              className={styles.resultRow}
+                              onClick={() => {
+                                handleSelectInstitution(institution);
+                                setShowRequestForm(false);
+                              }}
+                            >
+                              <span className={styles.resultName}>{institution.name}</span>
+                              <span className={styles.resultMeta}>
+                                {institution.cityCode ? `${institution.cityCode}, ` : ''}
+                                {institution.countryCode}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {!nameSearching &&
+                      nameSearchResults.length === 0 &&
+                      debouncedRequestName.trim().length >= MIN_QUERY_LENGTH && (
+                        <p className={styles.notFoundText}>{t('requestForm.noMatch')}</p>
+                      )}
+                  </div>
+
+                  <Input label={`${t('requestForm.typeLabel')} *`} value={t(`type${capitalize(type)}`)} disabled readOnly />
+
                   <Input
-                    label={t('requestForm.nameLabel')}
-                    value={requestName}
-                    onChange={(e) => setRequestName(e.target.value)}
-                  />
-                  <Input
-                    label={t('requestForm.cityLabel')}
+                    label={`${t('requestForm.cityLabel')} *`}
                     value={requestCity}
                     onChange={(e) => setRequestCity(e.target.value)}
                   />
-                  <Input
-                    label={t('requestForm.countryLabel')}
+                  <Select
+                    label={`${t('requestForm.countryLabel')} *`}
                     value={requestCountryCode}
                     onChange={(e) => setRequestCountryCode(e.target.value)}
-                  />
+                  >
+                    <optgroup label={t('requestForm.commonCountries')}>
+                      {COMMON_COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label={t('requestForm.otherCountries')}>
+                      {OTHER_COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </Select>
                   <Input
                     label={t('requestForm.websiteLabel')}
                     placeholder="https://..."
@@ -410,7 +541,7 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                     onChange={(e) => setRequestWebsite(e.target.value)}
                   />
                   <Select
-                    label={t('requestForm.relationshipLabel')}
+                    label={`${t('requestForm.relationshipLabel')} *`}
                     value={requestRelationship}
                     onChange={(e) => setRequestRelationship(e.target.value as typeof requestRelationship)}
                   >
@@ -426,6 +557,7 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                     maxLength={500}
                   />
                   {requestError && <ErrorMessage message={requestError} />}
+                  <p className={styles.requiredHint}>{t('requestForm.requiredHint')}</p>
                   <div className={styles.requestFormActions}>
                     <Button variant="ghost" size="md" onClick={() => setShowRequestForm(false)} disabled={requesting}>
                       {tCommon('cancel')}
@@ -506,14 +638,18 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
         />
       )}
 
-      <Input
+      <Select
         label={t('batchYearLabel')}
-        type="number"
-        inputMode="numeric"
         value={batchYear}
         error={batchYearError ?? undefined}
         onChange={(e) => handleBatchYearChange(e.target.value)}
-      />
+      >
+        {BATCH_YEAR_OPTIONS.map((year) => (
+          <option key={year} value={String(year)}>
+            {year}
+          </option>
+        ))}
+      </Select>
 
       {selectedInstitution && (
         <div className={styles.idPreview}>
