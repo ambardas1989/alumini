@@ -60,29 +60,30 @@
   white-space: nowrap;
 }
 
-.line2 {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  margin-block-start: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .chevron {
   flex-shrink: 0;
   color: var(--color-text-muted);
 }
 
 .bottomRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-block-start: 8px;
   padding-inline-start: 50px;
 }
 
-.verifiedPill {
+.statItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
-  font-weight: 600;
-  color: var(--color-success);
+  color: var(--color-text-muted);
+}
+
+.statSep {
+  font-size: 11px;
+  color: var(--color-text-muted);
 }
 
 .pendingPill {

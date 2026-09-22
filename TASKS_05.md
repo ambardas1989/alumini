@@ -137,7 +137,7 @@ Commit: "fix: LinkedIn button styling in profile account section"
 
 ---
 
-## TASK 04 — Fix: classroom card icons clarification [PENDING]
+## TASK 04 — Fix: classroom card icons clarification [DONE: the current component (rewritten in a prior session) never actually showed "two ticks" — verified state was a single "✓ Verified" line; replaced it anyway with the clearer stats row the spec asks for: 👥 member count + · + 📍 city (institution.cityCode — no code→name lookup exists anywhere in this app, shown raw the same way ClassroomCreateForm's own institution picker already displays it), 12px muted icons inline with " · " separators; pending state unchanged (already the amber "⏳ Verify to enter" pill). 💬 unread-message count declined — no endpoint tracks that, same standing "don't fabricate data" call this component already made once before. Extended ClassroomCardData.institution with an optional cityCode and threaded it through all 3 call sites (home, classes, profile)]
 
 Read apps/web/components/ClassroomCard.tsx
 
