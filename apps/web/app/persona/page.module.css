@@ -16,6 +16,12 @@
   margin-block-start: 6px;
 }
 
+.accountTagline {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-block-start: 2px;
+}
+
 .accountEmail {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
@@ -33,7 +39,7 @@
 .list {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
 }
 
 .card {
@@ -49,10 +55,14 @@
   width: 100%;
 }
 
+/* Literal spec value for the active persona card — this dark navy (not
+   --color-primary's purple) is the same tone used for the bottom nav and
+   classroom header, but here it's a card background rather than one of
+   this app's normal 4 dark-purple contexts, per TASK 10's explicit spec. */
 .cardActive {
   border-width: 2px;
-  border-color: var(--color-primary);
-  background: var(--color-primary);
+  border-color: #1c1c2e;
+  background: #1c1c2e;
 }
 
 .cardPending {
@@ -199,6 +209,7 @@
   padding: 12px 14px;
   border-radius: 11px;
   background: var(--color-info-light);
+  border: 1px solid #bfdbfe;
   color: var(--color-info);
   font-size: var(--text-xs);
   line-height: 1.6;

@@ -611,8 +611,9 @@
   },
   "personaSwitcher": {
     "title": "Switch persona",
+    "tagline": "One account — two contexts",
     "personaCount": "{count, plural, one {# persona} other {# personas}}",
-    "activeBadge": "Active",
+    "activeBadge": "Active now",
     "switchBadge": "Switch",
     "underReviewBadge": "Under review",
     "awaitingApproval": "Awaiting approval — cannot switch yet",
@@ -626,7 +627,7 @@
       "title": "Add a persona",
       "description": "Student, teacher, or institution admin"
     },
-    "infoNote": "Each persona has its own feed and classrooms. Same name and photo everywhere."
+    "infoNote": "Separate feeds, classroom lists, and notifications per persona. Same name and photo."
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",

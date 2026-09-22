@@ -401,7 +401,7 @@ Commit: "feat: profile — light bg, stats, classrooms, account section"
 
 ---
 
-## TASK 10 — Persona switcher [PENDING]
+## TASK 10 — Persona switcher [DONE: added the "One account — two contexts" tagline under the name, tightened the two-card grid gap to the spec's literal 8px, active card now uses the literal #1c1c2e navy (documented exception to the "purple only in 4 contexts" rule since this is the mockup's explicit spec) instead of --color-primary, active pill relabeled "Active now", info box gets a blue border on top of its existing blue bg/text tokens and updated copy — card structure (icon+title+sub, white/bordered inactive cards, "Switch" pill) already matched]
 
 Read apps/web/app/persona/page.tsx
 Read alumini-demo.html screen s7

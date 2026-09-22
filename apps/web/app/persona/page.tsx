@@ -120,6 +120,7 @@ export default function PersonaSwitcherPage() {
             <div className={styles.accountStrip}>
               <Avatar avatarUrl={user.avatarUrl} fullName={user.fullName} size="lg" />
               <p className={styles.accountName}>{user.fullName}</p>
+              <p className={styles.accountTagline}>{t('tagline')}</p>
               <p className={styles.accountEmail}>{user.email}</p>
               <p className={styles.personaCount}>{t('personaCount', { count: personas.length })}</p>
             </div>
