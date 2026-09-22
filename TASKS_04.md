@@ -321,7 +321,7 @@ Commit: "feat: classroom — dark header, light messages, bubble style matching 
 
 ---
 
-## TASK 07 — Members tab [PENDING]
+## TASK 07 — Members tab [DONE: filter pills rebuilt as individual bordered pills (were a segmented control in a tinted container) with literal active colors (#eff6ff/#1e40af/blue border) and dynamic "All (N)" counts (were static labels with no count). Member row redesigned: replaced the colored Badge-pill row (role+status+creator, from an earlier session's TASK 09) with plain "Role · Status" muted 11px text + a status dot (green=verified/pending_auto, amber=pending) per this task's explicit, more recent spec — a real design reversal for this one modal, badges elsewhere (ClassroomCard, profile) are untouched. Avatar kept at the closest built-in size (24px "sm") rather than extending the shared Avatar component's size API for a 4px difference from the spec's 28px. Vouch/message action buttons preserved (not in the mockup's own description, but real functionality worth keeping)]
 
 Read classroom members section
 Read alumini-demo.html cp-m section

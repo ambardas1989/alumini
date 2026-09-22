@@ -446,10 +446,11 @@
       "title": "{count, plural, one {# member} other {# members}}",
       "you": "You",
       "filter": {
-        "all": "All",
-        "verified": "Verified",
-        "pending": "Pending"
+        "all": "All ({count})",
+        "verified": "Verified ({count})",
+        "pending": "Pending ({count})"
       },
+      "roleStatus": "{role} · {status}",
       "vouchFor": "Vouch for {name}",
       "vouched": "Vouched ✓",
       "vouchSent": "Vouch sent to {name}",

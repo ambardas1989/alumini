@@ -8,7 +8,6 @@ import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from '@/lib/useTranslations';
 import { useToast } from '@/components/providers/ToastProvider';
 import { Avatar } from '@/components/ui/Avatar';
-import { Badge, type BadgeVariant } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { SheetModal } from '@/components/ui/SheetModal';
 import styles from './MemberListModal.module.css';
@@ -18,18 +17,19 @@ interface MemberListModalProps {
   members: ClassroomMember[];
   currentUserId: string;
   viewerIsVerified: boolean;
-  /** classroom.createdBy — the one member who gets the 'creator' badge alongside their role. */
+  /** classroom.createdBy — the one member shown as "Creator" instead of their plain role. */
   creatorId?: string | null;
   onClose: () => void;
 }
 
 type Filter = 'all' | 'verified' | 'pending';
 
-const ROLE_VARIANT: Record<string, BadgeVariant> = {
-  student: 'student',
-  teacher: 'teacher',
-  admin: 'admin',
-};
+/** TASKS_04 TASK 07 — green=verified/pending_auto, amber=pending, muted for anything else (e.g. rejected). */
+function statusDotClass(status: string): string {
+  if (status === 'verified' || status === 'pending_auto') return styles.dotVerified!;
+  if (status === 'pending') return styles.dotPending!;
+  return styles.dotOther!;
+}
 
 export function MemberListModal({
   classroomId,
@@ -46,6 +46,15 @@ export function MemberListModal({
   const [filter, setFilter] = useState<Filter>('all');
   const [vouchedIds, setVouchedIds] = useState<Set<string>>(new Set());
   const [vouchingId, setVouchingId] = useState<string | null>(null);
+
+  const counts = useMemo(
+    () => ({
+      all: members.length,
+      verified: members.filter((m) => m.verificationStatus === 'verified').length,
+      pending: members.filter((m) => m.verificationStatus === 'pending').length,
+    }),
+    [members],
+  );
 
   const filtered = useMemo(() => {
     if (filter === 'all') return members;
@@ -77,7 +86,7 @@ export function MemberListModal({
             className={`${styles.filterTab} ${filter === option ? styles.filterTabActive : ''}`}
             onClick={() => setFilter(option)}
           >
-            {t(`filter.${option}`)}
+            {t(`filter.${option}`, { count: counts[option] })}
           </button>
         ))}
       </div>
@@ -89,24 +98,19 @@ export function MemberListModal({
             viewerIsVerified && !isSelf && member.verificationStatus === 'pending';
           const alreadyVouched = vouchedIds.has(member.userId);
 
+          const roleLabel = member.userId === creatorId ? tStatus('creator') : tStatus(member.role);
+
           return (
             <li key={member.userId} className={styles.row}>
-              <Avatar avatarUrl={member.avatarUrl} fullName={member.fullName ?? '?'} size="md" />
+              <Avatar avatarUrl={member.avatarUrl} fullName={member.fullName ?? '?'} size="sm" />
               <div className={styles.info}>
                 <p className={styles.name}>
                   {member.fullName}
                   {isSelf && <span className={styles.youTag}>{t('you')}</span>}
                 </p>
-                <div className={styles.badgeRow}>
-                  {member.userId === creatorId && <Badge variant="creator" label={tStatus('creator')} size="sm" />}
-                  <Badge variant={ROLE_VARIANT[member.role] ?? 'student'} label={tStatus(member.role)} size="sm" />
-                  <Badge
-                    variant={member.verificationStatus as BadgeVariant}
-                    label={tStatus(member.verificationStatus)}
-                    size="sm"
-                  />
-                </div>
+                <p className={styles.meta}>{t('roleStatus', { role: roleLabel, status: tStatus(member.verificationStatus) })}</p>
               </div>
+              <span className={`${styles.statusDot} ${statusDotClass(member.verificationStatus)}`} aria-hidden="true" />
               <div className={styles.actions}>
                 {canVouch && (
                   <Button
