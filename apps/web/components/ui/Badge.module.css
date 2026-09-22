@@ -62,3 +62,9 @@
   background: var(--color-border);
   color: var(--color-text-secondary);
 }
+
+/* TASKS_05 TASK 06 — literal spec colors, LinkedIn's own brand blue. */
+.linkedin {
+  background: #e8f0fe;
+  color: #0a66c2;
+}

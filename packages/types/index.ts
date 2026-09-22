@@ -210,6 +210,10 @@ export interface Profile {
   activePersona: PersonaType;
   linkedinUrl?: string;
   linkedinVerified: boolean;
+  /** TASKS_05 TASK 06 — the "connect LinkedIn" OAuth feature (profile enrichment). Distinct from linkedinUrl/linkedinVerified above, which belong to the classroom-verification LinkedIn method. */
+  linkedinConnected?: boolean;
+  linkedinName?: string;
+  linkedinAvatarUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

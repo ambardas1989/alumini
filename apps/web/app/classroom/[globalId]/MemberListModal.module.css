@@ -60,6 +60,20 @@
   padding-inline: 6px;
 }
 
+/* TASKS_05 TASK 06 — compact stand-in for the full Badge component (which
+   has a "in Verified" label) — too wide for this already-dense row, so
+   just the brand mark, same colors. */
+.linkedinMark {
+  flex-shrink: 0;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  color: #0a66c2;
+  background: #e8f0fe;
+  border-radius: 3px;
+  padding: 2px 3px;
+}
+
 .meta {
   font-size: 11px;
   color: var(--color-text-muted);

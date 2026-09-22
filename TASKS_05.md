@@ -235,7 +235,7 @@ supabase/migrations/016_institution_logos.sql
 
 ---
 
-## TASK 06 — Feature: LinkedIn integration [PENDING]
+## TASK 06 — Feature: LinkedIn integration [DONE: SCOPED DOWN after investigation — the task's premise ("LinkedIn OAuth is already set up") was false (only Google OAuth exists, no LinkedIn strategy/credentials anywhere), and more importantly LinkedIn's standard consumer OAuth (available to any app without a business Partner Program review) only ever returns id/name/email/photo — never headline, positions, educations, or location, which the classroom-recommendations engine and most of the "confirm each field" UI depended on entirely. Flagged this to the user before building anything; they chose the scoped-down option. Built: a real POST /auth/linkedin/connect (code exchange via plain fetch against LinkedIn's OAuth/OIDC endpoints, no new npm dependency) + POST /identity/linkedin/save (name/photo only) + POST /identity/linkedin/disconnect, migration 017 with only linkedin_connected/id/name/avatar_url columns (documented why headline/company/location/education/synced_at were dropped), a frontend OAuth redirect + callback page with a simplified 2-checkbox confirmation panel, a real Badge 'linkedin' variant shown on the profile header and (compact mark, not the full badge — too wide for the row) next to connected members' names in the classroom member list. Declined entirely, no fabrication: /identity/linkedin/sync, GET /identity/linkedin/recommendations, the home-page "Based on your LinkedIn profile" section, and the periodic-sync-outdated indicator — all depended on data this integration cannot honestly obtain]
 
 LinkedIn OAuth is already set up for Google sign-in.
 This task uses it specifically for profile enrichment

@@ -17,6 +17,7 @@ import { IdentityService } from './identity.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AddPersonaDto } from './dto/add-persona.dto';
 import { SwitchPersonaDto } from './dto/switch-persona.dto';
+import { SaveLinkedinDto } from './dto/save-linkedin.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthTokenPayload } from '../auth/auth.types';
@@ -72,5 +73,20 @@ export class IdentityController {
     @Req() req: Request,
   ) {
     return this.identityService.switchPersona(authToken.sub, dto, req);
+  }
+
+  // ── LinkedIn ─────────────────────────────────────────────────────────────
+
+  @Post('linkedin/save')
+  @ApiOperation({ summary: 'Save whichever LinkedIn-suggested fields the caller confirmed' })
+  async saveLinkedin(@CurrentUser() authToken: AuthTokenPayload, @Body() dto: SaveLinkedinDto) {
+    return this.identityService.saveLinkedin(authToken.sub, dto);
+  }
+
+  @Post('linkedin/disconnect')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Disconnect LinkedIn from the caller\'s profile' })
+  async disconnectLinkedin(@CurrentUser() authToken: AuthTokenPayload): Promise<void> {
+    await this.identityService.disconnectLinkedin(authToken.sub);
   }
 }

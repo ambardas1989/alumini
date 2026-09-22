@@ -78,6 +78,18 @@ import {
 /** Outcome of a single MFA code check — see verifyCode() and mfaFailureException(). */
 type MfaCodeCheckResult = 'valid' | 'invalid' | 'expired' | 'max_attempts';
 
+/** connectLinkedin()'s return shape — see its own doc comment for why this is only 3 fields. */
+export interface LinkedinConnectData {
+  linkedinId: string;
+  name: string | null;
+  avatarUrl: string | null;
+}
+
+/** Same pattern as google.strategy.ts's isGoogleOAuthConfigured(). */
+export function isLinkedInOAuthConfigured(): boolean {
+  return !!(process.env.LINKEDIN_CLIENT_ID && process.env.LINKEDIN_CLIENT_SECRET);
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -198,6 +210,70 @@ export class AuthService {
     );
 
     return { mfaRequired: true, mfaPendingToken, mfaMethod: null };
+  }
+
+  // ── LinkedIn connect (profile enrichment, NOT login) ─────────────────────
+
+  /**
+   * TASKS_05 TASK 06 — SCOPED DOWN from the task's original spec. LinkedIn's
+   * standard consumer OAuth (the 'openid profile email' scopes any
+   * registered app can request) only returns name/email/profile-photo —
+   * it does NOT return headline, positions, educations, or location. Those
+   * fields require LinkedIn's Marketing/Talent Partner Program, a business
+   * approval process this codebase has no access to. Rather than fabricate
+   * that data, this only ever requests and stores what LinkedIn's OAuth
+   * actually hands back: linkedinId (the 'sub' claim), name, avatarUrl.
+   * There is deliberately no sync()/recommendations() companion to this —
+   * both depended entirely on the job/education data that was dropped.
+   *
+   * Uses plain fetch() against LinkedIn's OAuth/OIDC REST endpoints instead
+   * of a passport strategy — this is a "connect an already-logged-in
+   * account" action, not a login flow, so there's no Passport session to
+   * carry the caller's identity through a browser redirect anyway; the
+   * frontend does the initial redirect to LinkedIn itself (client_id is
+   * public) and calls this method with the resulting `code` over a normal,
+   * already-authenticated fetch. No new dependency needed for two REST calls.
+   */
+  async connectLinkedin(code: string, redirectUri: string): Promise<LinkedinConnectData> {
+    if (!isLinkedInOAuthConfigured()) {
+      throw new BadRequestException('LinkedIn connect is not available');
+    }
+
+    const tokenRes = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+        client_id: process.env.LINKEDIN_CLIENT_ID!,
+        client_secret: process.env.LINKEDIN_CLIENT_SECRET!,
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      this.logger.error('LinkedIn token exchange failed', { status: tokenRes.status });
+      throw new BadRequestException('Could not connect to LinkedIn. Please try again.');
+    }
+
+    const { access_token: accessToken } = (await tokenRes.json()) as { access_token: string };
+
+    const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!profileRes.ok) {
+      this.logger.error('LinkedIn userinfo fetch failed', { status: profileRes.status });
+      throw new BadRequestException('Could not read your LinkedIn profile. Please try again.');
+    }
+
+    const profile = (await profileRes.json()) as { sub: string; name?: string; picture?: string };
+
+    return {
+      linkedinId: profile.sub,
+      name: profile.name ?? null,
+      avatarUrl: profile.picture ?? null,
+    };
   }
 
   /**

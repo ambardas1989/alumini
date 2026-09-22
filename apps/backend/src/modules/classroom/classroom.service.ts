@@ -440,7 +440,7 @@ export class ClassroomService {
       .from('memberships')
       .select(
         'user_id, role, verification_status, joined_at, ' +
-          'profile:profiles!memberships_user_id_fkey(id, full_name, avatar_url)',
+          'profile:profiles!memberships_user_id_fkey(id, full_name, avatar_url, linkedin_connected)',
       )
       .eq('classroom_id', classroomId)
       .order('joined_at', { ascending: true })
@@ -460,6 +460,10 @@ export class ClassroomService {
       // never send real names to an unverified viewer, not even partially.
       fullName:  isVerified ? m.profile?.full_name ?? null : redactName(m.profile?.full_name ?? ''),
       avatarUrl: isVerified ? m.profile?.avatar_url ?? null : null,
+      // Not sensitive like name/avatar (it's just "has this person
+      // connected LinkedIn", not their LinkedIn identity itself), so this
+      // is shown regardless of the viewer's own verification status.
+      linkedinConnected: m.profile?.linkedin_connected ?? false,
     }));
   }
 

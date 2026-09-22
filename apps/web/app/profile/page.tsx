@@ -9,6 +9,8 @@ import { getErrorMessage } from '@/lib/errors';
 import { clearSession } from '@/lib/auth';
 import { safeFormatDate, formatPhoneDisplay } from '@/lib/format';
 import { supabase, PROFILE_AVATARS_BUCKET } from '@/lib/supabase';
+import { isLinkedInConnectEnabled, buildLinkedInAuthorizeUrl } from '@/lib/linkedin';
+import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useToast } from '@/components/providers/ToastProvider';
@@ -182,12 +184,28 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDisconnectLinkedIn = () => {
-    showToast(t('linkedin.comingSoonToast'), 'info');
+  const [disconnectingLinkedIn, setDisconnectingLinkedIn] = useState(false);
+
+  const handleDisconnectLinkedIn = async () => {
+    setDisconnectingLinkedIn(true);
+    try {
+      await api.disconnectLinkedinAccount();
+      setProfile((prev) => (prev ? { ...prev, linkedinConnected: false, linkedinName: undefined, linkedinAvatarUrl: undefined } : prev));
+      showToast(t('linkedin.disconnectedToast'), 'success');
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setDisconnectingLinkedIn(false);
+    }
   };
 
   const handleConnectLinkedIn = () => {
-    showToast(t('linkedin.comingSoonToast'), 'info');
+    // TASKS_05 TASK 06 — client_id is public; the OAuth code exchange
+    // itself (which needs the secret) happens server-side once this tab
+    // comes back with ?code=, via a normal authenticated POST, not here.
+    const state = crypto.randomUUID();
+    sessionStorage.setItem('linkedin_oauth_state', state);
+    window.location.href = buildLinkedInAuthorizeUrl(state);
   };
 
   const handleMfaReset = async () => {
@@ -326,6 +344,7 @@ export default function ProfilePage() {
               <div className={styles.badgeRow}>
                 <span className={styles.personaTypeBadge}>{tTypes(profile.activePersona)}</span>
                 {verifiedCount > 0 && <span className={styles.verifiedHeaderBadge}>{t('verifiedBadge')}</span>}
+                {profile.linkedinConnected && <Badge variant="linkedin" label={t('linkedin.badgeLabel')} />}
               </div>
             </>
           ) : (
@@ -422,22 +441,34 @@ export default function ProfilePage() {
               <LinkedInIcon />
               <div className={styles.linkedinRowText}>
                 <span className={styles.accountLabel}>{t('linkedin.title')}</span>
-                {/* No sync timestamp exists in the data model yet (that's
-                    TASK 06's linkedin_synced_at column) — a "Sync now"
-                    action here would have nothing to do, so this only ever
-                    shows Connect or Disconnect. */}
+                {/* No refresh token is retained (see connectLinkedin()'s doc
+                    comment) so there's nothing to periodically re-fetch —
+                    only ever Connect or Disconnect, no "Sync now". */}
                 <span className={styles.linkedinStatus}>
-                  {profile.linkedinVerified && profile.linkedinUrl
-                    ? t('linkedin.connectedStatus')
+                  {profile.linkedinConnected
+                    ? profile.linkedinName
+                      ? t('linkedin.connectedAs', { name: profile.linkedinName })
+                      : t('linkedin.connectedStatus')
                     : t('linkedin.notConnectedStatus')}
                 </span>
               </div>
-              {profile.linkedinVerified && profile.linkedinUrl ? (
-                <button type="button" className={styles.linkedinDisconnectLink} onClick={handleDisconnectLinkedIn}>
+              {profile.linkedinConnected ? (
+                <button
+                  type="button"
+                  className={styles.linkedinDisconnectLink}
+                  onClick={handleDisconnectLinkedIn}
+                  disabled={disconnectingLinkedIn}
+                >
                   {t('linkedin.disconnect')}
                 </button>
               ) : (
-                <Button variant="ghost" size="sm" className={styles.linkedinConnectButton} onClick={handleConnectLinkedIn}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={styles.linkedinConnectButton}
+                  disabled={!isLinkedInConnectEnabled()}
+                  onClick={handleConnectLinkedIn}
+                >
                   {t('linkedin.connectButton')}
                 </Button>
               )}

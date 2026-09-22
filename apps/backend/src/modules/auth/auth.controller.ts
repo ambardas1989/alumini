@@ -48,6 +48,7 @@ import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthTokenPayload } from './auth.types';
 import { GoogleProfile } from './strategies/google.strategy';
+import { LinkedinConnectDto } from './dto/linkedin-connect.dto';
 
 /**
  * IMPORTANT: Add FRONTEND_URL=https://alumtribe.com to Render environment
@@ -261,5 +262,16 @@ export class AuthController {
     @Req() req: Request,
   ): Promise<void> {
     await this.authService.logout(authToken, dto, req);
+  }
+
+  // ── LinkedIn connect (profile enrichment, not login) ────────────────────
+
+  @Post('linkedin/connect')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Exchange a LinkedIn OAuth code for basic profile data (name, photo) — does not save anything' })
+  async connectLinkedin(@Body() dto: LinkedinConnectDto) {
+    const linkedinData = await this.authService.connectLinkedin(dto.code, dto.redirectUri);
+    return { linkedinData };
   }
 }

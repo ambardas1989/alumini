@@ -107,6 +107,11 @@ export function MemberListModal({
                 <p className={styles.name}>
                   {member.fullName}
                   {isSelf && <span className={styles.youTag}>{t('you')}</span>}
+                  {member.linkedinConnected && (
+                    <span className={styles.linkedinMark} aria-label={t('linkedinConnected')} title={t('linkedinConnected')}>
+                      in
+                    </span>
+                  )}
                 </p>
                 <p className={styles.meta}>{t('roleStatus', { role: roleLabel, status: tStatus(member.verificationStatus) })}</p>
               </div>

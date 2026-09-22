@@ -451,6 +451,7 @@
     "memberList": {
       "title": "{count, plural, one {# member} other {# members}}",
       "you": "You",
+      "linkedinConnected": "LinkedIn connected",
       "filter": {
         "all": "All ({count})",
         "verified": "Verified ({count})",
@@ -596,12 +597,14 @@
     "linkedin": {
       "title": "LinkedIn",
       "connectedStatus": "Connected",
+      "connectedAs": "Connected as {name}",
       "notConnectedStatus": "Not connected",
+      "disconnectedToast": "LinkedIn disconnected",
+      "badgeLabel": "in Verified",
       "verifiedBadge": "Verified",
       "disconnect": "Disconnect",
       "connectButton": "Connect",
-      "usageNote": "Used for verification and profile visibility",
-      "comingSoonToast": "Coming soon"
+      "usageNote": "Used for verification and profile visibility"
     },
     "account": {
       "sectionLabel": "Account",
@@ -617,6 +620,18 @@
       "signOutLabel": "Sign out",
       "signOutButton": "Sign out"
     }
+  },
+  "linkedinConnect": {
+    "title": "Connect LinkedIn",
+    "invalidCallback": "This LinkedIn connection link is invalid or expired. Please try connecting again.",
+    "foundHeading": "We found your LinkedIn profile",
+    "field": {
+      "photo": "Use this profile photo",
+      "name": "Use this name: {name}"
+    },
+    "saveButton": "Save selected",
+    "skipButton": "Skip for now",
+    "savedToast": "LinkedIn connected"
   },
   "personaTypes": {
     "alumni": "Alumni",

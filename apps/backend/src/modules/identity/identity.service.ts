@@ -61,6 +61,7 @@ import { appConfig } from '@alumini/config/app';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AddPersonaDto } from './dto/add-persona.dto';
 import { SwitchPersonaDto } from './dto/switch-persona.dto';
+import { SaveLinkedinDto } from './dto/save-linkedin.dto';
 
 type PersonaStatus = 'active' | 'pending_approval';
 
@@ -122,6 +123,7 @@ export class IdentityService {
           'mfaEnabled:mfa_enabled, mfaMethod:mfa_method, ' +
           'isPlatformAdmin:is_platform_admin, ' +
           'activePersona:active_persona, linkedinUrl:linkedin_url, linkedinVerified:linkedin_verified, ' +
+          'linkedinConnected:linkedin_connected, linkedinName:linkedin_name, linkedinAvatarUrl:linkedin_avatar_url, ' +
           'createdAt:created_at, updatedAt:updated_at',
       )
       .eq('id', userId)
@@ -414,5 +416,50 @@ export class IdentityService {
     });
 
     return { activePersona: to };
+  }
+
+  // ── LinkedIn (profile enrichment) ────────────────────────────────────────
+
+  /** Saves only whichever of name/avatar the user explicitly checked — see SaveLinkedinDto's own comment. */
+  async saveLinkedin(userId: string, dto: SaveLinkedinDto) {
+    const patch: Record<string, unknown> = {
+      linkedin_connected: true,
+      linkedin_id: dto.linkedinId,
+    };
+    if (dto.confirmName && dto.name) patch.linkedin_name = dto.name;
+    if (dto.confirmAvatar && dto.avatarUrl) patch.linkedin_avatar_url = dto.avatarUrl;
+
+    const { data, error } = await this.supabase
+      .from('profiles')
+      .update(patch)
+      .eq('id', userId)
+      .select(
+        'id, linkedinConnected:linkedin_connected, linkedinName:linkedin_name, linkedinAvatarUrl:linkedin_avatar_url',
+      )
+      .single();
+
+    if (error || !data) {
+      this.logger.error('Failed to save LinkedIn connection', { error, userId });
+      throw new BadRequestException('Failed to save LinkedIn connection. Please try again.');
+    }
+
+    return data;
+  }
+
+  async disconnectLinkedin(userId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('profiles')
+      .update({
+        linkedin_connected: false,
+        linkedin_id: null,
+        linkedin_name: null,
+        linkedin_avatar_url: null,
+      })
+      .eq('id', userId);
+
+    if (error) {
+      this.logger.error('Failed to disconnect LinkedIn', { error, userId });
+      throw new BadRequestException('Failed to disconnect LinkedIn. Please try again.');
+    }
   }
 }

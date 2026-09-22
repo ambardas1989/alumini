@@ -8,7 +8,8 @@ export type BadgeVariant =
   | 'creator'
   | 'teacher'
   | 'admin'
-  | 'student';
+  | 'student'
+  | 'linkedin';
 
 export type BadgeSize = 'sm' | 'md';
 

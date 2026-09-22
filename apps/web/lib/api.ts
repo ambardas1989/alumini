@@ -323,6 +323,32 @@ export function getPersonas(): Promise<Persona[]> {
   return request('/identity/personas');
 }
 
+// ── LinkedIn connect (profile enrichment) — see auth.service.ts's connectLinkedin() doc comment for scope ──
+
+export interface LinkedinConnectData {
+  linkedinId: string;
+  name: string | null;
+  avatarUrl: string | null;
+}
+
+export function connectLinkedin(code: string, redirectUri: string): Promise<{ linkedinData: LinkedinConnectData }> {
+  return request('/auth/linkedin/connect', { method: 'POST', body: { code, redirectUri } });
+}
+
+export function saveLinkedin(data: {
+  linkedinId: string;
+  confirmName?: boolean;
+  name?: string | null;
+  confirmAvatar?: boolean;
+  avatarUrl?: string | null;
+}): Promise<Pick<Profile, 'linkedinConnected' | 'linkedinName' | 'linkedinAvatarUrl'>> {
+  return request('/identity/linkedin/save', { method: 'POST', body: data });
+}
+
+export function disconnectLinkedinAccount(): Promise<void> {
+  return request('/identity/linkedin/disconnect', { method: 'POST' });
+}
+
 export function addPersona(type: PersonaType, institutionId?: string): Promise<Persona> {
   return request('/identity/personas', { method: 'POST', body: { type, institutionId } });
 }
@@ -521,6 +547,7 @@ export interface ClassroomMember {
   joinedAt: string;
   fullName: string | null;
   avatarUrl: string | null;
+  linkedinConnected: boolean;
 }
 
 export function getMembers(classroomId: string, page = 0): Promise<ClassroomMember[]> {
