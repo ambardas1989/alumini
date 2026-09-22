@@ -141,7 +141,7 @@ institution form UX, migration docs, channel role display"
 
 ---
 
-## TASK 02 — Global color scheme: light theme [PENDING]
+## TASK 02 — Global color scheme: light theme [DONE: alumini-demo.html confirmed (again) not present anywhere in repo — proceeded on the task's own literal CSS values instead. Investigation found the :root palette already matched this task's spec almost exactly (from earlier work) — only 2 tokens were genuinely missing (--color-primary-dark, --color-border-mid, added to both light and dark themes) plus body's background shorthand→background-color. Found and fixed the one real violation of "dark purple only for auth panel/classroom header/bottom nav/primary buttons": not-found.module.css used the dark auth gradient as a full-page background — now light like every other content page]
 
 CRITICAL: The app is dark navy/purple. The mockup is LIGHT.
 Read alumini-demo.html in full before changing anything.

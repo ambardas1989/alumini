@@ -28,10 +28,16 @@
   --color-primary: #4a1fa8;
   --color-primary-light: #eae4ff;
   --color-primary-mid: #7a55d8;
+  /* TASKS_04 TASK 02 — same value --auth-gradient-from already held under
+     a different name; added as its own token since the task asks for it
+     by this name specifically (e.g. a dark-on-dark border/accent that
+     isn't literally "the auth gradient's start color" semantically). */
+  --color-primary-dark: #2d1b69;
   --color-bg: #f0ecff;
   --color-surface: #ffffff;
   --color-cream: #f8f5ff;
   --color-border: #ddd5f8;
+  --color-border-mid: #c4b8f0;
   --color-text-primary: #12063a;
   --color-text-secondary: #3b2870;
   --color-text-muted: #7a62b8;
@@ -107,10 +113,12 @@
   /* From brand.ts dark mode */
   --color-primary: #9d7ff5;
   --color-primary-light: #3d3280;
+  --color-primary-dark: #2d1b69;
   --color-bg: #1e1646;
   --color-surface: #2e2468;
   --color-cream: #261d58;
   --color-border: #3d3280;
+  --color-border-mid: #4d4090;
   --color-text-primary: #ede8ff;
   --color-text-secondary: #c4b8f0;
   --color-text-muted: #9080c8;
@@ -184,7 +192,7 @@ body {
 body {
   font-family: var(--font-primary);
   font-size: var(--text-base);
-  background: var(--color-bg);
+  background-color: var(--color-bg);
   color: var(--color-text-primary);
   /* Font rendering — consistent across Windows/Mac/iOS/Android */
   -webkit-font-smoothing: antialiased; /* Mac/iOS Chrome, Safari */
