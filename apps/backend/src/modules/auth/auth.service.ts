@@ -412,7 +412,20 @@ export class AuthService {
     });
 
     if (error) {
-      this.logger.error('Failed to store TOTP secret', { error, userId });
+      // TASKS_05 TASK 10 Fix 2 — the previous log here (`{ error, userId }`)
+      // relied on the logger's default object formatting to surface
+      // Postgres's own code/details/hint, which doesn't reliably happen —
+      // Nest's default console logger often prints an Error-like object as
+      // just its message. Pulled out explicitly so a real failure is
+      // actually diagnosable from Render logs instead of just this generic
+      // 400 the client sees.
+      this.logger.error('[MFA-SETUP-ERROR]', {
+        userId,
+        error: error.message,
+        code: (error as { code?: string }).code,
+        details: (error as { details?: string }).details,
+        hint: (error as { hint?: string }).hint,
+      });
       throw new BadRequestException('Failed to start MFA setup. Please try again.');
     }
 

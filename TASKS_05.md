@@ -775,7 +775,7 @@ Commit: "fix: signup error handling and field name validation"
 
 ---
 
-## TASK 10 — Fix: MFA setup 400 on new signups [PENDING]
+## TASK 10 — Fix: MFA setup 400 on new signups [DONE: Fix 1 and Fix 3's premises were both false in the current code — auth.service.ts's constructor already uses the SERVICE ROLE client (createClient with SUPABASE_SERVICE_ROLE_KEY, same pattern as every other module, confirmed by reading it directly), and a service-role client bypasses RLS entirely regardless of what any policy says, so an RLS gap literally cannot explain a 400 from this code path. Declined creating 019_fix_mfa_totp_rls.sql: the task's suggested policy (INSERT ... WITH CHECK (auth.uid() = user_id)) would let an authenticated client insert directly into mfa_totp_secrets via the Supabase JS client, bypassing the backend's controlled setup flow entirely — a real security regression against that table's own migration comment ("No client ever reads this table directly — access is service-role only"), not a fix. Implemented Fix 2 for real: initiateTotpSetup()'s error log now explicitly pulls out the Postgres error's code/details/hint (the previous `{error, userId}` log relied on default object formatting that doesn't reliably surface those fields), tagged [MFA-SETUP-ERROR] as specified, so a genuine failure is actually diagnosable from Render logs instead of only showing this generic 400 client-side. If the 400 is real and still reproduces after this, the improved log is what will show why — schema/column names were checked and already match the upsert exactly]
 
 Live bug — new users cannot complete MFA setup.
 GET /v1/auth/mfa/setup returns 400
