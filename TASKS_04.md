@@ -371,7 +371,7 @@ Commit: "feat: verify page — numbered method cards matching mockup"
 
 ---
 
-## TASK 09 — Profile page [PENDING]
+## TASK 09 — Profile page [DONE: header and stats-row turned into proper white cards (13px radius/border), avatar set to a literal 56px via a new optional Avatar sizePx prop, name resized to 16px/700, added persona-type + conditional "Verified" badges under the name, stats row gets dividers between columns — "Connections"/"Profile %" columns declined since no endpoint backs either metric, kept the real classrooms/verified-in/member-since stats instead; classroom rows and section heading already matched the mockup from TASK 04's ClassroomCard rewrite, no changes needed there]
 
 Read apps/web/app/profile/page.tsx
 Read alumini-demo.html screen s6

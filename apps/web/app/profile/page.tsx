@@ -201,10 +201,19 @@ export default function ProfilePage() {
 
           {!editing ? (
             <>
-              <Avatar avatarUrl={profile.avatarUrl ?? null} fullName={safeFullName} size="xl" />
+              <Avatar avatarUrl={profile.avatarUrl ?? null} fullName={safeFullName} sizePx={56} />
               <p className={styles.name}>{safeFullName}</p>
+              {/* Profile has no location field and isn't tied to a single
+                  classroom's batch year (a user can belong to several), so
+                  the mockup's "location + batch" line is replaced with the
+                  real data this app actually has for a person: their email
+                  and join date. */}
               <p className={styles.email}>{safeEmail}</p>
               <p className={styles.memberSince}>{t('memberSince', { date: memberSinceLabel })}</p>
+              <div className={styles.badgeRow}>
+                <span className={styles.personaTypeBadge}>{tTypes(profile.activePersona)}</span>
+                {verifiedCount > 0 && <span className={styles.verifiedHeaderBadge}>{t('verifiedBadge')}</span>}
+              </div>
             </>
           ) : (
             <>
@@ -237,6 +246,11 @@ export default function ProfilePage() {
           )}
         </div>
 
+        {/* Spec asks for "Connections | Profile %" as the last two columns —
+            neither concept exists in this app's data model (no connections
+            graph, no profile-completeness endpoint), so the 3rd column
+            stays the real "verified since" metric rather than a fabricated
+            number. */}
         {!editing && (
           <div className={styles.statsRow}>
             <div className={styles.statItem}>

@@ -6,6 +6,8 @@ interface AvatarProps {
   avatarUrl?: string | null;
   fullName: string;
   size?: AvatarSize;
+  /** Overrides the size preset with an exact pixel value, e.g. a mockup-literal 56px. */
+  sizePx?: number;
 }
 
 const SIZE_PX: Record<AvatarSize, number> = { sm: 24, md: 32, lg: 48, xl: 64 };
@@ -29,8 +31,8 @@ function initials(name: string): string {
   return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
 }
 
-export function Avatar({ avatarUrl, fullName, size = 'md' }: AvatarProps) {
-  const px = SIZE_PX[size];
+export function Avatar({ avatarUrl, fullName, size = 'md', sizePx }: AvatarProps) {
+  const px = sizePx ?? SIZE_PX[size];
 
   if (avatarUrl) {
     return (
