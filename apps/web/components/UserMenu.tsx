@@ -59,7 +59,7 @@ export function UserMenu({ size = 'sm', showOnlineDot = false }: UserMenuProps) 
         aria-expanded={open}
       >
         <Avatar avatarUrl={user?.avatarUrl} fullName={user?.fullName ?? ''} size={size} />
-        {showOnlineDot && <span className={styles.onlineDot} aria-hidden="true" />
+        {showOnlineDot && <span className={styles.onlineDot} aria-hidden="true" />}
       </button>
 
       {open && (

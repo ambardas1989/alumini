@@ -342,7 +342,7 @@ Commit: "feat: members tab — filter pills and avatar rows"
 
 ---
 
-## TASK 08 — Verification flow page [PENDING]
+## TASK 08 — Verification flow page [DONE: context card gets icon + inline "complete any one method" copy, number badges shrunk to 20px, completed cards get #f0fdf4 bg, active cards get a blue border, vouch method adds an honest points-based "N more needed" line + filled/dashed avatar-slot row (no fabricated voucher identities — none are retrievable from any endpoint), status bar's green-bg-when-complete already satisfied the spec; also fixed a pre-existing syntax bug in UserMenu.tsx (missing `}` on the online-dot span) that was breaking the production build]
 
 Read apps/web/app/verify/page.tsx
 Read alumini-demo.html screen s4

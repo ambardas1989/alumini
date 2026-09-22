@@ -500,6 +500,7 @@
         "label": "Peer vouching",
         "description": "3 verified classmates vouch for you",
         "pointsReceived": "{points} of {required} points received",
+        "moreNeeded": "{remaining, plural, one {# more needed} other {# more needed}}",
         "pointsGuide": "Student vouch = 1 pt · Teacher vouch = 1.5 pts",
         "teacherShortcut": "2 teacher vouches = instantly verified",
         "listUnavailable": "Vouches you've received will appear here.",

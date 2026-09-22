@@ -162,19 +162,23 @@ export default function VerifyPage() {
       <PageContainer noPadding>
         <div className={styles.scroll}>
           <div className={styles.contextCard}>
-            <p className={styles.institutionName}>{classroom.institution.name}</p>
-            <p className={styles.classroomName}>{classroom.name}</p>
+            <div className={styles.contextTop}>
+              <span className={styles.contextIcon} aria-hidden="true">🎓</span>
+              <div className={styles.contextTextBlock}>
+                <p className={styles.institutionName}>{classroom.institution.name}</p>
+                <p className={styles.classroomName}>{classroom.name}</p>
+              </div>
+            </div>
             <div className={styles.contextMeta}>
               <span>{classroom.batchYear}</span>
               <Badge variant={statusBadge.variant} label={statusBadge.label} />
             </div>
+            <p className={styles.progressNote}>
+              {latestAttempt?.status === 'pending'
+                ? t('progressInProgress', { method: methodLabel(latestAttempt.method as MethodKey) })
+                : t('progressDefault')}
+            </p>
           </div>
-
-          <p className={styles.progressNote}>
-            {latestAttempt?.status === 'pending'
-              ? t('progressInProgress', { method: methodLabel(latestAttempt.method as MethodKey) })
-              : t('progressDefault')}
-          </p>
 
           <div className={styles.methods}>
             <MethodAccordion

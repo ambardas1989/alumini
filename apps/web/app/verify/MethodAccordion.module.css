@@ -9,10 +9,13 @@
 
 .cardComplete {
   border-color: var(--color-success);
+  background: #f0fdf4;
 }
 
+/* Literal spec value — "blue border" for the expanded/active card, distinct
+   from the app's purple --color-primary used for the number badge/buttons. */
 .cardActive {
-  border-color: var(--color-primary);
+  border-color: #3b82f6;
 }
 
 .header {
@@ -28,14 +31,14 @@
 
 .numberBadge {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  min-width: 30px;
-  min-height: 30px;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
   border-radius: 50%;
   background: var(--color-primary);
   color: #fff;
-  font-size: var(--text-xs);
+  font-size: 9px;
   font-weight: 700;
   display: flex;
   align-items: center;
