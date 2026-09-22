@@ -8,7 +8,7 @@ import styles from './BottomNav.module.css';
 
 interface Tab {
   href: string;
-  labelKey: 'home' | 'classes' | 'messages' | 'profile';
+  labelKey: 'home' | 'create' | 'messages' | 'profile';
   icon: ReactNode;
 }
 
@@ -35,15 +35,17 @@ const TABS: Tab[] = [
     ),
   },
   {
-    // TASK 08: Classes is now the classroom directory (/classes), not the
-    // creation form — was pointed at /classroom/create as a workaround
-    // before this page existed.
-    href: '/classes',
-    labelKey: 'classes',
+    // TASKS_04 TASK 03 — "MUST match mockup" tab order swaps the classroom
+    // directory for a direct create-classroom shortcut; the home page
+    // already IS "my classrooms" (see TASKS_04 TASK 04), so a second
+    // dedicated browse tab here was redundant. /classes itself still
+    // exists and is still linked from elsewhere (e.g. profile's "find my
+    // batch" empty-state CTA) — only its bottom-nav tab is gone.
+    href: '/classroom/create',
+    labelKey: 'create',
     icon: (
       <svg {...ICON_PROPS}>
-        <rect x="3" y="4" width="18" height="16" rx="2" />
-        <path d="M3 9h18M9 4v16" />
+        <path d="M12 5v14M5 12h14" />
       </svg>
     ),
   },
@@ -75,15 +77,7 @@ export function BottomNav() {
   return (
     <nav className={styles.nav} aria-label={t('primaryLabel')}>
       {TABS.map((tab) => {
-        // "Classes" should read active on /classes itself and on any
-        // /classroom/* route (create form, detail view) — those aren't
-        // under /classes, so a plain startsWith(tab.href) alone would miss them.
-        const active =
-          tab.href === '/'
-            ? pathname === '/'
-            : tab.labelKey === 'classes'
-              ? pathname.startsWith('/classes') || pathname.startsWith('/classroom')
-              : pathname.startsWith(tab.href);
+        const active = tab.href === '/' ? pathname === '/' : pathname.startsWith(tab.href);
         return (
           <Link
             key={tab.href}

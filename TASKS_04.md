@@ -183,7 +183,7 @@ Commit: "fix: global color scheme — light theme matching mockup"
 
 ---
 
-## TASK 03 — AppShell and bottom navigation [PENDING]
+## TASK 03 — AppShell and bottom navigation [DONE: bottom nav tab 2 swapped from Classes (grid icon, /classes) to Create (plus icon, /classroom/create) per exact spec — /classes page itself is untouched, just no longer in the bottom nav; label 10px→9px, inactive/active colors changed from theme tokens to literal #aaa/#1c1c2e per spec. "Top nav bar" section deliberately left to TASK 04 (Home page) — AppShell intentionally owns no header (documented in its own file), and the "+/hamburger" pattern described has no existing precedent or concrete behavior spec anywhere in the app to safely implement without inventing new functionality]
 
 Read apps/web/components/layout/AppShell.tsx
 Read alumini-demo.html bottom nav (bnav section)

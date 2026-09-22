@@ -24,7 +24,10 @@
   justify-content: center;
   gap: 3px;
   text-decoration: none;
-  color: var(--color-text-muted);
+  /* TASKS_04 TASK 03 — literal spec colors, not the theme's muted/primary
+     tokens: inactive #aaa, active #1c1c2e, applied to both the SVG (via
+     stroke="currentColor") and the label text together. */
+  color: #aaa;
 }
 
 .icon {
@@ -32,10 +35,10 @@
 }
 
 .label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
 }
 
 .active {
-  color: var(--color-primary);
+  color: #1c1c2e;
 }

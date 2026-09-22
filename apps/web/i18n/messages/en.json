@@ -27,7 +27,7 @@
   "nav": {
     "primaryLabel": "Primary",
     "home": "Home",
-    "classes": "Classes",
+    "create": "Create",
     "messages": "Messages",
     "profile": "Profile"
   },
