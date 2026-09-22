@@ -11,10 +11,10 @@ interface ChannelTabsProps {
   onInfoClick: () => void;
 }
 
-const TABS: Array<{ channel: ChannelType; brandKey: 'main' | 'staff' | 'student' }> = [
-  { channel: ChannelType.CLASSROOM, brandKey: 'main' },
-  { channel: ChannelType.STAFF_ROOM, brandKey: 'staff' },
-  { channel: ChannelType.STUDENT_ALLEY, brandKey: 'student' },
+const TABS: Array<{ channel: ChannelType; brandKey: 'main' | 'staff' | 'student'; tooltipKey: string }> = [
+  { channel: ChannelType.CLASSROOM, brandKey: 'main', tooltipKey: 'classroom' },
+  { channel: ChannelType.STAFF_ROOM, brandKey: 'staff', tooltipKey: 'staffRoom' },
+  { channel: ChannelType.STUDENT_ALLEY, brandKey: 'student', tooltipKey: 'studentAlley' },
 ];
 
 /**
@@ -41,6 +41,7 @@ export function ChannelTabs({ active, onChange, onInfoClick }: ChannelTabsProps)
               role="tab"
               aria-selected={isActive}
               className={styles.tab}
+              title={t(`tabTooltip.${tab.tooltipKey}`)}
               onClick={() => onChange(tab.channel)}
             >
               {brand.channels[tab.brandKey]}

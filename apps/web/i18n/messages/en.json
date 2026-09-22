@@ -324,7 +324,7 @@
       "submit": "Submit request",
       "successMessage": "Request submitted! We'll review it within 24-48 hours and notify you at {email} when approved.",
       "requestId": "Request ID: {id}",
-      "conflictMessage": "A similar institution already exists: {name}.",
+      "conflictMessage": "Already exists: {name}. Use it instead?",
       "useExisting": "Use this institution →"
     },
     "gradeLabel": "Grade",
@@ -366,19 +366,29 @@
       "members": "{count, plural, one {# member} other {# members}}",
       "teachers": "{count, plural, one {# teacher} other {# teachers}}",
       "verified": "{count, plural, one {# verified} other {# verified}}",
-      "details": "Details"
+      "details": "Details",
+      "role": {
+        "admin": "Admin",
+        "teacher": "Teacher",
+        "student": "Student"
+      },
+      "tabTooltip": {
+        "classroom": "Open to all verified members",
+        "staffRoom": "Teachers and admins only",
+        "studentAlley": "Students only — private from teachers"
+      }
     },
     "locked": {
       "staff_room": {
         "title": "Staff Room",
         "subtitle": "Verify your membership to see this channel.",
         "description": "Only teachers and admins can access Staff Room.",
-        "studentMessage": "🍎 Teachers only in here. No students allowed!"
+        "studentMessage": "🍎 The teachers' lounge is off-limits.\nOnly teachers and admins can post here."
       },
       "student_alley": {
         "title": "Student Alley",
-        "subtitle": "Student Alley is private to students.",
-        "description": "Teachers and admins don't have access to this channel"
+        "subtitle": "🎒 Student Alley is private to students.",
+        "description": "Teachers and admins respect this space."
       }
     },
     "postRestricted": {

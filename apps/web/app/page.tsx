@@ -6,7 +6,7 @@ import type { Classroom, Institution, VerificationStatus } from '@alumini/types'
 import * as api from '@/lib/api';
 import type { NotificationRow } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatRelativeTime } from '@/lib/format';
+import { safeRelativeTime } from '@/lib/format';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useTranslations } from '@/lib/useTranslations';
@@ -233,7 +233,7 @@ export default function HomePage() {
                         <span className={styles.feedTitle}>{item.title}</span>
                         {item.body && <span className={styles.feedBody}>{item.body}</span>}
                       </span>
-                      <span className={styles.feedTime}>{formatRelativeTime(item.created_at)}</span>
+                      <span className={styles.feedTime}>{safeRelativeTime(item.created_at)}</span>
                     </button>
                   </div>
                 );

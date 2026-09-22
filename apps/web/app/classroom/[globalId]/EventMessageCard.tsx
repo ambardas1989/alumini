@@ -1,7 +1,7 @@
 'use client';
 
 import type { Event as ClassroomEvent, RsvpStatus } from '@alumini/types';
-import { formatDate } from '@/lib/format';
+import { safeFormatDate } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import styles from './EventMessageCard.module.css';
 
@@ -31,7 +31,7 @@ export function EventMessageCard({ event, fallbackTitle, onRsvp }: EventMessageC
     <div className={styles.card}>
       <p className={styles.title}>{event.title}</p>
       <p className={styles.meta}>
-        {formatDate(event.eventDate)} · {event.isOnline ? t('online') : event.location || t('online')}
+        {safeFormatDate(event.eventDate)} · {event.isOnline ? t('online') : event.location || t('online')}
       </p>
       <p className={styles.counts}>
         {t('going')} {counts.going} · {t('maybe')} {counts.maybe} · {t('notGoing')} {counts.notGoing}

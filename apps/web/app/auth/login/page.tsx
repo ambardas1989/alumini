@@ -35,6 +35,20 @@ export default function LoginPage() {
   // styling); signed_out and password_reset are both normal, expected
   // actions the user just took (neutral/info styling) — different semantic
   // weight, different color.
+  //
+  // FIX 6 investigation: this banner is already strictly derived from the
+  // `message` query param — nothing else sets it, and it's never true when
+  // that param is absent. Also traced every ?message=session_expired
+  // writer in the app (lib/api.ts's 401 handler, AuthProvider's silent-
+  // refresh failure, SessionExpiryWarning's refresh failure) and the
+  // post-MFA success redirect (auth/mfa/page.tsx) — that one goes to '/',
+  // never here. The most likely real cause of a spurious "session expired"
+  // banner right after a fresh login was FIX 1's incomplete CORS origin
+  // allowlist: a production deploy without CORS_ORIGINS set would reject
+  // every credentialed request from the real production domain, including
+  // the silent-refresh calls above — a refresh blocked by CORS looks
+  // identical to a genuinely expired session to those call sites. See
+  // apps/backend/src/main.ts's own FIX 1 comment.
   const banner =
     message === 'session_expired'
       ? { text: t('sessionExpiredBanner'), variant: 'warning' as const }

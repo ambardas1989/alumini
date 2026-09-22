@@ -30,8 +30,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const GENERIC_FALLBACK = 'Something went wrong. Please try again.';
-const SERVER_ERROR_FALLBACK = 'Server error. Please try again in a moment.';
-const NETWORK_ERROR_FALLBACK = 'No connection. Please check your internet.';
+const SERVER_ERROR_FALLBACK = 'Server error. Please try again.';
+const NETWORK_ERROR_FALLBACK = 'Connection issue. Check your internet.';
 
 /**
  * Returns a mapped, user-facing message for an ApiError — never the raw
@@ -66,4 +66,26 @@ export function getErrorMessage(error: ApiError | unknown): string {
     return error.message || GENERIC_FALLBACK;
   }
   return GENERIC_FALLBACK;
+}
+
+/**
+ * FIX 5E — "400 validation array → parse and show per field." class-
+ * validator's default messages all start with the DTO property name
+ * (e.g. "countryCode must be exactly 2 characters"), so the leading word
+ * is a reliable field key to group by. Returns {} for anything that isn't
+ * an array (a single hand-written string message, or no payload at all) —
+ * callers fall back to a single generic message in that case.
+ */
+export function parseValidationErrors(error: ApiError | unknown): Record<string, string> {
+  if (!(error instanceof ApiError) || error.statusCode !== 400) return {};
+  const payload = error.payload as { message?: unknown } | undefined;
+  if (!payload || !Array.isArray(payload.message)) return {};
+
+  const result: Record<string, string> = {};
+  for (const raw of payload.message) {
+    if (typeof raw !== 'string') continue;
+    const field = raw.split(' ')[0];
+    if (field) result[field] = raw;
+  }
+  return result;
 }

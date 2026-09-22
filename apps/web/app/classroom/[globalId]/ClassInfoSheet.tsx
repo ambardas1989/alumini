@@ -1,7 +1,7 @@
 'use client';
 
 import type { Event as ClassroomEvent } from '@alumini/types';
-import { formatDate } from '@/lib/format';
+import { safeFormatDate } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -73,7 +73,7 @@ export function ClassInfoSheet({
             {upcomingEvents.map((event) => (
               <li key={event.id} className={styles.eventRow}>
                 <span className={styles.eventTitle}>{event.title}</span>
-                <span className={styles.eventDate}>{formatDate(event.eventDate)}</span>
+                <span className={styles.eventDate}>{safeFormatDate(event.eventDate)}</span>
               </li>
             ))}
           </ul>

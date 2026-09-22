@@ -567,6 +567,7 @@ export default function ClassroomPage() {
         memberCount={classroom.memberCount}
         teacherCount={memberStats.teacherCount}
         verifiedCount={memberStats.verifiedCount}
+        userRole={membership.userRole}
         onStatsClick={() => setShowInfoSheet(true)}
       />
       <ChannelTabs active={activeChannel} onChange={setActiveChannel} onInfoClick={() => setShowInfoSheet(true)} />

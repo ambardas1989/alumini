@@ -5,7 +5,7 @@ import type { Institution } from '@alumini/types';
 import { generateClassroomId } from '@alumini/utils';
 import * as api from '@/lib/api';
 import { ApiError, type ClassroomConflictPayload, type InstitutionConflictPayload } from '@/lib/api';
-import { getErrorMessage } from '@/lib/errors';
+import { getErrorMessage, parseValidationErrors } from '@/lib/errors';
 import { useDebounce } from '@/lib/useDebounce';
 import { useTranslations } from '@/lib/useTranslations';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -109,6 +109,7 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
   const [requestNotes, setRequestNotes] = useState('');
   const [requesting, setRequesting] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [requestFieldErrors, setRequestFieldErrors] = useState<Record<string, string>>({});
   const [requestSuccess, setRequestSuccess] = useState<{ requestId: string } | null>(null);
   const [requestConflict, setRequestConflict] = useState<InstitutionConflictPayload | null>(null);
 
@@ -227,10 +228,18 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
 
   const canSubmitRequest = !!requestName.trim() && !!requestCity.trim();
 
+  // FIX 5E — "400 validation array → parse and show per field": each DTO
+  // property's own class-validator message (parsed by
+  // parseValidationErrors()) is shown directly under its matching input
+  // via the error prop, instead of one generic banner. Every field here is
+  // already client-validated (dropdowns for country/type, required-field
+  // checks before submit), so a 400 reaching this far is an edge case
+  // (e.g. name/notes over the backend's max length).
   const handleSubmitRequest = async () => {
     if (!canSubmitRequest) return;
     setRequesting(true);
     setRequestError(null);
+    setRequestFieldErrors({});
     setRequestConflict(null);
     try {
       const result = await api.requestInstitution({
@@ -247,11 +256,12 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
       if (err instanceof ApiError && err.statusCode === 409) {
         setRequestConflict(err.payload as InstitutionConflictPayload);
       } else if (err instanceof ApiError && err.statusCode === 400) {
-        // FIX 3E — class-validator's array of field errors is never safe
-        // to show verbatim; every field here is already client-validated
-        // (dropdowns for country/type, required-field checks below), so
-        // this is an edge case, not the common path.
-        setRequestError('Please check your input and try again.');
+        const fieldErrors = parseValidationErrors(err);
+        if (Object.keys(fieldErrors).length > 0) {
+          setRequestFieldErrors(fieldErrors);
+        } else {
+          setRequestError('Please check your input and try again.');
+        }
       } else {
         setRequestError(getErrorMessage(err));
       }
@@ -469,6 +479,7 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                     <Input
                       label={`${t('requestForm.nameLabel')} *`}
                       value={requestName}
+                      error={requestFieldErrors.name}
                       onChange={(e) => setRequestName(e.target.value)}
                     />
                     {nameSearching && (
@@ -512,11 +523,13 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                   <Input
                     label={`${t('requestForm.cityLabel')} *`}
                     value={requestCity}
+                    error={requestFieldErrors.city}
                     onChange={(e) => setRequestCity(e.target.value)}
                   />
                   <Select
                     label={`${t('requestForm.countryLabel')} *`}
                     value={requestCountryCode}
+                    error={requestFieldErrors.countryCode}
                     onChange={(e) => setRequestCountryCode(e.target.value)}
                   >
                     <optgroup label={t('requestForm.commonCountries')}>
@@ -538,11 +551,13 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                     label={t('requestForm.websiteLabel')}
                     placeholder="https://..."
                     value={requestWebsite}
+                    error={requestFieldErrors.websiteUrl}
                     onChange={(e) => setRequestWebsite(e.target.value)}
                   />
                   <Select
                     label={`${t('requestForm.relationshipLabel')} *`}
                     value={requestRelationship}
+                    error={requestFieldErrors.requesterRelationship}
                     onChange={(e) => setRequestRelationship(e.target.value as typeof requestRelationship)}
                   >
                     <option value="alumni">{t('requestForm.relationship.alumni')}</option>
@@ -552,6 +567,7 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                   <Textarea
                     label={t('requestForm.notesLabel')}
                     value={requestNotes}
+                    error={requestFieldErrors.notes}
                     onChange={(e) => setRequestNotes(e.target.value)}
                     rows={3}
                     maxLength={500}

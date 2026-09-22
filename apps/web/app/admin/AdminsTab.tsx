@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatDate } from '@/lib/format';
+import { safeFormatDate } from '@/lib/format';
 import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
@@ -166,7 +166,7 @@ export function AdminsTab({ institutionId }: AdminsTabProps) {
             <div key={invite.id} className={styles.row}>
               <span className={styles.rowText}>
                 <span className={styles.rowName}>{invite.email}</span>
-                <span className={styles.rowMeta}>{t('inviteExpires', { date: formatDate(invite.expires_at) })}</span>
+                <span className={styles.rowMeta}>{t('inviteExpires', { date: safeFormatDate(invite.expires_at) })}</span>
               </span>
               {/* No resend/cancel-invite endpoint exists on the backend
                   (institution.controller.ts has invite + admin-remove only,

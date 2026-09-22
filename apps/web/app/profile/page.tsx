@@ -7,7 +7,7 @@ import type { Classroom, Institution, Profile } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { clearSession } from '@/lib/auth';
-import { formatDate } from '@/lib/format';
+import { safeFormatDate } from '@/lib/format';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useToast } from '@/components/providers/ToastProvider';
@@ -183,13 +183,11 @@ export default function ProfilePage() {
   // formatDate(undefined, ...) -> new Date(undefined) -> Invalid Date ->
   // Intl.DateTimeFormat.format() throwing RangeError, which is what
   // actually crashed the render (now fixed at the source with alias:column
-  // selects). These fallbacks are cheap insurance against the same crash
-  // shape if any field is ever legitimately absent (e.g. a genuinely new
-  // account with no avatar/phone/linkedin set).
+  // selects, and belt-and-suspenders here with safeFormatDate(), which
+  // never throws regardless of what it's given).
   const safeFullName = profile.fullName ?? 'Unknown';
   const safeEmail = profile.email ?? '';
-  const safeCreatedAt = profile.createdAt ?? new Date().toISOString();
-  const memberSinceLabel = formatDate(safeCreatedAt, undefined, { month: 'short', year: 'numeric' });
+  const memberSinceLabel = safeFormatDate(profile.createdAt, { month: 'short', year: 'numeric' });
 
   return (
     <AppShell>

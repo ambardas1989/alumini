@@ -78,6 +78,16 @@ export class ClassroomService {
    * @param creatorId - User ID of the person creating the classroom
    * @param dto - Validated creation data
    * @param req - Express request (for audit IP logging)
+   *
+   * IMPORTANT: The classroom creator is always assigned
+   * role='admin' regardless of their persona.
+   * This is by design — the creator manages the classroom.
+   *
+   * For testing channel access:
+   * - Do NOT use the creator account (always admin)
+   * - Create a second account and JOIN as student
+   * - Test Staff Room restriction from student account
+   * - Test Student Alley access from student account
    */
   async createClassroom(
     creatorId: string,

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatRelativeTime } from '@/lib/format';
+import { safeRelativeTime } from '@/lib/format';
 import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
@@ -106,7 +106,7 @@ export function VerifyTab({ institutionId }: VerifyTabProps) {
             </div>
             <span className={styles.methodBadge}>{t('methodBadge')}</span>
           </div>
-          <p className={styles.submitted}>{t('submitted', { time: formatRelativeTime(item.submittedAt) })}</p>
+          <p className={styles.submitted}>{t('submitted', { time: safeRelativeTime(item.submittedAt) })}</p>
 
           <button type="button" className={styles.viewDoc} onClick={() => handleViewDocument(item.verificationId)}>
             {t('viewDocument')}

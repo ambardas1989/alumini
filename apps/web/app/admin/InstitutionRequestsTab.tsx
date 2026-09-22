@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatRelativeTime } from '@/lib/format';
+import { safeRelativeTime } from '@/lib/format';
 import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
@@ -109,7 +109,7 @@ export function InstitutionRequestsTab() {
           </p>
           {item.city && <p className={styles.meta}>{item.city}</p>}
           <p className={styles.meta}>{t('requestedBy', { name: item.requester?.full_name ?? 'Unknown' })}</p>
-          <p className={styles.submitted}>{t('submitted', { time: formatRelativeTime(item.created_at) })}</p>
+          <p className={styles.submitted}>{t('submitted', { time: safeRelativeTime(item.created_at) })}</p>
 
           <div className={styles.actions}>
             <Button

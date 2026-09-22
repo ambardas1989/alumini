@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { MessageType } from '@alumini/types';
-import { formatRelativeTime } from '@/lib/format';
+import { safeRelativeTime } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
@@ -28,7 +28,7 @@ export function MessageBubble({ message, isOwn, onDelete, onRetry }: MessageBubb
     return (
       <div className={styles.systemRow}>
         <span className={styles.systemText}>
-          {message.content} · {formatRelativeTime(message.createdAt)}
+          {message.content} · {safeRelativeTime(message.createdAt)}
         </span>
       </div>
     );
@@ -90,7 +90,7 @@ export function MessageBubble({ message, isOwn, onDelete, onRetry }: MessageBubb
         </div>
         {!message.isRedacted && (
           <div className={styles.metaRow}>
-            {!isOwn && <span className={styles.time}>{formatRelativeTime(message.createdAt)}</span>}
+            {!isOwn && <span className={styles.time}>{safeRelativeTime(message.createdAt)}</span>}
             {isOwn && message.clientStatus === 'failed' && (
               <button type="button" className={styles.retryLink} onClick={() => onRetry(message)}>
                 {t('sendFailed')}
@@ -101,7 +101,7 @@ export function MessageBubble({ message, isOwn, onDelete, onRetry }: MessageBubb
             )}
             {isOwn && !message.clientStatus && (
               <>
-                <span className={styles.time}>{formatRelativeTime(message.createdAt)}</span>
+                <span className={styles.time}>{safeRelativeTime(message.createdAt)}</span>
                 {/* Always-visible delete trigger — long-press works too (see
                     onPointerDown above), but a touch/mouse gesture alone
                     isn't keyboard-accessible, so this button is the primary

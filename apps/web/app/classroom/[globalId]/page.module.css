@@ -48,6 +48,10 @@
   padding: 24px;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
+  /* FIX 3 — the restriction copy is two lines in the spec (a "\n" in the
+     translation string) — pre-line renders that literally instead of
+     collapsing it to a single line like normal text-node whitespace. */
+  white-space: pre-line;
 }
 
 .postRestrictedNote {

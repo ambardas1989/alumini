@@ -34,8 +34,26 @@ async function bootstrap(): Promise<void> {
   // (comma-separated, e.g. a production custom domain). '*' in an entry
   // matches any subdomain segment(s) — needed for Cloudflare Pages/Render's
   // per-deploy preview URLs, which don't have a fixed hostname to whitelist.
+  //
+  // FIX 1: the production domains (alumtribe.com/www/.app) were missing
+  // from this default list entirely — they only ever got through via the
+  // CORS_ORIGINS env var, so any deploy where that var wasn't set had every
+  // credentialed request from the real production site rejected by CORS,
+  // including AuthProvider's/SessionExpiryWarning's silent-refresh calls —
+  // a refresh blocked by CORS looks identical to a genuinely expired
+  // session to those components, which is the likely real cause of users
+  // seeing "session expired" while their session was actually fine (see
+  // FIX 6's own investigation note in auth/login/page.tsx). Now hardcoded
+  // here as a default, not solely dependent on ops remembering to set the
+  // env var. Kept the dynamic origin-matching function (wildcard support
+  // for Cloudflare Pages/Render previews) rather than replacing it with a
+  // fixed array — a static list would silently break every preview deploy.
   const DEFAULT_ALLOWED_ORIGINS = [
+    'https://alumtribe.com',
+    'https://www.alumtribe.com',
+    'https://alumtribe.app',
     'http://localhost:3000', // local Next.js dev
+    'http://localhost:3001', // local Next.js dev (alternate port)
     'http://localhost:19006', // local Expo web
     'https://*.pages.dev', // Cloudflare Pages preview URLs
     'https://*.onrender.com', // Render preview URLs
@@ -68,8 +86,11 @@ async function bootstrap(): Promise<void> {
         callback(new Error('Not allowed by CORS'));
       }
     },
-    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Dev-Key', 'Accept', 'Origin', 'X-Requested-With'],
+    credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   // ── Global prefix ─────────────────────────────────────────────────────────

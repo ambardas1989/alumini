@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatNumber, formatRelativeTime } from '@/lib/format';
+import { formatNumber, safeRelativeTime } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -146,7 +146,7 @@ export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) 
           {overview.recentActivity.map((entry) => (
             <div key={entry.id} className={styles.activityRow}>
               <span className={styles.activityText}>{humanizeEventType(entry.eventType)}</span>
-              <span className={styles.activityTime}>{formatRelativeTime(entry.createdAt)}</span>
+              <span className={styles.activityTime}>{safeRelativeTime(entry.createdAt)}</span>
             </div>
           ))}
         </>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
 import type { DmMessage, StudentProfile } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatDate, formatRelativeTime } from '@/lib/format';
+import { safeFormatDate, safeRelativeTime } from '@/lib/format';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { useToast } from '@/components/providers/ToastProvider';
@@ -130,7 +130,7 @@ export function ThreadView({ userId }: ThreadViewProps) {
               <div key={m.id}>
                 {showDateSeparator && (
                   <div className={styles.dateSeparator}>
-                    <span>{formatDate(m.createdAt)}</span>
+                    <span>{safeFormatDate(m.createdAt)}</span>
                   </div>
                 )}
                 <div className={`${styles.row} ${isOwn ? styles.rowOwn : ''}`}>
@@ -139,7 +139,7 @@ export function ThreadView({ userId }: ThreadViewProps) {
                     <div className={`${styles.bubble} ${isOwn ? styles.bubbleOwn : styles.bubbleOther}`}>
                       {m.content}
                     </div>
-                    <span className={styles.time}>{formatRelativeTime(m.createdAt)}</span>
+                    <span className={styles.time}>{safeRelativeTime(m.createdAt)}</span>
                   </div>
                 </div>
               </div>

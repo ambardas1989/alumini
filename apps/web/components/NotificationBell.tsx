@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
 import type { NotificationRow } from '@/lib/api';
-import { formatRelativeTime } from '@/lib/format';
+import { safeRelativeTime } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import styles from './NotificationBell.module.css';
 
@@ -153,7 +153,7 @@ export function NotificationBell() {
                     </span>
                     {item.body && <span className={styles.itemBody}>{item.body}</span>}
                   </span>
-                  <span className={styles.itemTime}>{formatRelativeTime(item.created_at)}</span>
+                  <span className={styles.itemTime}>{safeRelativeTime(item.created_at)}</span>
                 </button>
               ))}
           </div>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { InstitutionCode } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatDate } from '@/lib/format';
+import { safeFormatDate } from '@/lib/format';
 import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
@@ -290,7 +290,7 @@ export function CodesTab({ institutionId }: CodesTabProps) {
               {t(`type.${code.type}`)} · {t(`codeStatus.${code.status}`)}
               {code.maxRedemptions ? ` · ${code.redemptionCount}/${code.maxRedemptions}` : ''}
             </span>
-            <span className={styles.codeExpiry}>{t('expires', { date: formatDate(code.expiresAt) })}</span>
+            <span className={styles.codeExpiry}>{t('expires', { date: safeFormatDate(code.expiresAt) })}</span>
           </div>
         ))
       )}

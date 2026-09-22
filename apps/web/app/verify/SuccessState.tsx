@@ -1,6 +1,6 @@
 'use client';
 
-import { formatDate } from '@/lib/format';
+import { safeFormatDate } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import { Button } from '@/components/ui/Button';
 import styles from './SuccessState.module.css';
@@ -21,7 +21,7 @@ export function SuccessState({ method, verifiedAt, onGoToClassroom }: SuccessSta
       </span>
       <h1 className={styles.title}>{t('title')}</h1>
       {method && <p className={styles.method}>{t('viaMethod', { method })}</p>}
-      {verifiedAt && <p className={styles.date}>{formatDate(verifiedAt)}</p>}
+      {verifiedAt && <p className={styles.date}>{safeFormatDate(verifiedAt)}</p>}
       <Button variant="primary" size="lg" fullWidth onClick={onGoToClassroom}>
         {t('goToClassroomButton')}
       </Button>

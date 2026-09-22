@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { supabase, VERIFICATION_DOCUMENTS_BUCKET } from '@/lib/supabase';
-import { formatDate } from '@/lib/format';
+import { safeFormatDate } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import { Button } from '@/components/ui/Button';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -94,7 +94,7 @@ export function DocumentMethod({ classroomId, initialPhase, rejectionReason, sub
       <div className={styles.infoCard}>
         <p className={styles.infoTitle}>{t('pendingTitle')}</p>
         <p className={styles.infoBody}>{t('pendingBody')}</p>
-        {submittedDate && <p className={styles.infoMeta}>{t('submittedOn', { date: formatDate(submittedDate) })}</p>}
+        {submittedDate && <p className={styles.infoMeta}>{t('submittedOn', { date: safeFormatDate(submittedDate) })}</p>}
       </div>
     );
   }

@@ -54,6 +54,37 @@
   white-space: nowrap;
 }
 
+/* FIX 3 — current user's role badge. Deliberately literal colors here
+   (dark/purple/blue), not the shared Badge component's palette — that
+   component's 'student' variant is a neutral gray elsewhere in the app,
+   but this specific spec asks for a distinct blue. */
+.roleBadge {
+  flex-basis: 100%;
+  align-self: flex-start;
+  margin-inline-start: 44px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.roleBadgeAdmin {
+  background: #1c1c2e;
+  color: #fff;
+}
+
+.roleBadgeTeacher {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.roleBadgeStudent {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
 .statsRow {
   flex-basis: 100%;
   display: flex;

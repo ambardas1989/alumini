@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
 import type { DmConversation } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { formatRelativeTime } from '@/lib/format';
+import { safeRelativeTime } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
@@ -87,7 +87,7 @@ export function ConversationList() {
                   </p>
                 </div>
                 <div className={styles.meta}>
-                  <span className={styles.time}>{formatRelativeTime(c.lastMessage.createdAt)}</span>
+                  <span className={styles.time}>{safeRelativeTime(c.lastMessage.createdAt)}</span>
                   {c.unreadCount > 0 && <span className={styles.badge}>{c.unreadCount}</span>}
                 </div>
               </button>

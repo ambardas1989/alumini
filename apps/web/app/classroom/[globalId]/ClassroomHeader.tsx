@@ -14,6 +14,8 @@ interface ClassroomHeaderProps {
   memberCount: number;
   teacherCount: number;
   verifiedCount: number;
+  /** FIX 3 — the CURRENT user's own role in this classroom, shown as a badge so they can tell why a channel is locked. */
+  userRole: string | null;
   onStatsClick: () => void;
 }
 
@@ -34,6 +36,12 @@ interface ClassroomHeaderProps {
  * batch year already shown in the subtitle, so it's removed rather than
  * relabeled.
  */
+const ROLE_BADGE_CLASS: Record<string, string> = {
+  admin: 'roleBadgeAdmin',
+  teacher: 'roleBadgeTeacher',
+  student: 'roleBadgeStudent',
+};
+
 export function ClassroomHeader({
   name,
   grade,
@@ -44,12 +52,14 @@ export function ClassroomHeader({
   memberCount,
   teacherCount,
   verifiedCount,
+  userRole,
   onStatsClick,
 }: ClassroomHeaderProps) {
   const router = useRouter();
   const t = useTranslations('classroom.header');
 
   const identity = grade ? `${grade}${section ?? ''}` : (program ?? name);
+  const roleBadgeClass = userRole ? ROLE_BADGE_CLASS[userRole] : undefined;
 
   return (
     <header className={styles.header}>
@@ -62,6 +72,9 @@ export function ClassroomHeader({
           {t('classroomBatch', { identity, year: batchYear })}
         </p>
       </div>
+      {roleBadgeClass && (
+        <span className={`${styles.roleBadge} ${styles[roleBadgeClass]}`}>{t(`role.${userRole}`)}</span>
+      )}
       <button type="button" className={styles.statsRow} onClick={onStatsClick}>
         <span>{t('members', { count: memberCount })}</span>
         <span>·</span>
