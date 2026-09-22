@@ -42,6 +42,26 @@ export function safeFormatDate(
   }
 }
 
+/**
+ * TASKS_05 TASK 02 — profiles.phone is stored in E.164 (enforced by
+ * UpdateProfileDto's regex: '+' + country code + national number, no
+ * spaces). This is a display-only, best-effort grouping — not a precise
+ * per-country formatter (that needs a library like libphonenumber, which
+ * isn't a dependency of this app) — it assumes a 2-digit country code and
+ * groups the rest in fives, matching the "+91 98765 43210" example this
+ * app's own mockups use. Numbers with a different country-code length will
+ * still display correctly as digits, just not grouped exactly right.
+ */
+export function formatPhoneDisplay(phone: string | null | undefined): string {
+  if (!phone) return '';
+  const digits = phone.replace(/^\+/, '');
+  if (digits.length <= 4) return phone;
+  const countryCode = digits.slice(0, 2);
+  const rest = digits.slice(2);
+  const groups = rest.match(/.{1,5}/g) ?? [rest];
+  return `+${countryCode} ${groups.join(' ')}`;
+}
+
 export function safeRelativeTime(date: string | null | undefined): string {
   if (!date) return 'just now';
   const parsed = new Date(date);

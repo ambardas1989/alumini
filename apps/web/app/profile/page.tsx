@@ -1,13 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Classroom, Institution, Profile } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { clearSession } from '@/lib/auth';
-import { safeFormatDate } from '@/lib/format';
+import { safeFormatDate, formatPhoneDisplay } from '@/lib/format';
+import { supabase, PROFILE_AVATARS_BUCKET } from '@/lib/supabase';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useToast } from '@/components/providers/ToastProvider';
@@ -57,6 +58,12 @@ export default function ProfilePage() {
 
   const [passwordResetSending, setPasswordResetSending] = useState(false);
 
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -79,6 +86,12 @@ export default function ProfilePage() {
     if (!ready) return;
     load();
   }, [ready, load]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    };
+  }, [avatarPreviewUrl]);
 
   const startEditing = () => {
     if (!profile) return;
@@ -104,8 +117,70 @@ export default function ProfilePage() {
     }
   };
 
-  const handleAvatarTap = () => {
-    showToast(t('photoComingSoonToast'), 'info');
+  const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
+
+  const handleAvatarClick = () => {
+    if (avatarUploading) return;
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const chosen = e.target.files?.[0];
+    e.target.value = ''; // lets the same file be re-picked later (e.g. after Cancel)
+    if (!chosen) return;
+
+    if (!ACCEPTED_AVATAR_TYPES.includes(chosen.type)) {
+      setAvatarError(t('avatarErrors.wrongType'));
+      return;
+    }
+    if (chosen.size > MAX_AVATAR_SIZE_BYTES) {
+      setAvatarError(t('avatarErrors.tooLarge'));
+      return;
+    }
+
+    setAvatarError(null);
+    if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    setAvatarFile(chosen);
+    setAvatarPreviewUrl(URL.createObjectURL(chosen));
+  };
+
+  const handleAvatarCancel = () => {
+    if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    setAvatarFile(null);
+    setAvatarPreviewUrl(null);
+    setAvatarError(null);
+  };
+
+  const handleAvatarSave = async () => {
+    if (!avatarFile || !profile) return;
+    setAvatarUploading(true);
+    setAvatarError(null);
+    try {
+      const ext = avatarFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `profiles/${profile.id}/avatar.${ext}`;
+      const { error: storageError } = await supabase.storage
+        .from(PROFILE_AVATARS_BUCKET)
+        .upload(path, avatarFile, { upsert: true });
+      if (storageError) throw storageError;
+
+      const { data: publicUrlData } = supabase.storage.from(PROFILE_AVATARS_BUCKET).getPublicUrl(path);
+      // Cache-bust — same path as any previous upload, so without this the
+      // browser/CDN may keep showing the old photo after a re-upload.
+      const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+      const updated = await api.updateProfile({ avatarUrl: publicUrl });
+      setProfile(updated);
+      updateUser({ avatarUrl: updated.avatarUrl ?? null });
+      if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+      setAvatarFile(null);
+      setAvatarPreviewUrl(null);
+      showToast(t('avatarUpdatedToast'), 'success');
+    } catch (err) {
+      setAvatarError(getErrorMessage(err));
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const handleDisconnectLinkedIn = () => {
@@ -188,6 +263,44 @@ export default function ProfilePage() {
   const safeFullName = profile.fullName ?? 'Unknown';
   const safeEmail = profile.email ?? '';
   const memberSinceLabel = safeFormatDate(profile.createdAt, { month: 'short', year: 'numeric' });
+  const phoneDisplay = profile.phone ? formatPhoneDisplay(profile.phone) : null;
+
+  // Shared between the editing/non-editing header layouts — avatar upload
+  // works from either state, not just while the name/phone form is open.
+  const avatarEditor = (sizePx: number) => (
+    <>
+      <button type="button" className={styles.avatarEditWrap} onClick={handleAvatarClick} disabled={avatarUploading}>
+        <Avatar avatarUrl={avatarPreviewUrl ?? profile.avatarUrl ?? null} fullName={safeFullName} sizePx={sizePx} />
+        {avatarUploading ? (
+          <span className={styles.avatarSpinnerOverlay} aria-hidden="true">
+            <LoadingSpinner size="sm" />
+          </span>
+        ) : (
+          <span className={styles.avatarOverlay} aria-hidden="true">
+            📷
+          </span>
+        )}
+      </button>
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className={styles.hiddenInput}
+        onChange={handleAvatarFileChange}
+      />
+      {avatarError && <p className={styles.avatarErrorText}>{avatarError}</p>}
+      {avatarPreviewUrl && !avatarUploading && (
+        <div className={styles.avatarSaveRow}>
+          <Button variant="ghost" size="sm" onClick={handleAvatarCancel}>
+            {tCommon('cancel')}
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleAvatarSave}>
+            {tCommon('save')}
+          </Button>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <AppShell>
@@ -201,7 +314,7 @@ export default function ProfilePage() {
 
           {!editing ? (
             <>
-              <Avatar avatarUrl={profile.avatarUrl ?? null} fullName={safeFullName} sizePx={56} />
+              {avatarEditor(56)}
               <p className={styles.name}>{safeFullName}</p>
               {/* Profile has no location field and isn't tied to a single
                   classroom's batch year (a user can belong to several), so
@@ -209,6 +322,7 @@ export default function ProfilePage() {
                   real data this app actually has for a person: their email
                   and join date. */}
               <p className={styles.email}>{safeEmail}</p>
+              {phoneDisplay && <p className={styles.memberSince}>{phoneDisplay}</p>}
               <p className={styles.memberSince}>{t('memberSince', { date: memberSinceLabel })}</p>
               <div className={styles.badgeRow}>
                 <span className={styles.personaTypeBadge}>{tTypes(profile.activePersona)}</span>
@@ -217,12 +331,7 @@ export default function ProfilePage() {
             </>
           ) : (
             <>
-              <button type="button" className={styles.avatarEditWrap} onClick={handleAvatarTap}>
-                <Avatar avatarUrl={profile.avatarUrl ?? null} fullName={safeFullName} size="xl" />
-                <span className={styles.avatarOverlay} aria-hidden="true">
-                  📷
-                </span>
-              </button>
+              {avatarEditor(64)}
 
               <div className={styles.editForm}>
                 <Input label={t('fullNameLabel')} value={fullName} onChange={(e) => setFullName(e.target.value)} />

@@ -568,9 +568,14 @@
     "signOutConfirmTitle": "Sign out of {brand}?",
     "switchPersona": "Switch persona",
     "updatedToast": "Profile updated",
-    "photoComingSoonToast": "Photo upload is coming soon",
+    "avatarUpdatedToast": "Profile photo updated",
+    "avatarErrors": {
+      "wrongType": "Choose a JPEG, PNG, or WEBP image",
+      "tooLarge": "Image must be under 5MB"
+    },
     "fullNameLabel": "Full name",
     "phoneLabel": "Phone number",
+    "phoneNotSet": "Add a phone number",
     "yourClassrooms": "Your classrooms",
     "verifiedBadge": "Verified",
     "noClassroomsTitle": "No classrooms yet",

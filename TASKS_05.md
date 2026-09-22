@@ -58,7 +58,7 @@ Commit: "fix: restore light theme permanently"
 
 ---
 
-## TASK 02 — Fix: profile — phone number, profile picture [PENDING]
+## TASK 02 — Fix: profile — phone number, profile picture [DONE: FIX A's premise didn't match the code — identity.service.ts's updateProfile()/getProfile() and UpdateProfileDto already save/return phone (with a stricter E.164 regex than the task's proposed one, kept as-is), and lib/api.ts's updateProfile() already sends it; the real gap was that the saved phone was never displayed outside the edit form — added a formatted "+91 98765 43210"-style line (lib/format.ts's new formatPhoneDisplay(), documented as a best-effort grouping, not a precise per-country formatter) to the profile header. FIX B — full avatar upload flow added: click-to-pick (jpeg/png/webp, 5MB cap, inline error), immediate object-URL preview with Save/Cancel, upload to the existing public 'profile-avatars' bucket via the same direct-client-upload pattern DocumentMethod.tsx already established, cache-busted public URL saved via the existing PATCH /identity/profile (avatarUrl was already a supported field — no new backend endpoint needed), spinner overlay while uploading, optimistic profile/user state update on success. Avatar display priority (uploaded > Google OAuth photo > initials) was already correct since both sources write the same single avatarUrl field]
 
 Read apps/web/app/profile/page.tsx
 Read apps/backend/src/modules/identity/identity.service.ts

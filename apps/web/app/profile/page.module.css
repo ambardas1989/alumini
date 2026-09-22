@@ -93,6 +93,33 @@
   justify-content: center;
 }
 
+.avatarSpinnerOverlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.avatarErrorText {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  margin-block-start: 6px;
+  text-align: center;
+}
+
+.avatarSaveRow {
+  display: flex;
+  gap: 8px;
+  margin-block-start: 8px;
+}
+
 .editForm {
   width: 100%;
   display: flex;

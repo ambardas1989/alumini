@@ -21,3 +21,6 @@ export const supabase = createClient(
 );
 
 export const VERIFICATION_DOCUMENTS_BUCKET = 'verification-documents';
+
+/** Public bucket — profile photos, unlike verification documents, are meant to be visible app-wide via a plain public URL. */
+export const PROFILE_AVATARS_BUCKET = 'profile-avatars';
