@@ -20,7 +20,7 @@
 }
 
 .senderName {
-  font-size: var(--text-xs);
+  font-size: 10px;
   font-weight: 700;
   color: var(--color-text-muted);
   margin-block-end: 2px;
@@ -36,23 +36,27 @@
 
 .bubble {
   padding: 9px 13px;
-  font-size: var(--text-sm);
+  font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
+/* TASKS_04 TASK 06 — border-radius order is TL TR BR BL. Other's sharp
+   corner is top-left (message tail toward the sender's avatar); own's is
+   bottom-right (toward the send button/edge) — this used to have own's
+   sharp corner at TOP-right instead, the wrong side entirely. */
 .bubbleOther {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-text-primary);
-  border-radius: 4px 14px 14px 14px;
+  border-radius: 2px 12px 12px 12px;
 }
 
 .bubbleOwn {
   background: var(--color-primary);
   color: #fff;
-  border-radius: 14px 4px 14px 14px;
+  border-radius: 12px 12px 2px 12px;
 }
 
 .sending {

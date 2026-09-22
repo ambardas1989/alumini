@@ -279,7 +279,7 @@ Commit: "feat: classes page — light bg, white cards, sticky button"
 
 ---
 
-## TASK 06 — Classroom view [PENDING]
+## TASK 06 — Classroom view [DONE: header/tabs now use a new --classroom-gradient-from/-to token pair (#1c1c2e→#2d1b69, "to bottom") distinct from --auth-gradient-*, since the spec wants a darker, different gradient than the auth panel; tab bar background changed from flat color to the same gradient + added the missing border-bottom; header name/subtitle/stats/details font-sizes and opacities aligned to literal spec values. Fixed a real bug in MessageBubble: the own-message bubble's sharp corner was at top-right, spec (and every chat-UI convention) wants it at bottom-right — swapped border-radius on both bubble variants. Message input textarea: #f9f9f9 bg (was --color-bg), 16px radius (was 20px). Left the send button at the enforced 44px touch-target floor rather than shrinking to the spec's literal 28px — documented as a deliberate accessibility-over-literal-pixel call, matching this codebase's established rule elsewhere. Message area background, empty state, and message-input bar background/border already matched]
 
 Read apps/web/app/classroom/[globalId]/page.tsx
 Read alumini-demo.html screen s2

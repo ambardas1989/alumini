@@ -62,6 +62,13 @@
   --auth-gradient-from: #2d1b69;
   --auth-gradient-to: #4a1fa8;
 
+  /* TASKS_04 TASK 06 — the classroom header/tab bar use a DIFFERENT, darker
+     gradient than the auth panel above (near-black to dark purple, not
+     dark purple to brand primary) — same "fixed regardless of theme"
+     reasoning, its own token pair rather than overloading --auth-gradient-*. */
+  --classroom-gradient-from: #1c1c2e;
+  --classroom-gradient-to: #2d1b69;
+
   /* Touch target floor — kept in sync with styles/spacing.ts's MIN_TOUCH_TARGET */
   --min-touch-target: 44px;
 

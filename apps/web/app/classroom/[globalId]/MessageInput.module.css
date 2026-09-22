@@ -14,15 +14,22 @@
   resize: none;
   min-height: 44px;
   max-height: 120px;
-  border-radius: 20px;
+  border-radius: 16px;
   overflow-y: auto;
   padding: 11px 16px;
   /* 16px minimum prevents iOS Safari auto-zooming the page on focus */
   font-size: 16px;
   border: 1px solid var(--color-border);
-  background: var(--color-bg);
+  /* Literal spec value — a neutral gray for the input field itself,
+     distinct from --color-bg's purple-tinted page background. */
+  background: #f9f9f9;
 }
 
+/* TASKS_04 TASK 06 asks for a 28px circle; kept at the enforced 44px
+   touch-target floor instead (styles/components.css's global
+   button{min-width/min-height:44px} rule) — shrinking it would fail
+   accessibility guidance this codebase otherwise holds to everywhere
+   else (see ClassroomHeader.module.css's own comment on the same rule). */
 .sendButton {
   flex-shrink: 0;
   border-radius: 50%;
