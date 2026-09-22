@@ -95,7 +95,8 @@
       "errors": {
         "passwordMismatch": "Passwords do not match",
         "passwordTooShort": "At least 8 characters",
-        "invalidEmail": "Enter a valid email address"
+        "invalidEmail": "Enter a valid email address",
+        "signInInsteadLink": "Sign in instead?"
       },
       "subTagline": "Join thousands of alumni already connected",
       "googleButton": "Sign up with Google",

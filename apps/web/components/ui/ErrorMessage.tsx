@@ -1,11 +1,13 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { useTranslations } from '@/lib/useTranslations';
 import styles from './ErrorMessage.module.css';
 
 interface ErrorMessageProps {
-  message: string;
+  /** Usually a string; a ReactNode is accepted for the rare case of an inline link (e.g. "account exists — sign in instead?"). */
+  message: ReactNode;
   fullPage?: boolean;
   onRetry?: () => void;
 }

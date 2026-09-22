@@ -176,6 +176,8 @@ export type AuditEventType = (typeof AuditEventType)[keyof typeof AuditEventType
 export const ErrorCode = {
   AUTH_INVALID_CREDENTIALS: 'AUTH_INVALID_CREDENTIALS',
   AUTH_ACCOUNT_NOT_FOUND: 'AUTH_ACCOUNT_NOT_FOUND',
+  /** TASKS_05 TASK 09 — signup with an email that's already registered */
+  AUTH_ACCOUNT_EXISTS: 'AUTH_ACCOUNT_EXISTS',
   AUTH_RATE_LIMITED: 'AUTH_RATE_LIMITED',
   AUTH_MFA_INVALID_CODE: 'AUTH_MFA_INVALID_CODE',
   AUTH_MFA_EXPIRED: 'AUTH_MFA_EXPIRED',

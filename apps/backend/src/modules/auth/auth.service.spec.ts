@@ -17,7 +17,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import * as speakeasy from 'speakeasy';
 import { createHash } from 'crypto';
 
@@ -122,13 +122,30 @@ describe('AuthService', () => {
       expect(payload.sub).toBe('user-1');
     });
 
-    it('throws BadRequestException when Supabase account creation fails', async () => {
+    it('throws BadRequestException when Supabase account creation fails for a non-duplicate reason', async () => {
+      mockCreateUser.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'Unable to validate email address: invalid format' },
+      });
+
+      await expect(service.signup(dto as any)).rejects.toThrow(BadRequestException);
+    });
+
+    // BUG FIX (TASKS_05 TASK 09) — this used to throw a plain
+    // BadRequestException for this exact case, which is what made a
+    // duplicate signup look like an unexplained "something went wrong" to
+    // the frontend. Now a structured 409 the UI can show a specific
+    // "sign in instead?" message for.
+    it('throws ConflictException with AUTH_ACCOUNT_EXISTS when the email is already registered', async () => {
       mockCreateUser.mockResolvedValue({
         data: { user: null },
         error: { message: 'User already registered' },
       });
 
-      await expect(service.signup(dto as any)).rejects.toThrow(BadRequestException);
+      await expect(service.signup(dto as any)).rejects.toThrow(ConflictException);
+      await expect(service.signup(dto as any)).rejects.toMatchObject({
+        response: { error: 'AUTH_ACCOUNT_EXISTS' },
+      });
     });
   });
 

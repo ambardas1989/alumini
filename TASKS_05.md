@@ -736,7 +736,7 @@ supabase/migrations/018_email_otp_mfa.sql
 
 ---
 
-## TASK 09 — Fix: signup "something went wrong" [PENDING]
+## TASK 09 — Fix: signup "something went wrong" [DONE: Fix 1's premise was false — frontend/backend already agreed on 'fullName' (both SignupDto and lib/api.ts's signup() already used that exact name). The REAL bug: AuthService.signup() always threw a plain BadRequestException (400) regardless of why Supabase rejected the signup, including the single most common real case — email already registered. getErrorMessage() treats every unmapped 400 as the generic "Something went wrong" fallback, so a duplicate-email signup looked exactly like an unexplained failure, which IS what the bug report described. Fixed by detecting the duplicate case and throwing ConflictException (409) with a new ErrorCode.AUTH_ACCOUNT_EXISTS instead; signup page now shows "An account with this email already exists." + a "Sign in instead?" link (ErrorMessage's message prop widened from string to ReactNode for the inline link), routes a 400's validation array through the already-existing-but-previously-unused parseValidationErrors() into per-field errors, and logs [SIGNUP-ERROR] with status/message/body in the catch block. Updated the one existing unit test whose mock ('User already registered') was literally asserting the bug's old behavior, added a new one for the corrected 409 path]
 
 Live bug — real users cannot sign up.
 

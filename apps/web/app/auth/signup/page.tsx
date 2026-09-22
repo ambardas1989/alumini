@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
-import { getErrorMessage } from '@/lib/errors';
+import { ApiError } from '@/lib/api';
+import { getErrorMessage, parseValidationErrors } from '@/lib/errors';
 import { setMfaPendingSession } from '@/lib/mfaSession';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTranslations } from '@/lib/useTranslations';
@@ -34,6 +35,7 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [apiError, setApiError] = useState<string | null>(null);
+  const [accountExists, setAccountExists] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -71,6 +73,7 @@ export default function SignupPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setApiError(null);
+    setAccountExists(false);
 
     const fields: Field[] = ['fullName', 'email', 'password', 'confirmPassword'];
     const nextErrors: Partial<Record<Field, string>> = {};
@@ -87,7 +90,29 @@ export default function SignupPage() {
       setMfaPendingSession({ token: result.mfaPendingToken, method: result.mfaMethod });
       router.push('/auth/mfa');
     } catch (err) {
-      setApiError(getErrorMessage(err));
+      // eslint-disable-next-line no-console
+      console.error('[SIGNUP-ERROR]', {
+        status: err instanceof ApiError ? err.statusCode : undefined,
+        message: err instanceof Error ? err.message : String(err),
+        body: err instanceof ApiError ? err.payload : undefined,
+      });
+
+      if (err instanceof ApiError && err.errorCode === 'AUTH_ACCOUNT_EXISTS') {
+        setAccountExists(true);
+        setApiError(getErrorMessage(err));
+      } else if (err instanceof ApiError && err.statusCode === 400) {
+        // Per-field validation errors (class-validator's array response) —
+        // never shown verbatim as one generic message when the backend
+        // already tells us which field(s) were wrong.
+        const fieldErrors = parseValidationErrors(err);
+        if (Object.keys(fieldErrors).length > 0) {
+          setErrors((prev) => ({ ...prev, ...(fieldErrors as Partial<Record<Field, string>>) }));
+        } else {
+          setApiError(getErrorMessage(err));
+        }
+      } else {
+        setApiError(getErrorMessage(err));
+      }
       setLoading(false);
     }
   };
@@ -165,7 +190,19 @@ export default function SignupPage() {
           className="auth-input"
         />
 
-        {apiError && <ErrorMessage message={apiError} />}
+        {apiError && (
+          <ErrorMessage
+            message={
+              accountExists ? (
+                <>
+                  {apiError} <Link href="/auth/login">{t('errors.signInInsteadLink')}</Link>
+                </>
+              ) : (
+                apiError
+              )
+            }
+          />
+        )}
 
         <Button
           type="submit"

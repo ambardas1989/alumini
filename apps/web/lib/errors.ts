@@ -14,6 +14,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   AUTH_MFA_EXPIRED: 'Your session expired. Please log in again.',
   AUTH_MFA_MAX_ATTEMPTS: 'Too many incorrect attempts. Please log in again.',
   AUTH_ACCOUNT_SUSPENDED: 'Your account has been suspended. Contact support.',
+  AUTH_ACCOUNT_EXISTS: 'An account with this email already exists.',
   AUTH_SESSION_EXPIRED: 'Your session expired. Please log in again.',
   VERIFICATION_OTP_INVALID: 'Incorrect code. Please try again.',
   VERIFICATION_OTP_EXPIRED: 'This code has expired. Request a new one.',

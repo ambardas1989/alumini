@@ -30,6 +30,7 @@
 
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -127,9 +128,27 @@ export class AuthService {
     });
 
     if (error || !data.user) {
-      // Supabase's own message ("User already registered", etc.) is safe to
-      // surface — it doesn't leak anything an attacker couldn't already
-      // learn by attempting the same signup themselves.
+      // BUG FIX (TASKS_05 TASK 09) — this always threw a plain
+      // BadRequestException (400) regardless of WHY Supabase rejected the
+      // signup, including the single most common real case: the email is
+      // already registered. The frontend's getErrorMessage() treats every
+      // unmapped 400 as the generic "Something went wrong" fallback — so
+      // signing up with an email that already has an account looked
+      // exactly like an unexplained failure, which is what the bug report
+      // actually was. Supabase's own message ("User already registered",
+      // etc.) is safe to surface either way — it doesn't leak anything an
+      // attacker couldn't already learn by attempting the same signup
+      // themselves — but a duplicate email now gets its own 409 with a
+      // structured error code the frontend can branch on.
+      const isDuplicate = /already registered|already exists|user_already_exists|email_exists/i.test(
+        error?.message ?? error?.code ?? '',
+      );
+      if (isDuplicate) {
+        throw new ConflictException({
+          message: 'An account with this email already exists',
+          error: ErrorCode.AUTH_ACCOUNT_EXISTS,
+        });
+      }
       throw new BadRequestException(error?.message ?? 'Could not create account');
     }
 
