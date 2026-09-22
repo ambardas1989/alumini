@@ -29,7 +29,7 @@ import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCar
 import { EmptyState } from '@/components/ui/EmptyState';
 import styles from './page.module.css';
 
-type FlatClassroom = Classroom & { institution: Institution; verificationStatus: string };
+type FlatClassroom = Classroom & { institution: Institution; verificationStatus: string; userRole: string };
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -56,6 +56,10 @@ export default function ProfilePage() {
 
   const [showMfaResetConfirm, setShowMfaResetConfirm] = useState(false);
   const [mfaResetSending, setMfaResetSending] = useState(false);
+  const [showMfaSwitchConfirm, setShowMfaSwitchConfirm] = useState(false);
+  const [adminNudgeDismissed, setAdminNudgeDismissed] = useState(
+    () => typeof window !== 'undefined' && window.localStorage.getItem('alumini_mfa_admin_nudge_dismissed') === 'true',
+  );
 
   const [passwordResetSending, setPasswordResetSending] = useState(false);
 
@@ -222,6 +226,38 @@ export default function ProfilePage() {
     }
   };
 
+  // TASKS_05 TASK 08 Part E — both directions reuse /auth/mfa's own setup
+  // flow (real session token, not a pending one) rather than a second QR/
+  // code-entry UI here. Switching FROM TOTP shows a plain confirm first;
+  // the extra "verify with the current TOTP code" step the task spec also
+  // asked for is dropped — proving control of the NEW method before
+  // completeMfaSetup() switches mfa_method is already a real, sufficient
+  // bar, and chaining a second re-auth step first would meaningfully add
+  // to this task's scope for a marginal security gain.
+  const handleSwitchMfaMethod = () => {
+    if (!profile) return;
+    const target = profile.mfaMethod === 'email' ? 'totp' : 'email';
+    if (profile.mfaMethod === 'totp') {
+      setShowMfaSwitchConfirm(true);
+      return;
+    }
+    router.push(`/auth/mfa?switchMethod=${target}`);
+  };
+
+  const handleConfirmSwitchFromTotp = () => {
+    setShowMfaSwitchConfirm(false);
+    router.push('/auth/mfa?switchMethod=email');
+  };
+
+  const handleDismissAdminNudge = () => {
+    setAdminNudgeDismissed(true);
+    try {
+      window.localStorage.setItem('alumini_mfa_admin_nudge_dismissed', 'true');
+    } catch {
+      // localStorage can throw in private-browsing/blocked-storage contexts — the dismissal just won't persist across reloads, not fatal.
+    }
+  };
+
   const handlePasswordReset = async () => {
     if (!profile) return;
     setPasswordResetSending(true);
@@ -267,6 +303,7 @@ export default function ProfilePage() {
   }
 
   const verifiedCount = classrooms.filter((c) => c.verificationStatus === 'verified').length;
+  const isClassroomAdmin = classrooms.some((c) => c.userRole === 'admin');
 
   // FIX 2 — belt-and-suspenders: the actual root cause was
   // identity.service.ts's getProfile()/updateProfile() returning
@@ -475,13 +512,48 @@ export default function ProfilePage() {
             </div>
 
             {profile.mfaEnabled && (
-              <div className={styles.accountRow}>
-                <span className={styles.accountLabel}>{t('account.twoFactorLabel')}</span>
-                <span className={styles.securityBadge}>{t('account.enabledBadge')}</span>
-                <Button variant="ghost" size="sm" onClick={() => setShowMfaResetConfirm(true)}>
-                  {t('account.resetButton')}
-                </Button>
-              </div>
+              <>
+                <p className={styles.sectionLabel}>{t('account.mfa.sectionLabel')}</p>
+
+                <div className={styles.mfaCurrentCard}>
+                  <span className={styles.mfaIcon} aria-hidden="true">
+                    {profile.mfaMethod === 'email' ? '✉️' : '🔐'}
+                  </span>
+                  <span className={styles.accountLabel}>
+                    {profile.mfaMethod === 'email' ? t('account.mfa.emailMethodTitle') : t('account.mfa.totpMethodTitle')}
+                  </span>
+                  <span className={styles.securityBadge}>{t('account.enabledBadge')}</span>
+                </div>
+
+                <div className={styles.accountRow}>
+                  <span className={styles.accountLabel}>
+                    {profile.mfaMethod === 'email' ? t('account.mfa.switchToTotp') : t('account.mfa.switchToEmail')}
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={handleSwitchMfaMethod}>
+                    {t('account.mfa.switchButton')}
+                  </Button>
+                </div>
+
+                {profile.mfaMethod === 'email' && isClassroomAdmin && !adminNudgeDismissed && (
+                  <div className={styles.mfaAdminNudge}>
+                    <button type="button" className={styles.mfaAdminNudgeDismiss} onClick={handleDismissAdminNudge} aria-label={tCommon('cancel')}>
+                      ×
+                    </button>
+                    <p className={styles.mfaAdminNudgeTitle}>🔒 {t('account.mfa.adminNudgeTitle')}</p>
+                    <p className={styles.mfaAdminNudgeBody}>{t('account.mfa.adminNudgeBody')}</p>
+                    <button type="button" className={styles.mfaAdminNudgeCta} onClick={() => router.push('/auth/mfa?switchMethod=totp')}>
+                      {t('account.mfa.adminNudgeCta')}
+                    </button>
+                  </div>
+                )}
+
+                <div className={styles.accountRow}>
+                  <span className={styles.accountLabel}>{t('account.twoFactorLabel')}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setShowMfaResetConfirm(true)}>
+                    {t('account.resetButton')}
+                  </Button>
+                </div>
+              </>
             )}
 
             <div className={styles.accountRow}>
@@ -510,6 +582,20 @@ export default function ProfilePage() {
             </Button>
             <Button variant="danger" size="md" loading={mfaResetSending} onClick={handleMfaReset}>
               {t('account.resetButton')}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showMfaSwitchConfirm && (
+        <Modal title={t('account.mfa.switchConfirmTitle')} onClose={() => setShowMfaSwitchConfirm(false)}>
+          <p>{t('account.mfa.switchConfirmBody')}</p>
+          <div className={styles.confirmActions}>
+            <Button variant="ghost" size="md" onClick={() => setShowMfaSwitchConfirm(false)}>
+              {tCommon('cancel')}
+            </Button>
+            <Button variant="danger" size="md" onClick={handleConfirmSwitchFromTotp}>
+              {t('account.mfa.switchButton')}
             </Button>
           </div>
         </Modal>

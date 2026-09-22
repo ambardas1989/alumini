@@ -69,11 +69,15 @@ import {
   AuthTokenPayload,
   AuthUserSummary,
   MfaRequiredResponse,
+  MfaSetupEmailResponse,
   MfaSetupSmsResponse,
   MfaSetupTotpResponse,
   MfaVerifiedResponse,
   TokenPairResponse,
 } from './auth.types';
+
+/** email_otp_codes.purpose — see supabase/migrations/018_email_otp_mfa.sql. */
+export type EmailOtpPurpose = 'login' | 'password_reset' | 'mfa_change';
 
 /** Outcome of a single MFA code check — see verifyCode() and mfaFailureException(). */
 type MfaCodeCheckResult = 'valid' | 'invalid' | 'expired' | 'max_attempts';
@@ -312,6 +316,14 @@ export class AuthService {
       this.minutes(appConfig.MFA_PENDING_TOKEN_EXPIRY_MINUTES),
     );
 
+    // Email OTP has to be sent proactively — unlike TOTP (the app already
+    // has a live code) or SMS (its own initiateSmsChallenge() is only ever
+    // called from the setup flow, not login — an existing gap this task
+    // doesn't touch), there's no code waiting anywhere until this fires.
+    if (profile.mfa_method === MfaMethod.EMAIL) {
+      await this.sendEmailOtp(userId, email, 'login');
+    }
+
     return {
       mfaRequired: true,
       mfaPendingToken,
@@ -330,8 +342,8 @@ export class AuthService {
     userId: string,
     email: string,
     query: MfaSetupQueryDto,
-  ): Promise<MfaSetupTotpResponse | MfaSetupSmsResponse> {
-    const method = query.method ?? MfaMethod.TOTP;
+  ): Promise<MfaSetupTotpResponse | MfaSetupSmsResponse | MfaSetupEmailResponse> {
+    const method = query.method ?? MfaMethod.EMAIL;
 
     if (method === MfaMethod.SMS) {
       if (!appConfig.FEATURE_SMS_MFA) {
@@ -346,6 +358,20 @@ export class AuthService {
         throw new BadRequestException('Phone number is required for SMS MFA setup');
       }
       return this.initiateSmsChallenge(userId, query.phone);
+    }
+
+    if (method === MfaMethod.EMAIL) {
+      if (appConfig.ADMIN_MFA_TOTP_ONLY && (await this.isSchoolAdmin(userId))) {
+        throw new ForbiddenException(
+          'School admins must use an authenticator app (TOTP) — email is not accepted',
+        );
+      }
+      await this.sendEmailOtp(userId, email, 'mfa_change');
+      return {
+        method: MfaMethod.EMAIL,
+        email: this.maskEmail(email),
+        expiresInSeconds: appConfig.MFA_EMAIL_OTP_EXPIRY_MINUTES * 60,
+      };
     }
 
     return this.initiateTotpSetup(userId, email);
@@ -402,6 +428,123 @@ export class AuthService {
       phone: this.maskPhone(phone),
       expiresInSeconds: appConfig.SMS_OTP_EXPIRY_MINUTES * 60,
     };
+  }
+
+  // ── Email OTP (MFA) ──────────────────────────────────────────────────────
+
+  /**
+   * Generates, hashes, and stores a 6-digit code, then emails it — inline
+   * Resend call with a console fallback, same pattern as forgotPassword()
+   * above (not the notification module's event-based delivery: mfa.sms.send
+   * above proves an emitted event with no listener silently drops the
+   * code, and this needs to actually work).
+   */
+  async sendEmailOtp(userId: string, email: string, purpose: EmailOtpPurpose): Promise<{ message: string }> {
+    const windowStart = new Date(Date.now() - 10 * 60_000).toISOString();
+    const { count, error: countError } = await this.supabase
+      .from('email_otp_codes')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('purpose', purpose)
+      .gte('created_at', windowStart);
+
+    if (countError) {
+      this.logger.error('Failed to check email OTP rate limit', { error: countError, userId });
+      throw new BadRequestException('Failed to send code. Please try again.');
+    }
+
+    if ((count ?? 0) >= appConfig.MFA_EMAIL_OTP_RATE_LIMIT_PER_10MIN) {
+      throw new BadRequestException('Too many codes requested. Please wait a few minutes and try again.');
+    }
+
+    const code = this.generateNumericCode(appConfig.MFA_EMAIL_OTP_LENGTH);
+    const expiresAt = new Date(Date.now() + appConfig.MFA_EMAIL_OTP_EXPIRY_MINUTES * 60_000);
+
+    const { error } = await this.supabase.from('email_otp_codes').insert({
+      user_id: userId,
+      code_hash: this.hash(code),
+      purpose,
+      expires_at: expiresAt.toISOString(),
+    });
+
+    if (error) {
+      this.logger.error('Failed to store email OTP', { error, userId, purpose });
+      throw new BadRequestException('Failed to send code. Please try again.');
+    }
+
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: process.env.FROM_EMAIL || `noreply@${brand.domain}`,
+          to: email,
+          subject: `Your ${brand.name} verification code`,
+          text: `Your code is: ${code}\nValid for ${appConfig.MFA_EMAIL_OTP_EXPIRY_MINUTES} minutes.\nDo not share this code.`,
+        });
+      } catch (err) {
+        this.logger.error('Failed to send email OTP via Resend', { err, userId });
+      }
+    } else {
+      this.logger.log(`[EMAIL-OTP] Code for ${email} (${purpose}): ${code}`);
+    }
+
+    return { message: 'Code sent to your email' };
+  }
+
+  /**
+   * Same shape as verifyCode()'s SMS branch (which calls this directly for
+   * its own 'email' case): newest unconsumed, unexpired code for this
+   * user+purpose, attempt-capped, hash-compared, marked used either way (a
+   * wrong guess still counts against the attempt cap).
+   */
+  private async checkEmailOtp(userId: string, code: string, purpose: EmailOtpPurpose): Promise<MfaCodeCheckResult> {
+    const { data: challenge } = await this.supabase
+      .from('email_otp_codes')
+      .select('id, code_hash, attempts, expires_at')
+      .eq('user_id', userId)
+      .eq('purpose', purpose)
+      .eq('used', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!challenge) return 'invalid';
+    if (isExpired(challenge.expires_at)) return 'expired';
+    if (challenge.attempts >= appConfig.MFA_EMAIL_OTP_RATE_LIMIT_PER_10MIN) return 'max_attempts';
+
+    const matches = challenge.code_hash === this.hash(code);
+
+    await this.supabase
+      .from('email_otp_codes')
+      .update({
+        attempts: challenge.attempts + 1,
+        used: matches,
+        used_at: matches ? new Date().toISOString() : null,
+      })
+      .eq('id', challenge.id);
+
+    return matches ? 'valid' : 'invalid';
+  }
+
+  /** Public, throwing wrapper around checkEmailOtp() — for direct callers outside the MFA challenge dispatcher, e.g. the password-reset flow. */
+  async verifyEmailOtp(userId: string, code: string, purpose: EmailOtpPurpose): Promise<boolean> {
+    const result = await this.checkEmailOtp(userId, code, purpose);
+    if (result !== 'valid') {
+      throw new UnauthorizedException('Invalid or expired code');
+    }
+    return true;
+  }
+
+  async resendEmailOtp(userId: string, email: string, purpose: EmailOtpPurpose): Promise<{ message: string }> {
+    await this.sendEmailOtp(userId, email, purpose);
+    return { message: 'Code resent' };
+  }
+
+  /** e.g. test@example.com → te***@example.com — enough for the user to recognise their own address */
+  private maskEmail(email: string): string {
+    const [user, domain] = email.split('@');
+    if (!domain || !user) return '***';
+    return user.slice(0, 2) + '***@' + domain;
   }
 
   /**
@@ -627,6 +770,16 @@ export class AuthService {
       return isValid ? 'valid' : 'invalid';
     }
 
+    if (method === MfaMethod.EMAIL) {
+      // confirmSetup (initial enrolment) and a normal challenge use the
+      // same 'mfa_change' purpose here — sendEmailOtp() was already called
+      // with 'mfa_change' by initiateMfaSetup()'s email branch above, and
+      // completePasswordVerifiedLogin()/loginWithGoogle() call it with
+      // 'login' for an already-enrolled account, so this always matches
+      // whichever purpose actually sent the code the user is submitting.
+      return this.checkEmailOtp(userId, code, opts.confirmSetup ? 'mfa_change' : 'login');
+    }
+
     // SMS — check against the most recent unconsumed, unexpired challenge.
     const { data: challenge } = await this.supabase
       .from('mfa_sms_challenges')
@@ -812,12 +965,18 @@ export class AuthService {
 
     const { data: profile } = await this.supabase
       .from('profiles')
-      .select('id')
+      .select('id, mfa_enabled, mfa_method')
       .eq('email', dto.email)
       .maybeSingle();
 
     if (!profile) {
       return { message };
+    }
+
+    // Email-MFA accounts need a code alongside the reset link itself — see
+    // resetPassword()'s own comment for why this is required there.
+    if (profile.mfa_enabled && profile.mfa_method === MfaMethod.EMAIL) {
+      await this.sendEmailOtp(profile.id, dto.email, 'password_reset');
     }
 
     const rawToken = randomBytes(32).toString('hex');
@@ -889,6 +1048,37 @@ export class AuthService {
     }
     if (isExpired(record.expires_at)) {
       throw new BadRequestException('Link has expired');
+    }
+
+    // A valid reset link proves the user clicked a link sent to their
+    // inbox — MFA (a SECOND factor) still gates the actual password
+    // change for an MFA-enabled account, same as any other sensitive
+    // action (SPEC.md §11.2). email/totp only — SMS setup isn't reachable
+    // from initiateMfaSetup() at login/reset time today, an existing gap
+    // this task doesn't touch.
+    const { data: mfaProfile } = await this.supabase
+      .from('profiles')
+      .select('mfa_enabled, mfa_method')
+      .eq('id', record.user_id)
+      .maybeSingle();
+
+    if (mfaProfile?.mfa_enabled && (mfaProfile.mfa_method === MfaMethod.EMAIL || mfaProfile.mfa_method === MfaMethod.TOTP)) {
+      if (!dto.mfaCode) {
+        throw new BadRequestException({
+          message: `A verification code is required to reset your password`,
+          error: 'MFA_CODE_REQUIRED',
+          mfaMethod: mfaProfile.mfa_method,
+        });
+      }
+
+      const result =
+        mfaProfile.mfa_method === MfaMethod.EMAIL
+          ? await this.checkEmailOtp(record.user_id, dto.mfaCode, 'password_reset')
+          : await this.verifyCode(record.user_id, MfaMethod.TOTP, dto.mfaCode, { confirmSetup: false });
+
+      if (result !== 'valid') {
+        throw this.mfaFailureException(result);
+      }
     }
 
     const { error: updateError } = await this.supabase.auth.admin.updateUserById(record.user_id, {
@@ -1076,6 +1266,7 @@ export class AuthService {
   private async clearMfaEnrollment(userId: string): Promise<void> {
     await this.supabase.from('mfa_totp_secrets').delete().eq('user_id', userId);
     await this.supabase.from('mfa_sms_challenges').delete().eq('user_id', userId);
+    await this.supabase.from('email_otp_codes').delete().eq('user_id', userId);
     await this.supabase
       .from('profiles')
       .update({ mfa_enabled: false, mfa_method: null })

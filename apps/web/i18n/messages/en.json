@@ -132,6 +132,29 @@
         "sending": "Sending...",
         "sent": "If that account exists, a recovery link was sent to its email.",
         "setupAgainBanner": "Your two-factor authentication was reset. Please set up again."
+      },
+      "picker": {
+        "heading": "Choose how you'll sign in",
+        "continueButton": "Continue",
+        "email": {
+          "title": "Email verification",
+          "description": "We'll send a code to your email each time you sign in",
+          "recommended": "Recommended for most users"
+        },
+        "totp": {
+          "title": "Authenticator App",
+          "description": "Use Google Authenticator or similar app",
+          "moreSecure": "More secure"
+        }
+      },
+      "email": {
+        "checkTitle": "Check your email",
+        "sentTo": "We sent a 6-digit code to {email}",
+        "resendIn": "Resend code in {seconds}s",
+        "resendLink": "Didn't receive it? Resend code",
+        "resent": "Code resent to your email",
+        "verifySubtitle": "Enter the code we sent to your email",
+        "setupSuccessToast": "Email verification is set up. You'll receive a code each time you sign in."
       }
     },
     "googleComingSoon": "Google sign-in coming soon",
@@ -614,6 +637,19 @@
       "resetConfirmTitle": "Reset your authenticator?",
       "resetConfirmBody": "This will remove your current authenticator. You will need to set up a new one on next login. Are you sure?",
       "resetSentToast": "Recovery email sent",
+      "mfa": {
+        "sectionLabel": "Two-factor authentication",
+        "emailMethodTitle": "Email verification",
+        "totpMethodTitle": "Authenticator App",
+        "switchToTotp": "Switch to Authenticator App",
+        "switchToEmail": "Switch to Email verification",
+        "switchButton": "Switch",
+        "switchConfirmTitle": "Switch to Email verification?",
+        "switchConfirmBody": "This will remove your authenticator app setup. Are you sure?",
+        "adminNudgeTitle": "You're a classroom admin",
+        "adminNudgeBody": "Authenticator apps are more secure for admins who manage member data and verifications.",
+        "adminNudgeCta": "Set up Authenticator App →"
+      },
       "changePasswordLabel": "Change password",
       "sendResetLinkButton": "Send reset link",
       "resetLinkSentToast": "Reset link sent to your email",

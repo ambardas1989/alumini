@@ -19,6 +19,7 @@ import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import * as speakeasy from 'speakeasy';
+import { createHash } from 'crypto';
 
 import { AuthService } from './auth.service';
 import { AuditService } from '../audit/audit.service';
@@ -39,9 +40,9 @@ const mockSignInWithPassword = jest.fn();
 const mockUpdateUserById = jest.fn().mockResolvedValue({ data: {}, error: null });
 let fromTables: Record<string, any> = {};
 
-function chain(result: { data: any; error: any } = { data: null, error: null }) {
+function chain(result: { data: any; error: any; count?: number } = { data: null, error: null }) {
   const builder: any = {};
-  ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'is', 'gt', 'in', 'order', 'limit'].forEach(
+  ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'is', 'gt', 'gte', 'in', 'order', 'limit'].forEach(
     (method) => {
       builder[method] = jest.fn(() => builder);
     },
@@ -176,6 +177,113 @@ describe('AuthService', () => {
 
       expect(result.mfaRequired).toBe(true);
       expect(result.mfaMethod).toBeNull();
+    });
+
+    it("sends an email OTP when the account's mfa_method is 'email'", async () => {
+      mockSignInWithPassword.mockResolvedValue({ data: { user: { id: 'user-4' } }, error: null });
+      mockTables({
+        profiles: chain({ data: { mfa_enabled: true, mfa_method: MfaMethod.EMAIL }, error: null }),
+      });
+      const sendEmailOtpSpy = jest.spyOn(service, 'sendEmailOtp').mockResolvedValue({ message: 'Code sent to your email' });
+
+      await service.login(dto as any);
+
+      expect(sendEmailOtpSpy).toHaveBeenCalledWith('user-4', dto.email, 'login');
+    });
+
+    it("does not send an email OTP when the account's mfa_method is 'totp'", async () => {
+      mockSignInWithPassword.mockResolvedValue({ data: { user: { id: 'user-5' } }, error: null });
+      mockTables({
+        profiles: chain({ data: { mfa_enabled: true, mfa_method: MfaMethod.TOTP }, error: null }),
+      });
+      const sendEmailOtpSpy = jest.spyOn(service, 'sendEmailOtp').mockResolvedValue({ message: 'Code sent to your email' });
+
+      await service.login(dto as any);
+
+      expect(sendEmailOtpSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── sendEmailOtp() / verifyEmailOtp() ────────────────────────────────────
+
+  describe('sendEmailOtp()', () => {
+    it('generates and stores a hashed code', async () => {
+      const insertMock = jest.fn((..._args: any[]) => insertBuilder);
+      const insertBuilder: any = { then: (resolve: any) => Promise.resolve({ error: null }).then(resolve) };
+      mockTables({
+        email_otp_codes: { ...chain({ data: null, error: null, count: 0 }), insert: insertMock },
+      });
+
+      const result = await service.sendEmailOtp('user-1', 'user@example.com', 'login');
+
+      expect(result.message).toBe('Code sent to your email');
+      expect(insertMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'user-1',
+          purpose: 'login',
+          code_hash: expect.any(String),
+        }),
+      );
+      // Never the raw code — only a hash.
+      const insertedPatch = insertMock.mock.calls[0][0];
+      expect(insertedPatch.code_hash).toHaveLength(64); // sha256 hex
+    });
+
+    it('rate-limits after 3 codes in the last 10 minutes', async () => {
+      mockTables({
+        email_otp_codes: chain({ data: null, error: null, count: 3 }),
+      });
+
+      await expect(service.sendEmailOtp('user-1', 'user@example.com', 'login')).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('verifyEmailOtp()', () => {
+    const hash = (code: string) => createHash('sha256').update(code).digest('hex');
+
+    it('succeeds with the correct code', async () => {
+      mockTables({
+        email_otp_codes: chain({
+          data: { id: 'otp-1', code_hash: hash('123456'), attempts: 0, expires_at: daysFromNow(1).toISOString() },
+          error: null,
+        }),
+      });
+
+      await expect(service.verifyEmailOtp('user-1', '123456', 'login')).resolves.toBe(true);
+    });
+
+    it('fails with the wrong code', async () => {
+      mockTables({
+        email_otp_codes: chain({
+          data: { id: 'otp-1', code_hash: hash('123456'), attempts: 0, expires_at: daysFromNow(1).toISOString() },
+          error: null,
+        }),
+      });
+
+      await expect(service.verifyEmailOtp('user-1', '000000', 'login')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('fails with an expired code', async () => {
+      const past = new Date(Date.now() - 60_000).toISOString();
+      mockTables({
+        email_otp_codes: chain({
+          data: { id: 'otp-1', code_hash: hash('123456'), attempts: 0, expires_at: past },
+          error: null,
+        }),
+      });
+
+      await expect(service.verifyEmailOtp('user-1', '123456', 'login')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('fails when no unconsumed code exists (already used)', async () => {
+      // checkEmailOtp() only ever selects `used = false` rows — an
+      // already-used code simply won't be found, same shape as "no code
+      // was ever sent".
+      mockTables({
+        email_otp_codes: chain({ data: null, error: null }),
+      });
+
+      await expect(service.verifyEmailOtp('user-1', '123456', 'login')).rejects.toThrow(UnauthorizedException);
     });
   });
 

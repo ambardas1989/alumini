@@ -21,7 +21,7 @@ const PENDING_METHOD_KEY = 'alumini_mfa_pending_method';
 export interface MfaPendingSession {
   token: string;
   /** null → account has never completed MFA enrolment (setup flow). A method → already enrolled (verify flow). */
-  method: 'totp' | 'sms' | null;
+  method: 'totp' | 'sms' | 'email' | null;
 }
 
 function isBrowser(): boolean {
@@ -39,7 +39,7 @@ export function getMfaPendingSession(): MfaPendingSession | null {
   const token = window.sessionStorage.getItem(PENDING_TOKEN_KEY);
   if (!token) return null;
   const rawMethod = window.sessionStorage.getItem(PENDING_METHOD_KEY);
-  const method = rawMethod === 'totp' || rawMethod === 'sms' ? rawMethod : null;
+  const method = rawMethod === 'totp' || rawMethod === 'sms' || rawMethod === 'email' ? rawMethod : null;
   return { token, method };
 }
 

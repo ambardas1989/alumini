@@ -24,6 +24,7 @@ Each must be run manually in Supabase SQL Editor.
 | 015_direct_messages.sql | ✅ Run | Direct messages table |
 | 016_institution_logos.sql | ⚠️ Check | institutions.logo_url, classrooms.cover_url |
 | 017_linkedin_profile.sql | ⚠️ Check | profiles.linkedin_connected/id/name/avatar_url (scoped down — see migration's own comment) |
+| 018_email_otp_mfa.sql | ⚠️ Check | mfa_method CHECK widened to include 'email' + DEFAULT 'email', email_otp_codes table |
 
 ⚠️ Check = verify these were run in Supabase.
 Run any that are missing before testing related features.

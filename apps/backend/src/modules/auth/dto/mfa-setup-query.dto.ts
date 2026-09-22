@@ -3,10 +3,10 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { MfaMethod } from '@alumini/types';
 
 export class MfaSetupQueryDto {
-  @ApiPropertyOptional({ enum: MfaMethod, default: MfaMethod.TOTP })
+  @ApiPropertyOptional({ enum: MfaMethod, default: MfaMethod.EMAIL })
   @IsOptional()
   @IsEnum(MfaMethod)
-  method?: MfaMethod = MfaMethod.TOTP;
+  method?: MfaMethod = MfaMethod.EMAIL;
 
   @ApiPropertyOptional({
     description: 'Required when method=sms. E.164 format (e.g. +919876543210)',

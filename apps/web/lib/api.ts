@@ -177,8 +177,13 @@ export interface MfaRequiredResponse {
 }
 
 export interface SetupMfaResponse {
-  qrCodeUrl: string;
-  secret: string;
+  method: MfaMethod;
+  /** TOTP only */
+  qrCodeUrl?: string;
+  secret?: string;
+  /** Email/SMS only — masked */
+  destination?: string;
+  expiresInSeconds?: number;
 }
 
 /** Matches POST /auth/mfa/verify and /auth/mfa/challenge's response — apps/backend LoginResponseDto. */
@@ -222,20 +227,32 @@ export function googleAuth(): string {
 }
 
 /**
- * Starts TOTP enrolment (the default/only method this covers — see GET
- * /auth/mfa/setup). Takes the mfaPendingToken explicitly (see
+ * Starts enrolment in the given method (defaults to email server-side —
+ * see MfaSetupQueryDto). Takes the mfaPendingToken explicitly (see
  * lib/mfaSession.ts) — at this point in the flow there is no real session
  * for the default Authorization header (lib/auth.ts's getToken()) to send.
  */
-export function setupMfa(token: string): Promise<SetupMfaResponse> {
-  return request<{ method: string; qrCodeDataUrl: string; secret: string }>('/auth/mfa/setup', {
-    token,
-  }).then((raw) => ({ qrCodeUrl: raw.qrCodeDataUrl, secret: raw.secret }));
+export function setupMfa(token: string, method?: MfaMethod): Promise<SetupMfaResponse> {
+  return request<{ method: MfaMethod; qrCodeDataUrl?: string; secret?: string; email?: string; phone?: string; expiresInSeconds?: number }>(
+    '/auth/mfa/setup',
+    { token, query: method ? { method } : undefined },
+  ).then((raw) => ({
+    method: raw.method,
+    qrCodeUrl: raw.qrCodeDataUrl,
+    secret: raw.secret,
+    destination: raw.email ?? raw.phone,
+    expiresInSeconds: raw.expiresInSeconds,
+  }));
 }
 
-/** Confirms MFA enrolment — always TOTP here, matching setupMfa(). Same mfaPendingToken reasoning as setupMfa(). */
-export function verifyMfa(token: string, code: string): Promise<LoginResponse> {
-  return request('/auth/mfa/verify', { method: 'POST', body: { method: 'totp', code }, token });
+/** Confirms MFA enrolment for the given method. Same mfaPendingToken reasoning as setupMfa(). */
+export function verifyMfa(token: string, method: MfaMethod, code: string): Promise<LoginResponse> {
+  return request('/auth/mfa/verify', { method: 'POST', body: { method, code }, token });
+}
+
+/** Resends the email OTP during either the setup or the login/challenge flow — same mfaPendingToken. */
+export function resendMfaEmail(token: string): Promise<{ message: string }> {
+  return request('/auth/mfa/email/resend', { method: 'POST', token });
 }
 
 /**

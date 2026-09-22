@@ -132,6 +132,10 @@ export class AuthController {
       const params = new URLSearchParams({
         token: result.mfaPendingToken,
         setup: result.mfaMethod ? 'false' : 'true',
+        // TASKS_05 TASK 08 — now that there are 3 methods (email/totp/sms),
+        // not 2, this can't be inferred from `setup` alone the way
+        // app/auth/mfa/page.tsx's mount effect used to.
+        ...(result.mfaMethod ? { method: result.mfaMethod } : {}),
       });
       res.redirect(`${FRONTEND_URL}/auth/mfa?${params}`);
       return;
@@ -189,6 +193,16 @@ export class AuthController {
     @Req() req: Request,
   ) {
     return this.authService.challengeMfa(authToken, dto, req);
+  }
+
+  @Post('mfa/email/resend')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthTokenGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Resend the email OTP code (rate-limited)' })
+  async mfaEmailResend(@CurrentUser() authToken: AuthTokenPayload) {
+    const purpose = authToken.purpose === 'mfa_setup' ? 'mfa_change' : 'login';
+    return this.authService.resendEmailOtp(authToken.sub, authToken.email!, purpose);
   }
 
   /**

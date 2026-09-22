@@ -1,5 +1,5 @@
-import { IsString, MinLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString, Length, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ResetPasswordDto {
   @ApiProperty()
@@ -10,4 +10,10 @@ export class ResetPasswordDto {
   @IsString()
   @MinLength(8)
   password: string;
+
+  @ApiPropertyOptional({ description: 'Required for an MFA-enabled account — email OTP or TOTP code' })
+  @IsOptional()
+  @IsString()
+  @Length(6, 6)
+  mfaCode?: string;
 }

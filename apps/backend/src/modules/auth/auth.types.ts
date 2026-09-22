@@ -78,6 +78,13 @@ export interface MfaSetupSmsResponse {
   expiresInSeconds: number;
 }
 
+export interface MfaSetupEmailResponse {
+  method: 'email'; // see MfaSetupTotpResponse's comment on why not MfaMethod.EMAIL
+  /** Masked, e.g. te***@yopmail.com — never echo the full address back */
+  email: string;
+  expiresInSeconds: number;
+}
+
 export interface MfaVerifiedResponse {
   verified: true;
 }

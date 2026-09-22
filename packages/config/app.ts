@@ -128,14 +128,25 @@ export const appConfig = {
   SMS_OTP_EXPIRY_MINUTES: 5,
 
   /**
+   * Digit length / expiry / rate limit for MFA email OTP codes
+   * (TASKS_05 TASK 08). Named distinctly from EMAIL_OTP_* below — those
+   * belong to the unrelated institutional-email verification feature
+   * (verification.service.ts), not MFA.
+   */
+  MFA_EMAIL_OTP_LENGTH: 6,
+  MFA_EMAIL_OTP_EXPIRY_MINUTES: 10,
+  /** Max codes sendEmailOtp() will issue per user+purpose in a 10-minute window */
+  MFA_EMAIL_OTP_RATE_LIMIT_PER_10MIN: 3,
+
+  /**
    * Whether MFA is mandatory for all users.
    * Set to false only for development/testing. Always true in production.
    */
   MFA_REQUIRED: true,
 
   /**
-   * Whether school admins must use TOTP (not SMS).
-   * SMS is considered less secure — admins handle sensitive operations.
+   * Whether school admins must use TOTP (not SMS or email).
+   * Email/SMS are considered less secure — admins handle sensitive operations.
    */
   ADMIN_MFA_TOTP_ONLY: true,
 

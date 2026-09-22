@@ -102,6 +102,7 @@ export type CodeType = (typeof CodeType)[keyof typeof CodeType];
 export const MfaMethod = {
   TOTP: 'totp',
   SMS: 'sms',
+  EMAIL: 'email',
 } as const;
 export type MfaMethod = (typeof MfaMethod)[keyof typeof MfaMethod];
 
