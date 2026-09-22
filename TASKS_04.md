@@ -259,7 +259,7 @@ Commit: "feat: home page — white cards, icons, suggested section matching mock
 
 ---
 
-## TASK 05 — Classes tab page [PENDING]
+## TASK 05 — Classes tab page [DONE: heading 18px/700 (was clamp'd 16-18px/800), topBar white (was cream) for consistency with the now-white home topBar, sticky "+ New Classroom" restyled to a floating pill (calc(100%-28px) width, 52px height, 12px radius, bottom:14px) instead of an edge-to-edge bar, search input given a scoped 48px-radius override via className passthrough (not a global Input.module.css change — that's shared by every form in the app). Classroom list already reused the same redesigned ClassroomCard from TASK 04, so "same white cards as home page" was already satisfied]
 
 Read apps/web/app/classes/page.tsx
 

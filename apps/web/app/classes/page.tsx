@@ -116,6 +116,7 @@ export default function ClassesPage() {
           placeholder={t('searchPlaceholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          className={styles.searchInput}
         />
 
         {institutionOptions.length > 1 && (
@@ -189,7 +190,12 @@ export default function ClassesPage() {
 
       {!showCreateForm && (
         <div className={styles.stickyBar}>
-          <Button variant="primary" size="lg" fullWidth onClick={() => setShowCreateForm(true)}>
+          <Button
+            variant="primary"
+            size="lg"
+            className={styles.newClassroomButton}
+            onClick={() => setShowCreateForm(true)}
+          >
             {t('newClassroomButton')}
           </Button>
         </div>

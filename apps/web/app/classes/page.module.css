@@ -2,14 +2,23 @@
   display: flex;
   align-items: center;
   padding: 14px 16px;
-  background: var(--color-cream);
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
 
 .topBarTitle {
-  font-size: var(--text-lg);
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--color-text-primary);
+}
+
+/* TASKS_04 TASK 05 — a scoped override via Input's className passthrough,
+   not a change to Input.module.css itself (that's shared by every form in
+   the app — a global 48px radius would pill-shape every text input, not
+   just this search box). */
+.searchInput {
+  border-radius: 48px;
+  padding-inline-start: 18px;
 }
 
 .filterRow {
@@ -30,12 +39,20 @@
   padding-block: 24px;
 }
 
+/* TASKS_04 TASK 05 — the button floats 14px above the screen edge rather
+   than sitting in an edge-to-edge bar; no background/border here, the
+   button itself is the whole visual (see .newClassroomButton below). */
 .stickyBar {
   position: sticky;
-  inset-block-end: 0;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: var(--color-surface);
-  border-block-start: 1px solid var(--color-border);
+  inset-block-end: calc(14px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+}
+
+.newClassroomButton {
+  width: calc(100% - 28px);
+  height: 52px;
+  border-radius: 12px;
 }
 
 .inlineForm {
