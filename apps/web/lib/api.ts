@@ -470,6 +470,11 @@ export function getClassroom(globalId: string): Promise<Classroom & { institutio
   return request(`/classroom/${globalId}`);
 }
 
+/** classroomId is the internal id (Classroom.id), not the globalId in the URL — matches the backend's PATCH /classroom/:id (admin settings) route shape. */
+export function updateClassroomCover(classroomId: string, coverUrl: string): Promise<{ coverUrl: string }> {
+  return request(`/classroom/${classroomId}/cover`, { method: 'POST', body: { coverUrl } });
+}
+
 export interface CreateClassroomData {
   institutionId: string;
   name: string;
@@ -705,10 +710,15 @@ export interface AdminOverview {
   activeCodes: number;
   totalAdmins: number;
   recentActivity: AdminActivityEntry[];
+  logoUrl: string | null;
 }
 
 export function getOverview(institutionId: string): Promise<AdminOverview> {
   return request(`/admin/${institutionId}/overview`);
+}
+
+export function updateInstitutionLogo(institutionId: string, logoUrl: string): Promise<{ logoUrl: string }> {
+  return request(`/institution/${institutionId}/logo`, { method: 'POST', body: { logoUrl } });
 }
 
 export interface AdminClassroomEntry {

@@ -42,10 +42,10 @@ import { Request } from 'express';
  * instead of the plain `*`/`.select()` this file used before.
  */
 const CLASSROOM_SELECT_COLUMNS =
-  'id, globalId:global_id, institutionId:institution_id, name, batchYear:batch_year, grade, section, program, hasStaffRoom:has_staff_room, hasStudentAlley:has_student_alley, requireVerification:require_verification, createdBy:created_by, memberCount:member_count, createdAt:created_at';
+  'id, globalId:global_id, institutionId:institution_id, name, batchYear:batch_year, grade, section, program, hasStaffRoom:has_staff_room, hasStudentAlley:has_student_alley, requireVerification:require_verification, createdBy:created_by, memberCount:member_count, createdAt:created_at, coverUrl:cover_url';
 
 /** Same reasoning as CLASSROOM_SELECT_COLUMNS, for the institution row joined into getByGlobalId()/getById(). */
-const INSTITUTION_JOIN_COLUMNS = 'id, name, slug, type, cityCode:city_code, countryCode:country_code';
+const INSTITUTION_JOIN_COLUMNS = 'id, name, slug, type, cityCode:city_code, countryCode:country_code, logoUrl:logo_url';
 
 @Injectable()
 export class ClassroomService {
@@ -623,16 +623,7 @@ export class ClassroomService {
     dto: UpdateClassroomDto,
     req?: Request,
   ) {
-    const { data: membership } = await this.supabase
-      .from('memberships')
-      .select('role, verification_status')
-      .eq('user_id', actorId)
-      .eq('classroom_id', classroomId)
-      .maybeSingle();
-
-    if (!membership || membership.role !== 'admin' || membership.verification_status !== 'verified') {
-      throw new ForbiddenException('Only a verified admin of this classroom can change its settings');
-    }
+    await this.assertClassroomAdmin(actorId, classroomId);
 
     const patch: Record<string, unknown> = {};
     if (dto.name !== undefined) patch.name = dto.name;
@@ -670,5 +661,40 @@ export class ClassroomService {
     });
 
     return updated;
+  }
+
+  /** Same "verified classroom-level admin only, no school-admin fallback" rule as updateClassroom() — see its own doc comment. */
+  private async assertClassroomAdmin(actorId: string, classroomId: string): Promise<void> {
+    const { data: membership } = await this.supabase
+      .from('memberships')
+      .select('role, verification_status')
+      .eq('user_id', actorId)
+      .eq('classroom_id', classroomId)
+      .maybeSingle();
+
+    if (!membership || membership.role !== 'admin' || membership.verification_status !== 'verified') {
+      throw new ForbiddenException('Only a verified admin of this classroom can do this');
+    }
+  }
+
+  // ── Cover photo ──────────────────────────────────────────────────────────
+
+  /** See UpdateLogoDto's comment (institution module) on why this takes a Storage URL, not the file itself — same reasoning, same pattern. */
+  async updateCover(classroomId: string, actorId: string, coverUrl: string) {
+    await this.assertClassroomAdmin(actorId, classroomId);
+
+    const { data, error } = await this.supabase
+      .from('classrooms')
+      .update({ cover_url: coverUrl })
+      .eq('id', classroomId)
+      .select('id, coverUrl:cover_url')
+      .maybeSingle();
+
+    if (error || !data) {
+      this.logger.error('Failed to update classroom cover', { error, classroomId });
+      throw new BadRequestException('Failed to update cover photo. Please try again.');
+    }
+
+    return { coverUrl: data.coverUrl as string };
   }
 }

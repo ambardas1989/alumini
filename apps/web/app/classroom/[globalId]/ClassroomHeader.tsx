@@ -1,10 +1,17 @@
 'use client';
 
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import * as api from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
+import { supabase, INSTITUTION_ASSETS_BUCKET } from '@/lib/supabase';
+import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import styles from './ClassroomHeader.module.css';
 
 interface ClassroomHeaderProps {
+  classroomId: string;
   name: string;
   grade?: string | null;
   section?: string | null;
@@ -16,8 +23,13 @@ interface ClassroomHeaderProps {
   verifiedCount: number;
   /** FIX 3 — the CURRENT user's own role in this classroom, shown as a badge so they can tell why a channel is locked. */
   userRole: string | null;
+  coverUrl?: string | null;
+  onCoverUpdated: (coverUrl: string) => void;
   onStatsClick: () => void;
 }
+
+const ACCEPTED_COVER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_COVER_SIZE_BYTES = 5 * 1024 * 1024;
 
 /**
  * FIX 4 — was rendering the classroom name (e.g. "Grade 9A") as the bold
@@ -43,6 +55,7 @@ const ROLE_BADGE_CLASS: Record<string, string> = {
 };
 
 export function ClassroomHeader({
+  classroomId,
   name,
   grade,
   section,
@@ -53,16 +66,61 @@ export function ClassroomHeader({
   teacherCount,
   verifiedCount,
   userRole,
+  coverUrl,
+  onCoverUpdated,
   onStatsClick,
 }: ClassroomHeaderProps) {
   const router = useRouter();
   const t = useTranslations('classroom.header');
+  const { showToast } = useToast();
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   const identity = grade ? `${grade}${section ?? ''}` : (program ?? name);
   const roleBadgeClass = userRole ? ROLE_BADGE_CLASS[userRole] : undefined;
+  const isAdmin = userRole === 'admin';
+
+  const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const chosen = e.target.files?.[0];
+    e.target.value = '';
+    if (!chosen) return;
+
+    if (!ACCEPTED_COVER_TYPES.includes(chosen.type)) {
+      showToast(t('coverErrors.wrongType'), 'error');
+      return;
+    }
+    if (chosen.size > MAX_COVER_SIZE_BYTES) {
+      showToast(t('coverErrors.tooLarge'), 'error');
+      return;
+    }
+
+    setUploadingCover(true);
+    try {
+      const ext = chosen.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `classrooms/${classroomId}/cover.${ext}`;
+      const { error: storageError } = await supabase.storage
+        .from(INSTITUTION_ASSETS_BUCKET)
+        .upload(path, chosen, { upsert: true });
+      if (storageError) throw storageError;
+
+      const { data: publicUrlData } = supabase.storage.from(INSTITUTION_ASSETS_BUCKET).getPublicUrl(path);
+      const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+      const result = await api.updateClassroomCover(classroomId, publicUrl);
+      onCoverUpdated(result.coverUrl);
+      showToast(t('coverUpdatedToast'), 'success');
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setUploadingCover(false);
+    }
+  };
 
   return (
-    <header className={styles.header}>
+    <header
+      className={styles.header}
+      style={coverUrl ? { backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+    >
       <button type="button" className={styles.back} onClick={() => router.back()} aria-label={t('back')}>
         ←
       </button>
@@ -85,6 +143,27 @@ export function ClassroomHeader({
       <button type="button" className={styles.detailsLink} onClick={onStatsClick}>
         ⓘ {t('details')}
       </button>
+
+      {isAdmin && (
+        <>
+          <button
+            type="button"
+            className={styles.coverUploadButton}
+            onClick={() => coverInputRef.current?.click()}
+            disabled={uploadingCover}
+            aria-label={t('changeCover')}
+          >
+            {uploadingCover ? <LoadingSpinner size="sm" /> : '📷'}
+          </button>
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className={styles.hiddenInput}
+            onChange={handleCoverFileChange}
+          />
+        </>
+      )}
     </header>
   );
 }

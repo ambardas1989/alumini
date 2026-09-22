@@ -171,7 +171,7 @@ Commit: "fix: classroom card stats — clear icons and labels"
 
 ---
 
-## TASK 05 — Feature: institution and classroom profile pictures [PENDING]
+## TASK 05 — Feature: institution and classroom profile pictures [DONE: added logo_url/cover_url columns (migration 016, not yet run in Supabase); backend endpoints POST /institution/:id/logo (platform admin or active institution admin, reuses institution.service.ts's existing assertActiveAdmin) and POST /classroom/:id/cover (verified classroom admin only, matching updateClassroom()'s existing no-school-admin-fallback rule) both accept a JSON { logoUrl/coverUrl } body rather than multipart/form-data — this backend has no multer middleware anywhere (see codes/dto/import-csv.dto.ts's own identical documented decision), so this follows the same direct-client-Storage-upload pattern TASK 02's avatar upload just established: frontend uploads to the public 'institution-assets' bucket, then hands the endpoint just the resulting URL. Frontend: ClassroomCard shows the institution logo image when present (emoji fallback otherwise), classroom header shows the cover photo as a background with a dark overlay plus an admin-only camera-icon upload button, admin dashboard's overview tab gets a logo section with an upload/change button. Extended CLASSROOM_SELECT_COLUMNS/INSTITUTION_JOIN_COLUMNS (classroom.service.ts) and admin.service.ts's getOverview() to surface the new fields, and rebuilt @alumini/types after adding logoUrl/coverUrl to the shared Institution/Classroom interfaces]
 
 Schools, colleges, and classrooms should have their own
 display pictures just like user profiles.

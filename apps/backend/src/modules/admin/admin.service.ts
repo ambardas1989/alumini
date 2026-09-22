@@ -127,7 +127,7 @@ export class AdminService {
     // second one invented here).
     const activeYearThreshold = new Date().getFullYear() - appConfig.CLASSROOM_ACTIVE_YEAR_WINDOW;
 
-    const [totalClassroomsResult, activeClassroomsResult, totalAdminsResult] = await Promise.all([
+    const [totalClassroomsResult, activeClassroomsResult, totalAdminsResult, institutionResult] = await Promise.all([
       this.supabase.from('classrooms').select('id', { count: 'exact', head: true }).eq('institution_id', institutionId),
       this.supabase
         .from('classrooms')
@@ -140,6 +140,7 @@ export class AdminService {
         .eq('institution_id', institutionId)
         .eq('type', PersonaType.SCHOOL_ADMIN)
         .eq('status', 'active'),
+      this.supabase.from('institutions').select('logo_url').eq('id', institutionId).maybeSingle(),
     ]);
 
     let totalMembers = 0;
@@ -174,6 +175,7 @@ export class AdminService {
       activeCodes:        await this.countActiveCodes(institutionId),
       totalAdmins:        totalAdminsResult.count ?? 0,
       recentActivity:     await this.getRecentActivity(classroomIds),
+      logoUrl:            institutionResult.data?.logo_url ?? null,
     };
   }
 

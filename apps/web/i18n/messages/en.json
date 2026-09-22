@@ -362,6 +362,12 @@
       "teachers": "{count, plural, one {# teacher} other {# teachers}}",
       "verified": "{count, plural, one {# verified} other {# verified}}",
       "details": "Details",
+      "changeCover": "Change cover photo",
+      "coverUpdatedToast": "Cover photo updated",
+      "coverErrors": {
+        "wrongType": "Choose a JPEG, PNG, or WEBP image",
+        "tooLarge": "Image must be under 5MB"
+      },
       "role": {
         "admin": "Admin",
         "teacher": "Teacher",
@@ -751,6 +757,15 @@
       }
     },
     "overview": {
+      "logo": {
+        "uploadButton": "Upload logo",
+        "changeButton": "Change logo",
+        "updatedToast": "Institution logo updated",
+        "errors": {
+          "wrongType": "Choose a JPEG, PNG, or WEBP image",
+          "tooLarge": "Image must be under 5MB"
+        }
+      },
       "classrooms": "Classrooms",
       "totalMembers": "Total members",
       "verifiedMembers": "Verified members",

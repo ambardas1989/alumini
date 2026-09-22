@@ -12,7 +12,7 @@ export interface ClassroomCardData {
   batchYear: number;
   memberCount: number;
   /** cityCode, not a resolved city name — this app has no code→name lookup, so it's shown as-is, same as ClassroomCreateForm's institution picker already does. */
-  institution?: { name: string; type?: InstitutionType; cityCode?: string };
+  institution?: { name: string; type?: InstitutionType; cityCode?: string; logoUrl?: string };
   verificationStatus?: VerificationStatus;
 }
 
@@ -43,9 +43,13 @@ export function ClassroomCard({ classroom, onTap, loading = false }: ClassroomCa
       onClick={() => onTap?.(classroom)}
     >
       <div className={styles.row}>
-        <span className={`${styles.icon} ${bgClass}`} aria-hidden="true">
-          {icon}
-        </span>
+        {classroom.institution?.logoUrl ? (
+          <img src={classroom.institution.logoUrl} alt="" className={styles.icon} aria-hidden="true" />
+        ) : (
+          <span className={`${styles.icon} ${bgClass}`} aria-hidden="true">
+            {icon}
+          </span>
+        )}
         <div className={styles.center}>
           <p className={styles.line1}>
             {classroom.institution ? `${classroom.institution.name} · ` : ''}

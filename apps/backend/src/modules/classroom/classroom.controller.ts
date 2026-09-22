@@ -43,6 +43,7 @@ import { ClassroomService } from './classroom.service';
 import { CreateClassroomDto } from './dto/create-classroom.dto';
 import { UpdateClassroomDto } from './dto/update-classroom.dto';
 import { JoinClassroomDto } from './dto/join-classroom.dto';
+import { UpdateCoverDto } from './dto/update-cover.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthTokenPayload } from '../auth/auth.types';
@@ -141,5 +142,17 @@ export class ClassroomController {
     @Req() req: Request,
   ) {
     return this.classroomService.updateClassroom(classroomId, authToken.sub, dto, req);
+  }
+
+  @Post(':id/cover')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Set the classroom cover photo — verified admin of this classroom only' })
+  async updateCover(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') classroomId: string,
+    @Body() dto: UpdateCoverDto,
+  ) {
+    return this.classroomService.updateCover(classroomId, authToken.sub, dto.coverUrl);
   }
 }

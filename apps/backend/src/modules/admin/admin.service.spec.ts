@@ -125,6 +125,7 @@ describe('AdminService', () => {
         activeCodes: 0,
         totalAdmins: 3,
         recentActivity: [],
+        logoUrl: null,
       });
     });
 

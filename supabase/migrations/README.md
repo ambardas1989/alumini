@@ -22,6 +22,7 @@ Each must be run manually in Supabase SQL Editor.
 | 013_seed_institutions.sql | ⚠️ Check | 45 seeded institutions |
 | 014_add_platform_admin.sql | ✅ Run | is_platform_admin column |
 | 015_direct_messages.sql | ✅ Run | Direct messages table |
+| 016_institution_logos.sql | ⚠️ Check | institutions.logo_url, classrooms.cover_url |
 
 ⚠️ Check = verify these were run in Supabase.
 Run any that are missing before testing related features.

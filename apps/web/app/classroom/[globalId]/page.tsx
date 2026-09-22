@@ -558,6 +558,7 @@ export default function ClassroomPage() {
   return (
     <AppShell showNav={false}>
       <ClassroomHeader
+        classroomId={classroom.id}
         name={classroom.name}
         grade={classroom.grade}
         section={classroom.section}
@@ -568,6 +569,8 @@ export default function ClassroomPage() {
         teacherCount={memberStats.teacherCount}
         verifiedCount={memberStats.verifiedCount}
         userRole={membership.userRole}
+        coverUrl={classroom.coverUrl}
+        onCoverUpdated={(coverUrl) => setClassroom((prev) => (prev ? { ...prev, coverUrl } : prev))}
         onStatsClick={() => setShowInfoSheet(true)}
       />
       <ChannelTabs active={activeChannel} onChange={setActiveChannel} onInfoClick={() => setShowInfoSheet(true)} />

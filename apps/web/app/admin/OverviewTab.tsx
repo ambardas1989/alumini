@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatNumber, safeRelativeTime } from '@/lib/format';
+import { supabase, INSTITUTION_ASSETS_BUCKET } from '@/lib/supabase';
+import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -12,6 +14,9 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import styles from './OverviewTab.module.css';
 import tabStyles from './Tab.module.css';
+
+const ACCEPTED_LOGO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
 
 interface OverviewTabProps {
   institutionId: string;
@@ -31,11 +36,15 @@ function humanizeEventType(eventType: string): string {
 export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) {
   const router = useRouter();
   const t = useTranslations('adminDashboard.overview');
+  const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [overview, setOverview] = useState<api.AdminOverview | null>(null);
   const [yearGroups, setYearGroups] = useState<api.AdminClassroomYearGroup[]>([]);
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,6 +67,42 @@ export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) 
     load();
   }, [load]);
 
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const chosen = e.target.files?.[0];
+    e.target.value = '';
+    if (!chosen || !overview) return;
+
+    if (!ACCEPTED_LOGO_TYPES.includes(chosen.type)) {
+      showToast(t('logo.errors.wrongType'), 'error');
+      return;
+    }
+    if (chosen.size > MAX_LOGO_SIZE_BYTES) {
+      showToast(t('logo.errors.tooLarge'), 'error');
+      return;
+    }
+
+    setLogoUploading(true);
+    try {
+      const ext = chosen.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const path = `institutions/${institutionId}/logo.${ext}`;
+      const { error: storageError } = await supabase.storage
+        .from(INSTITUTION_ASSETS_BUCKET)
+        .upload(path, chosen, { upsert: true });
+      if (storageError) throw storageError;
+
+      const { data: publicUrlData } = supabase.storage.from(INSTITUTION_ASSETS_BUCKET).getPublicUrl(path);
+      const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+      const result = await api.updateInstitutionLogo(institutionId, publicUrl);
+      setOverview({ ...overview, logoUrl: result.logoUrl });
+      showToast(t('logo.updatedToast'), 'success');
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -72,6 +117,31 @@ export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) 
 
   return (
     <>
+      <div className={styles.logoSection}>
+        {overview.logoUrl ? (
+          <img src={overview.logoUrl} alt="" className={styles.logoImage} />
+        ) : (
+          <div className={styles.logoPlaceholder} aria-hidden="true">
+            🏫
+          </div>
+        )}
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={logoUploading}
+          onClick={() => logoInputRef.current?.click()}
+        >
+          {logoUploading ? undefined : overview.logoUrl ? t('logo.changeButton') : t('logo.uploadButton')}
+        </Button>
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className={styles.hiddenInput}
+          onChange={handleLogoFileChange}
+        />
+      </div>
+
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <p className={styles.statValue}>{formatNumber(overview.totalClassrooms)}</p>

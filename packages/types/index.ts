@@ -237,6 +237,8 @@ export interface Institution {
   claimedBy?: string;
   claimedAt?: string;
   createdAt: string;
+  /** Public Storage URL — see supabase/migrations/016_institution_logos.sql */
+  logoUrl?: string;
 }
 
 export interface Classroom {
@@ -254,6 +256,8 @@ export interface Classroom {
   createdBy: string;
   memberCount: number;
   createdAt: string;
+  /** Public Storage URL — see supabase/migrations/016_institution_logos.sql */
+  coverUrl?: string;
 }
 
 export interface Membership {

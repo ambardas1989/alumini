@@ -821,4 +821,37 @@ export class InstitutionService {
       );
     }
   }
+
+  // ── Logo ─────────────────────────────────────────────────────────────────
+
+  /**
+   * TASKS_05 TASK 05 — platform admin or an active institution admin.
+   * See UpdateLogoDto's own comment on why this takes a Storage URL rather
+   * than the file itself.
+   */
+  async updateLogo(userId: string, institutionId: string, logoUrl: string) {
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('is_platform_admin')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!profile?.is_platform_admin) {
+      await this.assertActiveAdmin(userId, institutionId);
+    }
+
+    const { data, error } = await this.supabase
+      .from('institutions')
+      .update({ logo_url: logoUrl })
+      .eq('id', institutionId)
+      .select('id, logoUrl:logo_url')
+      .maybeSingle();
+
+    if (error || !data) {
+      this.logger.error('Failed to update institution logo', { error, institutionId });
+      throw new BadRequestException('Failed to update logo. Please try again.');
+    }
+
+    return { logoUrl: data.logoUrl as string };
+  }
 }

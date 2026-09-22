@@ -24,3 +24,6 @@ export const VERIFICATION_DOCUMENTS_BUCKET = 'verification-documents';
 
 /** Public bucket — profile photos, unlike verification documents, are meant to be visible app-wide via a plain public URL. */
 export const PROFILE_AVATARS_BUCKET = 'profile-avatars';
+
+/** Public bucket — institution logos and classroom cover photos (TASKS_05 TASK 05). */
+export const INSTITUTION_ASSETS_BUCKET = 'institution-assets';

@@ -1,4 +1,5 @@
 .header {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   /* flex-wrap is required for .statsRow/.detailsLink's flex-basis:100% to
@@ -10,6 +11,30 @@
   gap: 10px;
   padding: 10px 14px;
   background: linear-gradient(to bottom, var(--classroom-gradient-from), var(--classroom-gradient-to));
+}
+
+/* TASKS_05 TASK 05 — admin-only cover upload trigger, bottom right. Not
+   forced onto the 44px floor via width/height (same reasoning as .back
+   above) — background stays transparent-on-dark so it reads as an icon,
+   not a button, matching the mockup's "small camera icon overlay." */
+.coverUploadButton {
+  position: absolute;
+  inset-block-end: 8px;
+  inset-inline-end: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hiddenInput {
+  display: none;
 }
 
 /* No explicit min-width/min-height override here — the global

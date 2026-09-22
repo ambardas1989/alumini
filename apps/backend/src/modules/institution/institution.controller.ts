@@ -38,6 +38,7 @@ import { ClaimInstitutionDto } from './dto/claim-institution.dto';
 import { InviteAdminDto } from './dto/invite-admin.dto';
 import { RemoveAdminDto } from './dto/remove-admin.dto';
 import { TransferPrimaryAdminDto } from './dto/transfer-admin.dto';
+import { UpdateLogoDto } from './dto/update-logo.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MfaChallengeGuard } from '../auth/guards/mfa-challenge.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -101,6 +102,20 @@ export class InstitutionController {
     @Req() req: Request,
   ) {
     return this.institutionService.submitClaim(authToken.sub, institutionId, dto, req);
+  }
+
+  // ── Logo ─────────────────────────────────────────────────────────────────
+
+  @Post(':id/logo')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Set the institution logo (platform admin or an active institution admin)' })
+  async updateLogo(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') institutionId: string,
+    @Body() dto: UpdateLogoDto,
+  ) {
+    return this.institutionService.updateLogo(authToken.sub, institutionId, dto.logoUrl);
   }
 
   // ── Co-admin roster ──────────────────────────────────────────────────────
