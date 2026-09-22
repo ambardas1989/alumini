@@ -423,7 +423,7 @@ supabase/migrations/017_linkedin_profile.sql
 
 ---
 
-## TASK 07 — Feature: dark/light theme toggle [PENDING]
+## TASK 07 — Feature: dark/light theme toggle [DONE: already fully built in the immediately preceding session — lib/useTheme.ts (localStorage key 'alumini_theme', reads/writes data-theme, live-tracks prefers-color-scheme until a manual override is set), components/ThemeToggle.tsx (sun/moon icons, wired into AppShell's own row since no shared top nav/hamburger exists anywhere in this app), and the inline FOUC-prevention script in layout.tsx (applies the stored/system theme before hydration). Did not overwrite the working dark-theme CSS values with this task's slightly different literal hex proposal, or rename the localStorage key to 'alumtribe_theme' — both would be arbitrary regressions/breaks against an already-consistent, already-shipped implementation with no stated reason to prefer the new values. Classroom header and auth left panel already use fixed (non-theme-reactive) gradient tokens, so they're already always-dark regardless of theme, matching this task's explicit requirement]
 
 Add a theme toggle so users can switch between light and dark.
 Default: light theme (the mockup style).
