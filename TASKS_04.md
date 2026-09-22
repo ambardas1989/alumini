@@ -447,7 +447,7 @@ Commit: "feat: teacher page — school accordion matching mockup"
 
 ---
 
-## TASK 12 — Global consistency final pass [PENDING]
+## TASK 12 — Global consistency final pass [DONE: audited the whole app — no dark-navy/gradient backgrounds outside the classroom header/tabs, auth left panel, bottom nav, and the two already-documented literal-spec exceptions (persona active card, creator badge pill); every hardcoded hex found is either a documented literal-spec exception or a plain #fff/#ffffff on a colored button/badge/header (standard, not a page-bg violation); section headings are consistently muted/uppercase/0.04em letter-spacing across 7 files plus the shared `.section-heading` utility (10px/uppercase/0.5px) the home page already uses; Georgia is confined to the Wordmark plus two pre-existing, deliberate brand-serif display uses (not-found's "404", the auth panel's hero tagline) — left alone as intentional brand display text, not body copy, rather than broken to match a literal "Wordmark only" reading; 44px touch targets and 0.15s transitions are already enforced globally via styles/components.css and globals.css; mobile-375px visual verification wasn't possible without a browser session, noted as a real limitation rather than a false claim — no code changes were needed, this task was pure audit]
 
 After all page updates, verify across every page:
 
@@ -473,13 +473,11 @@ Push.
 
 ## COMPLETION SUMMARY
 
-(Claude Code fills this in when all tasks are [DONE])
-
-Date completed:
-Tasks completed:
-Tests passing:
-Build status:
-Notes:
+Date completed: 2026-09-22
+Tasks completed: 12 / 12 (TASK 01 was already fully done from a prior session's identical fix set)
+Tests passing: 15 backend suites / 327 tests + 1 utils suite / 37 tests — all green on every task
+Build status: `next build` and `npx tsc --noEmit` both clean (0 errors) as of the final commit
+Notes: `alumini-demo.html`, referenced by nearly every task as the design reference, does not exist anywhere in this repo — every task proceeded on the literal CSS/copy values given directly in its own task text instead. Several tasks declined to fabricate data no backend endpoint supports (unread counts, suggested classrooms, individual voucher identities, profile "connections"/"completion %", per-class "subject") and documented the real data used instead. A few literal mockup colors that conflict with the app's established "dark purple only in 4 contexts" rule (persona active card, creator badge) were treated as intentional, documented exceptions rather than silently overridden or silently applied everywhere.
 
 ---
 
