@@ -1,0 +1,21 @@
+/* Spec asks for a literal 28px circle — kept at the enforced 44px
+   touch-target floor instead (styles/components.css's global
+   button{min-width/min-height:44px} rule), same decision already made for
+   MessageInput.module.css's send button and ClassroomHeader.module.css's
+   back button. The icon itself is the spec's 18px; only the tappable
+   circle stays at the accessible floor. */
+.toggle {
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  transition: background 0.15s ease;
+}
+
+.toggle:hover {
+  background: var(--color-primary-light);
+}

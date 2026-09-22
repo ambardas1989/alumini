@@ -30,6 +30,13 @@
   min-height: 0; /* allows children to scroll inside a flex column instead of overflowing it */
 }
 
+.theme-toggle-bar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 8px 0;
+}
+
 /* AppShell intentionally applies no padding of its own — PageHeader (if a
    screen renders one) and PageContainer own their own spacing, so a
    screen that wants edge-to-edge content (e.g. a chat view) isn't fighting

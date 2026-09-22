@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { BottomNav } from '../BottomNav';
+import { ThemeToggle } from '../ThemeToggle';
 import '@/styles/layout.css';
 
 interface AppShellProps {
@@ -25,6 +26,15 @@ interface AppShellProps {
 export function AppShell({ children, showNav = true }: AppShellProps) {
   return (
     <div className="app-shell">
+      {/* No shared top nav/hamburger exists anywhere in this app — each
+          screen builds its own header (or none) inside `children`, so a
+          fixed/absolute toggle here would sit on top of those screens' own
+          top-right icons (NotificationBell, search, etc). This slim in-flow
+          row is its own space above every screen instead, so it can never
+          collide with a page's own header. */}
+      <div className="theme-toggle-bar">
+        <ThemeToggle />
+      </div>
       <main className="app-content">{children}</main>
       {showNav && <BottomNav />}
     </div>
