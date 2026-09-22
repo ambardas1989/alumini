@@ -667,7 +667,7 @@
       "description": "Classes you're no longer actively teaching will appear here."
     },
     "classCount": "{count, plural, one {# class} other {# classes}}",
-    "showAllClasses": "Show {count} more",
+    "showAllClasses": "Show all {count} more classes →",
     "memberCount": "{count, plural, one {# member} other {# members}}",
     "activeBadge": "Active",
     "alumniBadge": "Alumni",

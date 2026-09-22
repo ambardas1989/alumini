@@ -9,6 +9,11 @@ import styles from './InstitutionAccordion.module.css';
 
 const COLLAPSED_VISIBLE_COUNT = 5;
 
+/** Same 🏫/🎓 split as ClassroomCard's institutionIcon() — the mockup only names those two buckets. */
+function institutionIcon(type: InstitutionGroup['institution']['type']): string {
+  return type === 'school' ? '🏫' : '🎓';
+}
+
 interface InstitutionAccordionProps {
   group: InstitutionGroup;
   defaultOpen?: boolean;
@@ -42,6 +47,9 @@ export function InstitutionAccordion({ group, defaultOpen = false }: Institution
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
+        <span className={styles.headerIcon} aria-hidden="true">
+          {institutionIcon(group.institution.type)}
+        </span>
         <span className={styles.headerText}>
           <span className={styles.name}>{group.institution.name}</span>
           <span className={styles.sub}>

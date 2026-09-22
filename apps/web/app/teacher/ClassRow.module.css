@@ -31,23 +31,27 @@
 .name {
   flex: 1;
   font-size: var(--text-sm);
-  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .nameActive {
+  font-weight: 700;
   color: var(--color-text-primary);
 }
 
 .nameAlumni {
+  font-weight: 500;
   color: var(--color-text-secondary);
 }
 
+/* Spec asks for a "subject" line here too, but no classroom field carries
+   a subject — this stays the real member-count metadata instead of a
+   fabricated one. */
 .meta {
   flex-shrink: 0;
-  font-size: var(--text-xs);
+  font-size: 10px;
   color: var(--color-text-muted);
 }
 

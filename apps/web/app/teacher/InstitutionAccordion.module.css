@@ -20,6 +20,11 @@
   text-align: start;
 }
 
+.headerIcon {
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
 .headerText {
   display: flex;
   flex-direction: column;
@@ -37,11 +42,12 @@
 
 .sub {
   font-size: var(--text-xs);
-  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .chevron {
   flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.4);
   transition: transform 0.15s ease;
 }
 
@@ -54,12 +60,14 @@
   background: var(--color-cream);
 }
 
+/* Spec asks for a small blue link, distinct from --color-primary's purple —
+   reuses the existing --color-info blue token rather than a new literal. */
 .showAll {
   width: 100%;
   padding: 10px;
   text-align: center;
-  font-size: var(--text-sm);
+  font-size: 10px;
   font-weight: 700;
-  color: var(--color-primary);
+  color: var(--color-info);
   min-height: var(--min-touch-target);
 }

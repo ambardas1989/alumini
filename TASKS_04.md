@@ -421,7 +421,7 @@ Commit: "feat: persona — two card layout matching mockup"
 
 ---
 
-## TASK 11 — Teacher home page [PENDING]
+## TASK 11 — Teacher home page [DONE: tab bar switched from pill-style to underline (bottom border + bold on active, matching spec); accordion header gets a 🏫/🎓 institution icon and its year-range/chevron dimmed to literal white 50%/40%; "show all" link set to 10px blue; class rows get 10px muted meta text and alumni names de-bolded — "subject" text declined since no classroom field carries one, kept the real member-count instead; dot colors, active/alumni badges, and dark-per-school header bg already matched]
 
 Read apps/web/app/teacher/page.tsx
 Read alumini-demo.html screen s5
