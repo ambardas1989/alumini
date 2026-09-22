@@ -219,7 +219,7 @@ Commit: "fix: bottom nav — 4 tabs with icons and labels matching mockup"
 
 ---
 
-## TASK 04 — Home page [PENDING]
+## TASK 04 — Home page [DONE: mockup describes a pure classroom list (no activity-feed concept), a real behavior change from the greeting+feed-first design — restructured so classroom cards under an "ACTIVE CLASSROOMS" heading always render (not conditional on feed being empty), kept the real notifications feed as a secondary section below rather than deleting it. Header: title→"My classrooms" bold 16px (translation was already staged), subtitle→username 12px, UserMenu extended with size/showOnlineDot props (32px avatar + decorative online dot, no real presence tracking exists). Redesigned the SHARED ClassroomCard (also used by classes/profile pages) with the 40px icon square (🏫 green/🎓 purple), two-line center content, and verified/pending bottom row — per-classroom unread count omitted, no endpoint tracks that. Suggested-classrooms section still not rendered — no backend endpoint, same documented decision as before]
 
 Read apps/web/app/(home)/page.tsx
 Read alumini-demo.html screen s1 carefully.

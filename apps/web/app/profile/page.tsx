@@ -275,7 +275,7 @@ export default function ProfilePage() {
                       name: c.name,
                       batchYear: c.batchYear,
                       memberCount: c.memberCount,
-                      institution: { name: c.institution.name },
+                      institution: { name: c.institution.name, type: c.institution.type },
                       verificationStatus: c.verificationStatus as ClassroomCardData['verificationStatus'],
                     } satisfies ClassroomCardData
                   }

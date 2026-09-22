@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import type { VerificationStatus } from '@alumini/types';
+import type { InstitutionType, VerificationStatus } from '@alumini/types';
 import { useTranslations } from '@/lib/useTranslations';
-import { Badge, type BadgeVariant } from './ui/Badge';
 import { SkeletonCard } from './ui/SkeletonCard';
 import styles from './ClassroomCard.module.css';
 
@@ -12,7 +11,7 @@ export interface ClassroomCardData {
   name: string;
   batchYear: number;
   memberCount: number;
-  institution?: { name: string };
+  institution?: { name: string; type?: InstitutionType };
   verificationStatus?: VerificationStatus;
 }
 
@@ -22,12 +21,11 @@ interface ClassroomCardProps {
   loading?: boolean;
 }
 
-const STATUS_VARIANT: Record<VerificationStatus, BadgeVariant> = {
-  verified: 'verified',
-  pending: 'pending',
-  pending_auto: 'pending_auto',
-  rejected: 'rejected',
-};
+/** TASKS_04 TASK 04 — school gets 🏫 on green, college/university gets 🎓 on purple; the mockup only names those two buckets. */
+function institutionIcon(type: InstitutionType | undefined): { icon: string; bgClass: string } {
+  if (type === 'school') return { icon: '🏫', bgClass: styles.iconSchool! };
+  return { icon: '🎓', bgClass: styles.iconUniversity! };
+}
 
 export function ClassroomCard({ classroom, onTap, loading = false }: ClassroomCardProps) {
   const tStatus = useTranslations('status');
@@ -35,7 +33,9 @@ export function ClassroomCard({ classroom, onTap, loading = false }: ClassroomCa
 
   if (loading) return <SkeletonCard />;
 
-  const statusVariant = classroom.verificationStatus ? STATUS_VARIANT[classroom.verificationStatus] : undefined;
+  const { icon, bgClass } = institutionIcon(classroom.institution?.type);
+  const isVerified = classroom.verificationStatus === 'verified' || classroom.verificationStatus === 'pending_auto';
+  const isPending = classroom.verificationStatus === 'pending' || classroom.verificationStatus === 'rejected';
 
   return (
     <Link
@@ -43,23 +43,35 @@ export function ClassroomCard({ classroom, onTap, loading = false }: ClassroomCa
       className={styles.card}
       onClick={() => onTap?.(classroom)}
     >
-      {classroom.institution && <p className={styles.institution}>{classroom.institution.name}</p>}
-      <p className={styles.name}>{classroom.name}</p>
       <div className={styles.row}>
-        {/* batchYear is a year, never thousands-formatted (formatNumber()
-            would render "2,012", which no one writes for a class year) —
-            memberCount goes through the ICU plural pattern below instead
-            of formatNumber(), for the same reason as SessionExpiryWarning:
-            next-intl formats the number itself while resolving the plural
-            category, so it takes the raw number, not a pre-formatted string. */}
-        <span className={styles.stat}>
-          {classroom.batchYear} &middot; {tCard('memberCount', { count: classroom.memberCount ?? 0 })}
+        <span className={`${styles.icon} ${bgClass}`} aria-hidden="true">
+          {icon}
         </span>
-        {statusVariant && <Badge variant={statusVariant} label={tStatus(statusVariant)} />}
+        <div className={styles.center}>
+          <p className={styles.line1}>
+            {classroom.institution ? `${classroom.institution.name} · ` : ''}
+            {classroom.name} · {classroom.batchYear}
+          </p>
+          <p className={styles.line2}>{tCard('memberCount', { count: classroom.memberCount ?? 0 })}</p>
+        </div>
         <span className={styles.chevron} aria-hidden="true">
           ›
         </span>
       </div>
+
+      {/* TASKS_04 TASK 04's bottom row also wants a per-classroom unread-
+          message count icon — no endpoint anywhere in this app tracks that
+          (same "don't fabricate data" call the suggested-classrooms section
+          below makes), so it's left out rather than showing a fake 0. */}
+      {classroom.verificationStatus && (
+        <div className={styles.bottomRow}>
+          {isVerified ? (
+            <span className={styles.verifiedPill}>✓ {tStatus('verified')}</span>
+          ) : isPending ? (
+            <span className={styles.pendingPill}>{tCard('verifyToEnter')}</span>
+          ) : null}
+        </div>
+      )}
     </Link>
   );
 }

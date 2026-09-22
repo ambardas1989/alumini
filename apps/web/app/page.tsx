@@ -45,13 +45,6 @@ function dateGroupOf(iso: string): DateGroup {
   return 'earlier';
 }
 
-function greetingKey(): 'morning' | 'afternoon' | 'evening' {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'morning';
-  if (hour < 18) return 'afternoon';
-  return 'evening';
-}
-
 /**
  * Maps a notification's `type` (NotificationService's @OnEvent() handlers —
  * see apps/backend notification.service.ts) to a feed item's accent/icon.
@@ -77,7 +70,6 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [classrooms, setClassrooms] = useState<FlatClassroom[]>([]);
   const [feed, setFeed] = useState<NotificationRow[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   useEffect(() => {
@@ -89,14 +81,12 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const [myClassrooms, notifications, unread] = await Promise.all([
+      const [myClassrooms, notifications] = await Promise.all([
         api.getMyClassrooms(),
         api.getNotifications(20),
-        api.getUnreadNotificationCount(),
       ]);
       setClassrooms(flatten(myClassrooms));
       setFeed(notifications);
-      setUnreadCount(unread.count);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -115,7 +105,6 @@ export default function HomePage() {
   };
 
   const firstPending = classrooms.find((c) => c.verificationStatus === 'pending');
-  const firstName = user?.fullName?.split(' ')[0] ?? '';
 
   const handleFeedItemTap = (item: NotificationRow) => {
     const classroomId = (item.data?.classroom_id as string | undefined) ?? null;
@@ -129,12 +118,10 @@ export default function HomePage() {
   return (
     <AppShell>
       <div className={styles.topBar}>
-        <UserMenu />
+        <UserMenu size="md" showOnlineDot />
         <div className={styles.topBarText}>
-          <h1 className={styles.greeting}>{t(`greeting.${greetingKey()}`, { name: firstName })}</h1>
-          <p className={styles.subtitle}>
-            {t('subtitle', { classrooms: classrooms.length, unread: unreadCount })}
-          </p>
+          <h1 className={styles.greeting}>{t('title')}</h1>
+          <p className={styles.subtitle}>{user?.fullName}</p>
         </div>
         <NotificationBell />
       </div>
@@ -172,15 +159,12 @@ export default function HomePage() {
               </>
             )}
 
-            {/* FRONTEND FIX 5: this used to show the "Join a classroom"
-                empty state whenever the ACTIVITY feed was empty, regardless
-                of whether the user already had classrooms — so a member of
-                one or more (just-quiet) classrooms was told to go find a
-                batch they'd already found. Three real states now: no
-                classrooms at all (the original empty state); classrooms but
-                no activity yet (show the classroom cards + a "quiet, not
-                empty" note, no "find your batch" CTA); classrooms WITH
-                activity (the feed, unchanged). */}
+            {/* TASKS_04 TASK 04 — the mockup's home screen is a classroom
+                list (ACTIVE CLASSROOMS), not an activity feed; classrooms
+                now render unconditionally here instead of only when the
+                feed happened to be empty. The feed (a real, working
+                notifications feature from earlier work) stays as its own
+                section below rather than being deleted outright. */}
             {!loading && feed.length === 0 && classrooms.length === 0 && (
               <EmptyState
                 icon="🎓"
@@ -191,8 +175,9 @@ export default function HomePage() {
               />
             )}
 
-            {!loading && feed.length === 0 && classrooms.length > 0 && (
+            {!loading && classrooms.length > 0 && (
               <>
+                <p className="section-heading">{t('activeClassrooms')}</p>
                 {classrooms.map((classroom) => (
                   <ClassroomCard
                     key={classroom.id}
@@ -202,15 +187,21 @@ export default function HomePage() {
                         name: classroom.name,
                         batchYear: classroom.batchYear,
                         memberCount: classroom.memberCount,
-                        institution: { name: classroom.institution.name },
+                        institution: { name: classroom.institution.name, type: classroom.institution.type },
                         verificationStatus: classroom.verificationStatus,
                       } satisfies ClassroomCardData
                     }
                   />
                 ))}
-                <p className={styles.noActivityNote}>{t('noActivity')}</p>
+                {feed.length === 0 && <p className={styles.noActivityNote}>{t('noActivity')}</p>}
               </>
             )}
+
+            {/* "Suggested classrooms" — no GET /classrooms/suggested
+                endpoint exists (documented future work per an earlier
+                task's own fallback instruction), so this section stays
+                unrendered rather than showing fabricated data, even
+                though classrooms.length < 3 would otherwise trigger it. */}
 
             {!loading &&
               feed.length > 0 &&
@@ -238,11 +229,6 @@ export default function HomePage() {
                   </div>
                 );
               })}
-
-            {/* "Suggested classrooms" — no GET /classrooms/suggested endpoint
-                exists (documented future work per TASK 08's own fallback
-                instruction), so this section stays unrendered rather than
-                showing fabricated data. */}
           </>
         )}
       </PageContainer>

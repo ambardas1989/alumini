@@ -266,12 +266,6 @@
   },
   "home": {
     "title": "My classrooms",
-    "greeting": {
-      "morning": "Good morning, {name}",
-      "afternoon": "Good afternoon, {name}",
-      "evening": "Good evening, {name}"
-    },
-    "subtitle": "{classrooms, plural, one {# classroom} other {# classrooms}} · {unread, plural, one {# unread} other {# unread}}",
     "welcomeBanner": "Some bonds never graduate. Find your batch below.",
     "verificationNudge": "Complete verification to post and read messages →",
     "activeClassrooms": "Active classrooms",
@@ -358,7 +352,8 @@
   },
   "classroom": {
     "card": {
-      "memberCount": "{count, plural, =0 {Be the first to join} one {# member} other {# members}}"
+      "memberCount": "{count, plural, =0 {Be the first to join} one {# member} other {# members}}",
+      "verifyToEnter": "⏳ verify to enter"
     },
     "header": {
       "back": "Back",

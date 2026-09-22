@@ -4,8 +4,17 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from './providers/AuthProvider';
 import { useTranslations } from '@/lib/useTranslations';
-import { Avatar } from './ui/Avatar';
+import { Avatar, type AvatarSize } from './ui/Avatar';
 import styles from './UserMenu.module.css';
+
+interface UserMenuProps {
+  size?: AvatarSize;
+  /** TASKS_04 TASK 04 — a purely decorative "you're online" dot, not a
+      real presence feature (this app has no presence tracking at all) —
+      always on for the current user, same pattern most social apps use
+      for "your own avatar" rather than implying live peer presence. */
+  showOnlineDot?: boolean;
+}
 
 /**
  * Avatar button + dropdown (View profile, Help & Support, Sign out) —
@@ -17,7 +26,7 @@ import styles from './UserMenu.module.css';
  * its own top bar locally, so this slots into that existing per-page
  * pattern instead of fighting it.
  */
-export function UserMenu() {
+export function UserMenu({ size = 'sm', showOnlineDot = false }: UserMenuProps) {
   const { user, logout } = useAuth();
   const t = useTranslations('userMenu');
   const [open, setOpen] = useState(false);
@@ -49,7 +58,8 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <Avatar avatarUrl={user?.avatarUrl} fullName={user?.fullName ?? ''} size="sm" />
+        <Avatar avatarUrl={user?.avatarUrl} fullName={user?.fullName ?? ''} size={size} />
+        {showOnlineDot && <span className={styles.onlineDot} aria-hidden="true" />
       </button>
 
       {open && (

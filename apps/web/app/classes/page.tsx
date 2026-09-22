@@ -165,7 +165,7 @@ export default function ClassesPage() {
                       name: classroom.name,
                       batchYear: classroom.batchYear,
                       memberCount: classroom.memberCount,
-                      institution: { name: classroom.institution.name },
+                      institution: { name: classroom.institution.name, type: classroom.institution.type },
                       verificationStatus: classroom.verificationStatus,
                     } satisfies ClassroomCardData
                   }
