@@ -12,6 +12,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuditService } from './audit.service';
 import { AuditEventType } from '@alumini/types';
+import { AppLogger } from '../../common/logger/logger.service';
+
+const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 
 // Mock Supabase client
 const mockInsert = jest.fn();
@@ -42,7 +45,7 @@ describe('AuditService', () => {
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AuditService],
+      providers: [AuditService, { provide: AppLogger, useValue: mockAppLogger }],
     }).compile();
 
     service = module.get<AuditService>(AuditService);

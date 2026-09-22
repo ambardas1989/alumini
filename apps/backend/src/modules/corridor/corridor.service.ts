@@ -99,6 +99,7 @@ import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
 import { MembershipService } from '../membership/membership.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, ChannelType, ErrorCode, MemberRole, MessageType } from '@alumini/types';
 import { getRange, redactName } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
@@ -136,7 +137,9 @@ export class CorridorService {
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly membershipService: MembershipService,
+    private readonly appLogger: AppLogger,
   ) {
+    this.appLogger.setContext('CORRIDOR');
     // Service role — bypasses RLS, same pattern as every other module.
     // (Client-side Realtime subscriptions are a completely separate
     // connection that goes through the ANON key and IS subject to RLS —
@@ -207,13 +210,7 @@ export class CorridorService {
       });
     }
 
-    // eslint-disable-next-line no-console
-    console.log(
-      '[CHANNEL-DEBUG] userId:', userId,
-      'classroomId:', classroomId,
-      'role:', membership.role,
-      'channel:', channel,
-    );
+    this.appLogger.debug('Fetch messages', { classroomId, channel, userId });
 
     const hasFullAccess =
       membership.verification_status === 'verified' || membership.verification_status === 'pending_auto';
@@ -272,6 +269,7 @@ export class CorridorService {
       .range(from, to);
 
     if (error) {
+      this.appLogger.error('Fetch failed', { classroomId, channel, error: error.message });
       this.logger.error('[CLASSROOM-ERROR] Failed to load messages', { error, classroomId, channel });
       throw new BadRequestException({
         message: 'Failed to load messages',
@@ -330,8 +328,11 @@ export class CorridorService {
    * even for the classroom channel.
    */
   async sendMessage(userId: string, classroomId: string, channel: ChannelType, dto: SendMessageDto, req?: Request) {
+    this.appLogger.debug('Send message', { classroomId, channel, userId });
+
     const canAccess = await this.membershipService.canAccessChannel(userId, classroomId, channel);
     if (!canAccess) {
+      this.appLogger.warn('Access denied', { userId, classroomId, channel });
       throw new ForbiddenException({
         message: 'You do not have access to post in this channel',
         error: ErrorCode.CHANNEL_ACCESS_DENIED,
@@ -352,6 +353,7 @@ export class CorridorService {
       .single();
 
     if (error || !message) {
+      this.appLogger.error('Send failed', { error: error?.message });
       this.logger.error('Failed to send message', { error, userId, classroomId, channel });
       throw new BadRequestException('Failed to send message. Please try again.');
     }

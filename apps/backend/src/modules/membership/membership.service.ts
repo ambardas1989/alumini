@@ -56,6 +56,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, ChannelType, MemberRole } from '@alumini/types';
 import { getRange } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
@@ -74,7 +75,11 @@ export class MembershipService {
   private readonly logger = new Logger(MembershipService.name);
   private readonly supabase: SupabaseClient;
 
-  constructor(private readonly audit: AuditService) {
+  constructor(
+    private readonly audit: AuditService,
+    private readonly appLogger: AppLogger,
+  ) {
+    this.appLogger.setContext('MEMBERSHIP');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,

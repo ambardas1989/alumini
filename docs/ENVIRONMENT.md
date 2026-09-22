@@ -19,6 +19,9 @@
 | APP_URL | https://api.alumtribe.com | |
 | RESEND_API_KEY | (from resend.com) | Optional — logs to console if missing |
 | FROM_EMAIL | noreply@alumtribe.com | Must be verified in Resend |
+| LOG_LEVEL | debug | Change to 'info' before public launch — see docs/DEVELOPMENT.md |
+| LINKEDIN_CLIENT_ID | (from LinkedIn Developer Portal) | Public — also needed as NEXT_PUBLIC_LINKEDIN_CLIENT_ID on the web service |
+| LINKEDIN_CLIENT_SECRET | (from LinkedIn Developer Portal) | Never expose publicly |
 
 ## Web (alumini-web service on Render)
 
@@ -28,6 +31,7 @@
 | NEXT_PUBLIC_SUPABASE_URL | https://forkamymzckhwkaqegnn.supabase.co | |
 | NEXT_PUBLIC_SUPABASE_ANON_KEY | sb_publishable_... | |
 | NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED | true | |
+| NEXT_PUBLIC_LINKEDIN_CLIENT_ID | (from LinkedIn Developer Portal) | Same value as backend's LINKEDIN_CLIENT_ID — public |
 | HOSTNAME | 0.0.0.0 | Required for Render proxy |
 | NODE_ENV | production | |
 | PORT | 3000 | |

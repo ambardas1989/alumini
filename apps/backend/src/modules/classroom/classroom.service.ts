@@ -28,6 +28,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, ErrorCode, PersonaType } from '@alumini/types';
 import { generateClassroomId, getRange, redactName, type ClassroomIdParams } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
@@ -55,7 +56,9 @@ export class ClassroomService {
   constructor(
     private readonly audit: AuditService,
     private readonly events: EventEmitter2,
+    private readonly appLogger: AppLogger,
   ) {
+    this.appLogger.setContext('CLASSROOM');
     // Use service role to bypass RLS for server-side operations
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -179,6 +182,7 @@ export class ClassroomService {
       .single();
 
     if (createError || !classroom) {
+      this.appLogger.error('Creation failed', { error: createError?.message });
       this.logger.error('Failed to create classroom', { error: createError, dto });
       throw new BadRequestException('Failed to create classroom. Please try again.');
     }
@@ -234,6 +238,7 @@ export class ClassroomService {
     });
 
     this.logger.log(`Classroom created: ${globalId} by user ${creatorId}`);
+    this.appLogger.info('Created', { globalId, userId: creatorId });
     return classroom;
   }
 
@@ -411,6 +416,8 @@ export class ClassroomService {
    * tends to leak data later.
    */
   async getMembers(classroomId: string, requesterId: string, page = 0) {
+    this.appLogger.debug('Fetch members', { classroomId });
+
     const { data: requesterMembership } = await this.supabase
       .from('memberships')
       .select('verification_status')
@@ -447,6 +454,7 @@ export class ClassroomService {
       .range(from, to);
 
     if (error) {
+      this.appLogger.error('Members failed', { classroomId, error: error.message });
       this.logger.error('Failed to load members', { error, classroomId });
       throw new BadRequestException('Failed to load members');
     }
@@ -541,6 +549,7 @@ export class ClassroomService {
     // CorridorModule listens and posts a "X joined" system message.
     this.events.emit('classroom.joined', { classroomId, userId, role });
 
+    this.appLogger.info('Joined', { userId, classroomId, role });
     await this.audit.log({
       eventType:  AuditEventType.CLASSROOM_JOINED,
       actorId:    userId,

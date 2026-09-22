@@ -23,6 +23,7 @@ import { createHash } from 'crypto';
 
 import { AuthService } from './auth.service';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, MfaMethod } from '@alumini/types';
 import { daysFromNow } from '@alumini/utils';
 
@@ -73,6 +74,9 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // ── Test suite ───────────────────────────────────────────────────────────────
 
+/** TASKS_05 TASK 11 — every service now injects AppLogger; a no-op mock keeps every existing spec's providers array valid. */
+const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
 describe('AuthService', () => {
   let service: AuthService;
   const mockAuditLog = jest.fn().mockResolvedValue(undefined);
@@ -92,6 +96,7 @@ describe('AuthService', () => {
         { provide: AuditService, useValue: { log: mockAuditLog } },
         { provide: JwtService, useValue: new JwtService({}) },
         { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
+        { provide: AppLogger, useValue: mockAppLogger },
       ],
     }).compile();
 

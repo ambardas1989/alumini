@@ -55,6 +55,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, ErrorCode, PersonaType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
 
@@ -73,7 +74,9 @@ export class IdentityService {
   constructor(
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly appLogger: AppLogger,
   ) {
+    this.appLogger.setContext('IDENTITY');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -102,8 +105,7 @@ export class IdentityService {
    * account created outside the normal signup flow).
    */
   async getProfile(userId: string) {
-    // eslint-disable-next-line no-console
-    console.log('[PROFILE-DEBUG] userId from JWT:', userId);
+    this.appLogger.debug('Profile fetch', { userId });
 
     // BUG FIX (FIX 2 — profile page errors despite a 200 response): every
     // field here except isPlatformAdmin was selected under its raw
@@ -130,6 +132,7 @@ export class IdentityService {
       .single();
 
     if (error || !profile) {
+      this.appLogger.error('Profile fetch failed', { userId, error: error?.message });
       this.logger.error('[PROFILE-DEBUG] Profile not found', { userId, error });
       // FRONTEND FIX 1: a plain string NotFoundException serializes with
       // Nest's default `error: 'Not Found'` — not one of this app's
@@ -171,6 +174,8 @@ export class IdentityService {
       this.logger.error('Failed to update profile', { error, userId });
       throw new BadRequestException('Failed to update profile. Please try again.');
     }
+
+    this.appLogger.info('Profile updated', { userId, fields: Object.keys(dto) });
 
     return data;
   }

@@ -19,11 +19,29 @@ import * as compression from 'compression';
 
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { AppLogger } from './common/logger/logger.service';
 import { brand } from '@alumini/config/brand';
 
 async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+
+  // TASKS_05 TASK 11 — routes Nest's OWN internal logging (route
+  // registration, lifecycle events, etc.) through AppLogger too, so
+  // LOG_LEVEL governs the framework's own noise, not just this app's own
+  // service-level logs. AppLogger is TRANSIENT-scoped (see its own doc
+  // comment on why, a deviation from the task's plain @Injectable()) —
+  // `strict: false` resolves a single instance from the root module for
+  // this one bootstrap-level use, same as Nest's own docs show for
+  // getting a transient provider outside constructor injection.
+  const appLogger = app.get(AppLogger, { strict: false });
+  app.useLogger({
+    log: (message) => appLogger.info(message),
+    error: (message, trace) => appLogger.error(message, trace ? { trace } : undefined),
+    warn: (message) => appLogger.warn(message),
+    debug: (message) => appLogger.debug(message),
+    verbose: (message) => appLogger.debug(message),
+  });
 
   // ── Security headers ──────────────────────────────────────────────────────
   app.use(helmet());

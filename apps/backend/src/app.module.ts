@@ -26,6 +26,7 @@ import { SearchModule } from './modules/search/search.module';
 import { PremiumModule } from './modules/premium/premium.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { LoggerModule } from './common/logger/logger.module';
 
 import { appConfig } from '@alumini/config/app';
 
@@ -56,6 +57,9 @@ import { appConfig } from '@alumini/config/app';
         limit: 100,    // 100 requests per minute global default
       },
     ]),
+
+    // ── Cross-cutting ────────────────────────────────────────────────────────
+    LoggerModule,       // @Global() — AppLogger injectable anywhere without importing this
 
     // ── Feature modules ─────────────────────────────────────────────────────
     AuditModule,        // Must come first — other modules depend on AuditService

@@ -13,6 +13,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { DmService } from './dm.service';
+import { AppLogger } from '../../common/logger/logger.service';
 
 // ── Supabase mock (sequenced per table — same pattern as corridor.service.spec.ts) ──
 
@@ -42,6 +43,8 @@ jest.mock('@supabase/supabase-js', () => ({
   })),
 }));
 
+const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
 describe('DmService', () => {
   let service: DmService;
 
@@ -53,7 +56,7 @@ describe('DmService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DmService],
+      providers: [DmService, { provide: AppLogger, useValue: mockAppLogger }],
     }).compile();
 
     service = module.get<DmService>(DmService);

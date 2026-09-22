@@ -27,3 +27,28 @@ Migration files in supabase/migrations/ must be run
 manually in Supabase SQL Editor.
 They are NOT auto-applied.
 Check supabase/migrations/README.md for status of each.
+
+## Log levels and monitoring
+
+Set LOG_LEVEL in .env or Render environment:
+  debug — all logs (use now during development)
+  info  — business events only (use at public launch)
+  warn  — warnings and errors
+  error — errors only
+
+Current Render setting: LOG_LEVEL=debug
+
+To view logs:
+  Render → alumini → Logs tab → Application logs
+
+Useful log searches in Render:
+  [ERROR]     — all errors
+  [AUTH]      — authentication events
+  [CORRIDOR]  — messaging events
+  [CLASSROOM] — classroom events
+  [DM]        — direct messages
+  [VERIFY]    — verification events
+
+To change log level without redeploying:
+  Render → alumini → Environment → LOG_LEVEL → Save
+  Service restarts automatically with new level.

@@ -22,6 +22,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 
 import { CorridorService } from './corridor.service';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { MembershipService } from '../membership/membership.service';
 import { AuditEventType, ChannelType, ErrorCode, MessageType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
@@ -57,6 +58,8 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // ── Test suite ───────────────────────────────────────────────────────────────
 
+const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
 describe('CorridorService', () => {
   let service: CorridorService;
   const mockAuditLog = jest.fn().mockResolvedValue(undefined);
@@ -76,6 +79,7 @@ describe('CorridorService', () => {
         { provide: AuditService, useValue: { log: mockAuditLog } },
         { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
         { provide: MembershipService, useValue: { canAccessChannel: mockCanAccessChannel } },
+        { provide: AppLogger, useValue: mockAppLogger },
       ],
     }).compile();
 

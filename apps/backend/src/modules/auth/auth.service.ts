@@ -47,6 +47,7 @@ import { Resend } from 'resend';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, ErrorCode, MfaMethod, PersonaType } from '@alumini/types';
 import { daysFromNow, isExpired, minutesFromNow } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
@@ -104,7 +105,9 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly appLogger: AppLogger,
   ) {
+    this.appLogger.setContext('AUTH');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -120,6 +123,8 @@ export class AuthService {
    * full session — MFA enrolment is mandatory and happens next.
    */
   async signup(dto: SignupDto, req?: Request): Promise<MfaRequiredResponse | TokenPairResponse> {
+    this.appLogger.info('Signup', { email: AppLogger.maskEmail(dto.email) });
+
     const { data, error } = await this.supabase.auth.admin.createUser({
       email: dto.email,
       password: dto.password,
@@ -143,6 +148,10 @@ export class AuthService {
       const isDuplicate = /already registered|already exists|user_already_exists|email_exists/i.test(
         error?.message ?? error?.code ?? '',
       );
+      this.appLogger.error('Signup failed', {
+        email: AppLogger.maskEmail(dto.email),
+        error: isDuplicate ? 'duplicate_email' : (error?.message ?? 'unknown'),
+      });
       if (isDuplicate) {
         throw new ConflictException({
           message: 'An account with this email already exists',
@@ -169,12 +178,15 @@ export class AuthService {
   // ── Login (email + password) ────────────────────────────────────────────
 
   async login(dto: LoginDto, req?: Request): Promise<MfaRequiredResponse | TokenPairResponse> {
+    this.appLogger.debug('Login attempt', { email: AppLogger.maskEmail(dto.email) });
+
     const { data, error } = await this.supabase.auth.signInWithPassword({
       email: dto.email,
       password: dto.password,
     });
 
     if (error || !data.user) {
+      this.appLogger.error('Login failed', { email: AppLogger.maskEmail(dto.email), reason: 'invalid_credentials' });
       await this.audit.log({
         eventType: AuditEventType.AUTH_LOGIN_FAILURE,
         metadata: { email_domain: dto.email.split('@')[1] ?? null },
@@ -186,6 +198,7 @@ export class AuthService {
       });
     }
 
+    this.appLogger.info('Login success', { userId: data.user.id });
     return this.completePasswordVerifiedLogin(data.user.id, dto.email, req);
   }
 
@@ -363,6 +376,7 @@ export class AuthService {
     query: MfaSetupQueryDto,
   ): Promise<MfaSetupTotpResponse | MfaSetupSmsResponse | MfaSetupEmailResponse> {
     const method = query.method ?? MfaMethod.EMAIL;
+    this.appLogger.info('MFA setup initiated', { userId, method });
 
     if (method === MfaMethod.SMS) {
       if (!appConfig.FEATURE_SMS_MFA) {
@@ -419,11 +433,9 @@ export class AuthService {
       // just its message. Pulled out explicitly so a real failure is
       // actually diagnosable from Render logs instead of just this generic
       // 400 the client sees.
-      this.logger.error('[MFA-SETUP-ERROR]', {
+      this.appLogger.error('MFA setup failed', {
         userId,
-        error: error.message,
         code: (error as { code?: string }).code,
-        details: (error as { details?: string }).details,
         hint: (error as { hint?: string }).hint,
       });
       throw new BadRequestException('Failed to start MFA setup. Please try again.');
@@ -597,6 +609,7 @@ export class AuthService {
     const result = await this.verifyCode(userId, dto.method, dto.code, { confirmSetup: true });
 
     if (result !== 'valid') {
+      this.appLogger.error('MFA verify failed', { userId, reason: result });
       await this.audit.log({
         eventType: AuditEventType.AUTH_MFA_FAILURE,
         actorId: userId,
@@ -616,6 +629,7 @@ export class AuthService {
       throw new BadRequestException('Failed to complete MFA setup. Please try again.');
     }
 
+    this.appLogger.info('MFA verified', { userId, method: dto.method });
     await this.audit.log({
       eventType: AuditEventType.AUTH_MFA_SETUP,
       actorId: userId,
@@ -674,6 +688,7 @@ export class AuthService {
     const result = await this.verifyCode(userId, method, dto.code, { confirmSetup: false });
 
     if (result !== 'valid') {
+      this.appLogger.error('MFA verify failed', { userId, reason: result });
       await this.audit.log({
         eventType: AuditEventType.AUTH_MFA_FAILURE,
         actorId: userId,
@@ -683,6 +698,7 @@ export class AuthService {
       throw this.mfaFailureException(result);
     }
 
+    this.appLogger.info('MFA verified', { userId, method });
     await this.audit.log({
       eventType: AuditEventType.AUTH_MFA_SUCCESS,
       actorId: userId,
@@ -762,7 +778,13 @@ export class AuthService {
       // root cause is found; this logs the raw submitted code and a
       // prefix of the stored secret.
       const expectedCodeNow = speakeasy.totp({ secret: record.secret, encoding: 'base32' });
-      console.log('[MFA-DEBUG]', {
+      // TASKS_05 TASK 11 — now routed through AppLogger.debug() instead of
+      // a raw console.log, so this only prints when LOG_LEVEL=debug
+      // (development) instead of unconditionally on every TOTP check —
+      // still TEMPORARY per the investigation this was added for (see
+      // commit "debug: add MFA verification logging"), just no longer
+      // noisy in production regardless of that.
+      this.appLogger.debug('[MFA-DEBUG]', {
         userId,
         rawToken: code,
         secretPrefix: record.secret.slice(0, 8),
@@ -790,7 +812,7 @@ export class AuthService {
         window: 2,
       });
 
-      console.log('[MFA-DEBUG] verification result:', { userId, isValid });
+      this.appLogger.debug('[MFA-DEBUG] verification result', { userId, isValid });
 
       if (isValid && opts.confirmSetup) {
         await this.supabase
@@ -976,6 +998,7 @@ export class AuthService {
         .eq('user_id', userId);
     }
 
+    this.appLogger.info('Logout', { userId });
     await this.audit.log({
       eventType: AuditEventType.AUTH_LOGOUT,
       actorId: userId,
@@ -993,6 +1016,7 @@ export class AuthService {
    * shared "incorrect email or password" message).
    */
   async forgotPassword(dto: ForgotPasswordDto, req?: Request): Promise<{ message: string }> {
+    this.appLogger.info('Password reset requested', { email: AppLogger.maskEmail(dto.email) });
     const message = 'If that email exists a reset link was sent';
 
     const { data: profile } = await this.supabase
@@ -1138,6 +1162,7 @@ export class AuthService {
       .eq('user_id', record.user_id)
       .is('revoked_at', null);
 
+    this.appLogger.info('Password changed', { userId: record.user_id });
     await this.audit.log({
       eventType: AuditEventType.AUTH_PASSWORD_CHANGED,
       actorId: record.user_id,
@@ -1346,6 +1371,7 @@ export class AuthService {
       throw new BadRequestException('Failed to complete sign-in. Please try again.');
     }
 
+    this.appLogger.info('Session created', { userId });
     await this.audit.log({
       eventType: AuditEventType.AUTH_LOGIN_SUCCESS,
       actorId: userId,

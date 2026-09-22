@@ -15,6 +15,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger } from '@ne
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 import { getRange } from '@alumini/utils';
+import { AppLogger } from '../../common/logger/logger.service';
 
 const DM_PAGE_SIZE = 50;
 
@@ -38,7 +39,8 @@ export class DmService {
   private readonly logger = new Logger(DmService.name);
   private readonly supabase: SupabaseClient;
 
-  constructor() {
+  constructor(private readonly appLogger: AppLogger) {
+    this.appLogger.setContext('DM');
     this.supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   }
 
@@ -50,6 +52,8 @@ export class DmService {
    * is simpler than a GROUP BY round trip per stat.
    */
   async getConversations(userId: string): Promise<DmConversation[]> {
+    this.appLogger.debug('Fetch conversations', { userId });
+
     const { data: rows, error } = await this.supabase
       .from('direct_messages')
       .select('id, sender_id, recipient_id, content, is_read, is_deleted, created_at')
@@ -57,6 +61,7 @@ export class DmService {
       .order('created_at', { ascending: false });
 
     if (error) {
+      this.appLogger.error('Fetch failed', { userId, error: error.message });
       this.logger.error('Failed to load conversations', { error, userId });
       throw new BadRequestException('Failed to load conversations');
     }
@@ -154,10 +159,12 @@ export class DmService {
       .single();
 
     if (error || !message) {
+      this.appLogger.error('Send failed', { error: error?.message });
       this.logger.error('Failed to send DM', { error, senderId, recipientId });
       throw new BadRequestException('Failed to send message. Please try again.');
     }
 
+    this.appLogger.info('Message sent', { senderId, recipientId });
     return this.present(message);
   }
 
@@ -195,6 +202,7 @@ export class DmService {
     const shared = (theirRows ?? []).some((r) => mineSet.has(r.classroom_id));
 
     if (!shared) {
+      this.appLogger.warn('Access denied - no shared classroom', { senderId: userId, recipientId: otherUserId });
       throw new ForbiddenException('You can only message verified members of your classrooms');
     }
   }

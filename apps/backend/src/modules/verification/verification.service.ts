@@ -47,6 +47,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createHash, randomInt } from 'crypto';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import {
   AuditEventType,
   ErrorCode,
@@ -72,7 +73,9 @@ export class VerificationService {
   constructor(
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly appLogger: AppLogger,
   ) {
+    this.appLogger.setContext('VERIFY');
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -243,6 +246,7 @@ export class VerificationService {
     // Correct code — single use.
     await this.supabase.from('verification_email_otps').update({ consumed: true }).eq('id', otpRow.id);
 
+    this.appLogger.info('Email domain matched', { userId, classroomId });
     await this.approveVerification(
       userId,
       classroomId,
@@ -398,6 +402,8 @@ export class VerificationService {
       })
       .eq('id', verification.id);
 
+    this.appLogger.info('Vouch added', { voucherId, voucheeId, classroomId });
+
     // If threshold met → auto-approve
     if (verified) {
       await this.approveVerification(
@@ -464,6 +470,7 @@ export class VerificationService {
       classroomId,
     });
 
+    this.appLogger.info('Document submitted', { userId, classroomId });
     await this.audit.log({
       eventType:  AuditEventType.VERIFICATION_SUBMITTED,
       actorId:    userId,
@@ -609,6 +616,7 @@ export class VerificationService {
       reason,
     });
 
+    this.appLogger.warn('Verification rejected', { userId: verification.user_id, classroomId: verification.classroom_id });
     await this.audit.log({
       eventType:  AuditEventType.ADMIN_VERIFICATION_REJECTED,
       actorId:    adminId,
@@ -687,6 +695,7 @@ export class VerificationService {
     });
 
     if (!match) {
+      this.appLogger.warn('LinkedIn no match', { userId, classroomId });
       throw new BadRequestException(
         'No matching institution and graduation year found in your LinkedIn education history',
       );
@@ -925,6 +934,7 @@ export class VerificationService {
       method,
     });
 
+    this.appLogger.info('Verified', { userId, classroomId, method });
     await this.audit.log({
       eventType:  AuditEventType.VERIFICATION_APPROVED,
       actorId:    userId,

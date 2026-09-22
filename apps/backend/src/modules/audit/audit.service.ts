@@ -22,6 +22,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Request } from 'express';
 import { AuditEventType, PersonaType } from '@alumini/types';
+import { AppLogger } from '../../common/logger/logger.service';
 
 export interface AuditLogParams {
   /** The type of event — use AuditEventType enum, never raw strings */
@@ -55,7 +56,8 @@ export class AuditService {
   private readonly logger = new Logger(AuditService.name);
   private readonly supabase: SupabaseClient;
 
-  constructor() {
+  constructor(private readonly appLogger: AppLogger) {
+    this.appLogger.setContext('AUDIT');
     // Use service role key — bypasses RLS for audit log writes
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -97,12 +99,17 @@ export class AuditService {
 
       if (error) {
         // Log the failure but don't throw — audit must not break core flows
+        this.appLogger.error('Record failed', { error: error.message });
         this.logger.error(
           `Failed to write audit log [${eventType}]: ${error.message}`,
           { actorId, targetId, eventType },
         );
+        return;
       }
+
+      this.appLogger.debug('Event recorded', { actor: actorId ?? null, action: eventType, resource: targetId ?? null });
     } catch (err) {
+      this.appLogger.error('Record failed', { error: err instanceof Error ? err.message : String(err) });
       this.logger.error(
         `Exception writing audit log [${eventType}]`,
         err instanceof Error ? err.stack : String(err),

@@ -26,6 +26,7 @@ import { createHash } from 'crypto';
 
 import { VerificationService } from './verification.service';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, MemberRole, VerificationMethod } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
 
@@ -65,6 +66,8 @@ function sha256(value: string): string {
 
 // ── Test suite ───────────────────────────────────────────────────────────────
 
+const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
 describe('VerificationService', () => {
   let service: VerificationService;
   const mockAuditLog = jest.fn().mockResolvedValue(undefined);
@@ -83,6 +86,7 @@ describe('VerificationService', () => {
         VerificationService,
         { provide: AuditService, useValue: { log: mockAuditLog } },
         { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
+        { provide: AppLogger, useValue: mockAppLogger },
       ],
     }).compile();
 

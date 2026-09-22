@@ -54,6 +54,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, ErrorCode, PersonaType } from '@alumini/types';
 import { isExpired } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
@@ -83,7 +84,9 @@ export class InstitutionService {
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly jwtService: JwtService,
+    private readonly appLogger: AppLogger,
   ) {
+    this.appLogger.setContext('INSTITUTION');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -99,6 +102,7 @@ export class InstitutionService {
    * "the institution database" per SPEC.md §15.3).
    */
   async searchInstitutions(dto: SearchInstitutionsDto) {
+    this.appLogger.debug('Search', { query: dto.q });
     let queryBuilder = this.supabase
       .from('institutions')
       .select('id, name, slug, type, city_code, country_code, email_domain')
@@ -116,6 +120,7 @@ export class InstitutionService {
       return [];
     }
 
+    this.appLogger.debug('Search', { query: dto.q, count: (data ?? []).length });
     return data ?? [];
   }
 
@@ -183,6 +188,7 @@ export class InstitutionService {
     }
 
     this.logger.log(`[INSTITUTION-REQUEST] ${dto.name} (${dto.type}) ${dto.city ?? ''} by ${userId}`);
+    this.appLogger.info('Request submitted', { name: dto.name, type: dto.type, userId });
 
     await this.audit.log({
       eventType: AuditEventType.INSTITUTION_REQUEST_SUBMITTED,
@@ -354,6 +360,7 @@ export class InstitutionService {
       throw new BadRequestException('Failed to approve this claim. Please try again.');
     }
 
+    this.appLogger.info('Approved', { institutionId: persona.institution_id, userId: persona.user_id });
     await this.audit.log({
       eventType: AuditEventType.INSTITUTION_CLAIM_APPROVED,
       actorId: approverId,
@@ -390,6 +397,7 @@ export class InstitutionService {
       throw new BadRequestException('Failed to reject this claim. Please try again.');
     }
 
+    this.appLogger.info('Rejected', { requestId: personaId, reason: dto.reason });
     await this.audit.log({
       eventType: AuditEventType.INSTITUTION_CLAIM_REJECTED,
       actorId: approverId,

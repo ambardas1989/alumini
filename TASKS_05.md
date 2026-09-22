@@ -821,7 +821,21 @@ Commit: "fix: MFA setup 400 — service role client and RLS policy"
 
 ---
 
-## TASK 11 — Feature: structured logging with log levels [PENDING]
+## TASK 11 — Feature: structured logging with log levels [DONE: built AppLogger (apps/backend/src/common/logger/logger.service.ts) + LoggerModule exactly per spec, one real deviation — @Injectable({scope: Scope.TRANSIENT}) instead of the default singleton, since a plain singleton would mean every service's .setContext() call stomps the same shared instance's context, misattributing every log in the app to whichever service called setContext() last; documented inline. Wired into main.ts via app.useLogger() (routes Nest's own framework logging through it too) and registered as @Global() in app.module.ts. Added LOG_LEVEL to .env/.env.example, the "Log levels and monitoring" section to docs/DEVELOPMENT.md, and LOG_LEVEL + the LinkedIn OAuth vars (missed in TASK 06) to docs/ENVIRONMENT.md. The task's premise ("raw console.log scattered everywhere") didn't match reality — a repo-wide grep found only 4 raw console.* calls total (all in auth/corridor/identity, all already-documented TEMPORARY debug logs), not "everywhere"; this codebase already logs consistently via NestJS's own per-class Logger. Converted those 4 to AppLogger.debug() (so they respect LOG_LEVEL instead of running unconditionally) and injected AppLogger into all 9 listed services (auth, corridor, classroom, identity, dm, institution, membership, verification, audit), adding the specified info/debug/warn/error calls at each service's real equivalent decision point (a few were re-attributed to whichever method actually owns that action — e.g. "Joined" lives in ClassroomService.joinClassroom(), not MembershipService, and "Verified"/"Verification rejected" live in VerificationService, not MembershipService — logged where the code actually is rather than inventing calls in the wrong file to match the task's grouping literally). Injecting a new constructor dependency into 9 services required adding a mock AppLogger provider to 9 existing unit-test spec files (Nest's DI would otherwise fail to resolve them) — all 336 backend tests still pass, 0 regressions]
+
+---
+
+## COMPLETION SUMMARY
+
+Date completed: 2026-09-23
+Tasks completed: 11 / 11
+Tests passing: 15 backend suites / 336 tests + 1 utils suite / 37 tests — all green on every task's final run
+Build status: `next build` and `npx tsc --noEmit` (both backend and frontend) clean (0 errors) as of the final commit
+Migrations to run manually in Supabase:
+  - 016_institution_logos.sql (TASK 05)
+  - 017_linkedin_profile.sql (TASK 06 — scoped down, see its own header comment)
+  - 018_email_otp_mfa.sql (TASK 08 — properly widens the existing mfa_method CHECK constraint, not a plain ADD COLUMN)
+Notes: Three tasks (01, 07, and half of 10) turned out to already be fully implemented or based on a false premise on investigation — marked DONE with an audit note rather than making unnecessary or actively regressive changes (TASK 10 in particular: the task's suggested RLS policy change would have been a real security regression against a table explicitly documented as service-role-only access). TASK 06 (LinkedIn integration) was flagged to the user mid-task and explicitly scoped down — LinkedIn's standard OAuth doesn't expose the job-history/education data the original spec needed for its recommendations engine, and building that engine anyway would have meant fabricating data. TASK 05's backend endpoints deliberately diverge from the spec's literal "multipart/form-data" wording — this backend has no multer middleware anywhere (a pre-existing, documented architectural choice), so file uploads go through direct-to-Storage client uploads instead, matching the pattern TASK 02's avatar upload established earlier in this same batch.
 
 Implement proper structured logging across the entire backend.
 Current state: raw console.log scattered everywhere with
@@ -1018,21 +1032,6 @@ Run: next build — 0 errors
 Commit: "feat: structured logging with log levels,
 masked emails, context tags across all services"
 Push.
-
----
-
-## COMPLETION SUMMARY
-
-(Claude Code fills this in when all tasks are [DONE])
-
-Date completed:
-Tasks completed:
-Tests passing:
-Build status:
-Migrations to run manually in Supabase:
-  - 016_institution_logos.sql (TASK 05)
-  - 017_linkedin_profile.sql (TASK 06)
-Notes:
 
 ---
 

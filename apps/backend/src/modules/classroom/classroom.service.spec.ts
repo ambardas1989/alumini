@@ -30,6 +30,7 @@ import { ConflictException, BadRequestException, ForbiddenException, NotFoundExc
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClassroomService } from './classroom.service';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType } from '@alumini/types';
 import { redactName } from '@alumini/utils';
 
@@ -64,6 +65,8 @@ jest.mock('@supabase/supabase-js', () => ({
 }));
 
 // ── Test Suite ────────────────────────────────────────────────────────────────
+
+const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 
 describe('ClassroomService', () => {
   let service: ClassroomService;
@@ -121,6 +124,7 @@ describe('ClassroomService', () => {
         { provide: AuditService, useValue: { log: mockAuditLog } },
         // Must use the string token NestJS registers EventEmitter2 under
         { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
+        { provide: AppLogger, useValue: mockAppLogger },
       ],
     }).compile();
 

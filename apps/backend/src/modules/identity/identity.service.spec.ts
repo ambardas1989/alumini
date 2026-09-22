@@ -25,6 +25,7 @@ import {
 
 import { IdentityService } from './identity.service';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, ErrorCode, PersonaType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
 
@@ -67,6 +68,8 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // ── Test suite ───────────────────────────────────────────────────────────────
 
+const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
 describe('IdentityService', () => {
   let service: IdentityService;
   const mockAuditLog = jest.fn().mockResolvedValue(undefined);
@@ -84,6 +87,7 @@ describe('IdentityService', () => {
         IdentityService,
         { provide: AuditService, useValue: { log: mockAuditLog } },
         { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
+        { provide: AppLogger, useValue: mockAppLogger },
       ],
     }).compile();
 

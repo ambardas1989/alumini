@@ -17,6 +17,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MembershipService } from './membership.service';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, ChannelType, MemberRole } from '@alumini/types';
 
 // ── Supabase mock (sequenced per table — see identity/institution/classroom specs) ──
@@ -49,6 +50,8 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // ── Test suite ───────────────────────────────────────────────────────────────
 
+const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
 describe('MembershipService', () => {
   let service: MembershipService;
   const mockAuditLog = jest.fn().mockResolvedValue(undefined);
@@ -61,7 +64,11 @@ describe('MembershipService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [MembershipService, { provide: AuditService, useValue: { log: mockAuditLog } }],
+      providers: [
+        MembershipService,
+        { provide: AuditService, useValue: { log: mockAuditLog } },
+        { provide: AppLogger, useValue: mockAppLogger },
+      ],
     }).compile();
 
     service = module.get<MembershipService>(MembershipService);

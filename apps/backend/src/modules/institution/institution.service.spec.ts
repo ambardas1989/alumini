@@ -35,6 +35,7 @@ import {
 
 import { InstitutionService } from './institution.service';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, PersonaType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
 import { SearchInstitutionsDto } from './dto/search-institutions.dto';
@@ -71,6 +72,8 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // ── Test suite ───────────────────────────────────────────────────────────────
 
+const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
 describe('InstitutionService', () => {
   let service: InstitutionService;
   let jwtService: JwtService;
@@ -93,6 +96,7 @@ describe('InstitutionService', () => {
         { provide: AuditService, useValue: { log: mockAuditLog } },
         { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
         { provide: JwtService, useValue: jwtService },
+        { provide: AppLogger, useValue: mockAppLogger },
       ],
     }).compile();
 
