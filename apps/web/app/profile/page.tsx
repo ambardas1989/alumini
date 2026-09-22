@@ -21,7 +21,6 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { LinkedInButton } from '@/components/ui/LinkedInButton';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
@@ -417,26 +416,32 @@ export default function ProfilePage() {
               </span>
             </Link>
 
-            <div className={styles.linkedinSection}>
+            <p className={styles.sectionLabel}>{t('account.sectionLabel')}</p>
+
+            <div className={styles.accountRow}>
+              <LinkedInIcon />
+              <div className={styles.linkedinRowText}>
+                <span className={styles.accountLabel}>{t('linkedin.title')}</span>
+                {/* No sync timestamp exists in the data model yet (that's
+                    TASK 06's linkedin_synced_at column) — a "Sync now"
+                    action here would have nothing to do, so this only ever
+                    shows Connect or Disconnect. */}
+                <span className={styles.linkedinStatus}>
+                  {profile.linkedinVerified && profile.linkedinUrl
+                    ? t('linkedin.connectedStatus')
+                    : t('linkedin.notConnectedStatus')}
+                </span>
+              </div>
               {profile.linkedinVerified && profile.linkedinUrl ? (
-                <>
-                  <div className={styles.linkedinRow}>
-                    <span className={styles.linkedinUrl}>{profile.linkedinUrl}</span>
-                    <span className={styles.verifiedBadge}>{t('linkedin.verifiedBadge')}</span>
-                  </div>
-                  <button type="button" className={styles.disconnectLink} onClick={handleDisconnectLinkedIn}>
-                    {t('linkedin.disconnect')}
-                  </button>
-                </>
+                <button type="button" className={styles.linkedinDisconnectLink} onClick={handleDisconnectLinkedIn}>
+                  {t('linkedin.disconnect')}
+                </button>
               ) : (
-                <>
-                  <LinkedInButton onClick={handleConnectLinkedIn}>{t('linkedin.connectButton')}</LinkedInButton>
-                  <p className={styles.linkedinNote}>{t('linkedin.usageNote')}</p>
-                </>
+                <Button variant="ghost" size="sm" className={styles.linkedinConnectButton} onClick={handleConnectLinkedIn}>
+                  {t('linkedin.connectButton')}
+                </Button>
               )}
             </div>
-
-            <p className={styles.sectionLabel}>{t('account.sectionLabel')}</p>
 
             {profile.mfaEnabled && (
               <div className={styles.accountRow}>
@@ -492,5 +497,13 @@ export default function ProfilePage() {
         </Modal>
       )}
     </AppShell>
+  );
+}
+
+function LinkedInIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--color-linkedin)" aria-hidden="true">
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.03-1.85-3.03-1.86 0-2.14 1.45-2.14 2.94v5.66H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45z" />
+    </svg>
   );
 }

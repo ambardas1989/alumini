@@ -114,7 +114,7 @@ Commit: "feat: profile phone saving, avatar upload"
 
 ---
 
-## TASK 03 — Fix: profile — LinkedIn button styling [PENDING]
+## TASK 03 — Fix: profile — LinkedIn button styling [DONE: moved LinkedIn out of its own standalone bar/banner into a normal account-section row (LinkedIn icon 20px in var(--color-linkedin), "LinkedIn" bold + "Connected"/"Not connected" muted 11px below, ghost blue-bordered "Connect" button or small red "Disconnect" link on the right) matching the other account rows; "Sync now" was declined — no sync timestamp field exists yet (that's TASK 06's linkedin_synced_at column), so there's nothing for it to do until that lands]
 
 Read apps/web/app/profile/page.tsx
 The LinkedIn connect option looks like a bar/banner — bad UI.

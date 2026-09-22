@@ -588,9 +588,12 @@
       "memberSince": "Member since"
     },
     "linkedin": {
+      "title": "LinkedIn",
+      "connectedStatus": "Connected",
+      "notConnectedStatus": "Not connected",
       "verifiedBadge": "Verified",
       "disconnect": "Disconnect",
-      "connectButton": "Connect LinkedIn",
+      "connectButton": "Connect",
       "usageNote": "Used for verification and profile visibility",
       "comingSoonToast": "Coming soon"
     },
