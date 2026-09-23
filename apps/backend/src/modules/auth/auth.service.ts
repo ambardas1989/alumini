@@ -548,9 +548,22 @@ export class AuthService {
    * wrong guess still counts against the attempt cap).
    */
   private async checkEmailOtp(userId: string, code: string, purpose: EmailOtpPurpose): Promise<MfaCodeCheckResult> {
+    // Diagnostic pair for exactly this class of bug (a code exists in
+    // Supabase but under a different `purpose`, is already used, or has
+    // expired by the time this runs) — permanent debug-level traces
+    // (respect LOG_LEVEL, currently 'debug' in Render per
+    // docs/DEVELOPMENT.md) since send/verify purpose or timing mismatches
+    // are otherwise invisible until a user reports a 401. Never logs the
+    // full code, only enough to eyeball-correlate against what was emailed.
+    this.appLogger.debug('[EMAIL-OTP-VERIFY-DEBUG]', {
+      userId,
+      purposeSearching: purpose,
+      code: code.slice(0, 2) + '****',
+    });
+
     const { data: challenge } = await this.supabase
       .from('email_otp_codes')
-      .select('id, code_hash, attempts, expires_at')
+      .select('id, purpose, code_hash, attempts, used, expires_at')
       .eq('user_id', userId)
       .eq('purpose', purpose)
       .eq('used', false)
@@ -558,18 +571,11 @@ export class AuthService {
       .limit(1)
       .maybeSingle();
 
-    // Diagnostic for exactly this class of bug (a code exists in Supabase
-    // but under a different `purpose` than this call is looking for) — the
-    // real fix for one such mismatch is mfaEmailResend()'s purpose
-    // derivation in auth.controller.ts; this stays as a permanent debug-
-    // level trace (respects LOG_LEVEL, off by default in production) since
-    // send/verify purpose mismatches are exactly the kind of bug that's
-    // otherwise invisible until a user reports it.
-    this.appLogger.debug('[EMAIL-OTP-VERIFY]', {
-      userId,
-      purpose,
-      codeProvided: code,
-      lookupResult: challenge ? 'found' : 'not found',
+    this.appLogger.debug('[EMAIL-OTP-VERIFY-RESULT]', {
+      found: !!challenge,
+      rowPurpose: challenge?.purpose ?? null,
+      rowUsed: challenge?.used ?? null,
+      rowExpired: challenge ? isExpired(challenge.expires_at) : null,
     });
 
     if (!challenge) return 'invalid';
