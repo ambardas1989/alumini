@@ -44,6 +44,7 @@ import { parse as parseCsvSync } from 'csv-parse/sync';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, PersonaType } from '@alumini/types';
 import {
   daysFromNow,
@@ -77,11 +78,14 @@ const REQUIRED_CSV_COLUMNS: Array<keyof ImportRow> = [
 export class CodesService {
   private readonly logger = new Logger(CodesService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    appLogger: AppLogger,
   ) {
+    this.appLogger = appLogger.setContext('CODES');
     // Service role — bypasses RLS. institution_codes has NO client-facing
     // RLS policy at all (institution_codes_no_direct_access,
     // 001_initial_schema.sql) — every read and write goes through this API.
@@ -145,6 +149,7 @@ export class CodesService {
   }
 
   async generateBatchCode(userId: string, dto: GenerateBatchCodeDto, req?: Request) {
+    this.appLogger.debug('[CODES:batch] entry', { classroomId: dto.classroomId, count: dto.maxRedemptions, adminId: userId });
     await this.assertSchoolAdmin(userId, dto.institutionId);
 
     if (dto.maxRedemptions > appConfig.MAX_BATCH_CODE_REDEMPTIONS) {
@@ -175,7 +180,13 @@ export class CodesService {
       .single();
 
     if (error || !codeRow) {
-      this.logger.error('Failed to generate batch code', { error, classroomId: dto.classroomId });
+      this.appLogger.error('[CODES:batch] failed', {
+        classroomId: dto.classroomId,
+        error: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+        details: error?.details,
+      });
       throw new BadRequestException('Failed to generate code. Please try again.');
     }
 
@@ -193,6 +204,7 @@ export class CodesService {
       req,
     });
 
+    this.appLogger.info('[CODES:batch] generated', { classroomId: dto.classroomId, count: dto.maxRedemptions });
     return codeRow;
   }
 

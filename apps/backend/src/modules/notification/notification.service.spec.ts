@@ -15,7 +15,16 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationService } from './notification.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { brand } from '@alumini/config/brand';
+
+const mockAppLogger = {
+  setContext: jest.fn().mockReturnThis(),
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+};
 
 // ── Supabase mock (sequenced per table — see prior modules' specs for the same pattern) ──
 
@@ -83,7 +92,7 @@ jest.mock('firebase-admin', () => ({
 
 async function createService(): Promise<NotificationService> {
   const module: TestingModule = await Test.createTestingModule({
-    providers: [NotificationService],
+    providers: [NotificationService, { provide: AppLogger, useValue: mockAppLogger }],
   }).compile();
   return module.get<NotificationService>(NotificationService);
 }

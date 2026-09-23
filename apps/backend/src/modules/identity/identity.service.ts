@@ -106,7 +106,7 @@ export class IdentityService {
    * account created outside the normal signup flow).
    */
   async getProfile(userId: string) {
-    this.appLogger.debug('Profile fetch', { userId });
+    this.appLogger.debug('[IDENTITY:getMe] entry', { userId });
 
     // BUG FIX (FIX 2 — profile page errors despite a 200 response): every
     // field here except isPlatformAdmin was selected under its raw
@@ -132,9 +132,24 @@ export class IdentityService {
       .eq('id', userId)
       .single();
 
+    this.appLogger.debug('[IDENTITY:getMe] query result', {
+      found: !!profile,
+      error: error?.message,
+      code: error?.code,
+      hint: error?.hint,
+    });
+
     if (error || !profile) {
-      this.appLogger.error('Profile fetch failed', { userId, error: error?.message });
-      this.logger.error('[PROFILE-DEBUG] Profile not found', { userId, error });
+      this.appLogger.warn('[IDENTITY:getMe] not found', { userId });
+      if (error) {
+        this.appLogger.error('[IDENTITY:getMe] failed', {
+          userId,
+          error: error.message,
+          code: error.code,
+          hint: error.hint,
+          details: error.details,
+        });
+      }
       // FRONTEND FIX 1: a plain string NotFoundException serializes with
       // Nest's default `error: 'Not Found'` — not one of this app's
       // ErrorCode values — so lib/errors.ts's getErrorMessage() couldn't
@@ -146,11 +161,13 @@ export class IdentityService {
       });
     }
 
+    this.appLogger.info('[IDENTITY:getMe] success', { userId });
     return profile;
   }
 
   /** Updates whichever caller-editable fields were supplied. See UpdateProfileDto for what's excluded and why. */
   async updateProfile(userId: string, dto: UpdateProfileDto) {
+    this.appLogger.debug('[IDENTITY:update] entry', { userId, fields: Object.keys(dto) });
     const patch: Record<string, unknown> = {};
     if (dto.fullName !== undefined) patch.full_name = dto.fullName;
     if (dto.avatarUrl !== undefined) patch.avatar_url = dto.avatarUrl;
@@ -171,12 +188,20 @@ export class IdentityService {
       )
       .single();
 
+    this.appLogger.debug('[IDENTITY:update] result', { success: !error, error: error?.message });
+
     if (error || !data) {
-      this.logger.error('Failed to update profile', { error, userId });
+      this.appLogger.error('[IDENTITY:update] failed', {
+        userId,
+        error: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+        details: error?.details,
+      });
       throw new BadRequestException('Failed to update profile. Please try again.');
     }
 
-    this.appLogger.info('Profile updated', { userId, fields: Object.keys(dto) });
+    this.appLogger.info('[IDENTITY:update] success', { userId });
 
     return data;
   }

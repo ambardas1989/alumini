@@ -100,6 +100,8 @@ export class VerificationService {
     classroomId: string,
     req?: Request,
   ): Promise<void> {
+    this.appLogger.debug('[VERIFY:email] entry', { userId, classroomId });
+
     // Check that the institution domain matches this classroom's institution
     const { data: classroom } = await this.supabase
       .from('classrooms')
@@ -120,7 +122,10 @@ export class VerificationService {
       userDomain === institutionDomain ||
       userDomain.endsWith(`.${institutionDomain}`);
 
+    this.appLogger.debug('[VERIFY:email] domain check', { userDomain, institutionDomain, matches: domainMatches });
+
     if (!domainMatches) {
+      this.appLogger.warn('[VERIFY:email] no match', { userId, classroomId });
       throw new BadRequestException(
         `Email domain must match @${institutionDomain}`,
       );
@@ -149,7 +154,14 @@ export class VerificationService {
     });
 
     if (otpError) {
-      this.logger.error('Failed to store email OTP', { error: otpError, userId, classroomId });
+      this.appLogger.error('[VERIFY:email] failed', {
+        userId,
+        classroomId,
+        error: otpError.message,
+        code: otpError.code,
+        hint: otpError.hint,
+        details: otpError.details,
+      });
       throw new BadRequestException('Failed to start email verification. Please try again.');
     }
 
@@ -247,7 +259,7 @@ export class VerificationService {
     // Correct code — single use.
     await this.supabase.from('verification_email_otps').update({ consumed: true }).eq('id', otpRow.id);
 
-    this.appLogger.info('Email domain matched', { userId, classroomId });
+    this.appLogger.info('[VERIFY:email] matched', { userId, classroomId });
     await this.approveVerification(
       userId,
       classroomId,
@@ -291,6 +303,8 @@ export class VerificationService {
     classroomId: string,
     req?: Request,
   ): Promise<{ vouchPoints: number; required: number; isVerified: boolean }> {
+    this.appLogger.debug('[VERIFY:vouch] entry', { voucherId, voucheeId, classroomId });
+
     // Cannot vouch for yourself
     if (voucherId === voucheeId) {
       throw new BadRequestException('You cannot vouch for yourself');
@@ -303,6 +317,8 @@ export class VerificationService {
       .eq('user_id', voucherId)
       .eq('classroom_id', classroomId)
       .single();
+
+    this.appLogger.debug('[VERIFY:vouch] voucher check', { isVerified: voucherMembership?.verification_status === 'verified' });
 
     if (!voucherMembership || voucherMembership.verification_status !== 'verified') {
       throw new ForbiddenException(
@@ -358,6 +374,7 @@ export class VerificationService {
     );
 
     if (alreadyVouched) {
+      this.appLogger.warn('[VERIFY:vouch] already vouched', { voucherId, voucheeId });
       throw new BadRequestException(
         'You have already vouched for this person in this classroom',
       );
@@ -403,10 +420,12 @@ export class VerificationService {
       })
       .eq('id', verification.id);
 
-    this.appLogger.info('Vouch added', { voucherId, voucheeId, classroomId });
+    this.appLogger.debug('[VERIFY:vouch] vouch count', { count: totalPoints, required });
+    this.appLogger.info('[VERIFY:vouch] added', { voucherId, voucheeId, count: totalPoints });
 
     // If threshold met → auto-approve
     if (verified) {
+      this.appLogger.info('[VERIFY:vouch] threshold reached — auto approved', { voucheeId, classroomId });
       await this.approveVerification(
         voucheeId,
         classroomId,
@@ -441,6 +460,7 @@ export class VerificationService {
     storagePath: string,
     req?: Request,
   ): Promise<{ message: string; expiresAt: Date }> {
+    this.appLogger.debug('[VERIFY:doc] entry', { userId, classroomId });
     const expiresAt = daysFromNow(appConfig.DOCUMENT_EXPIRY_DAYS);
 
     // Get membership ID
@@ -471,7 +491,7 @@ export class VerificationService {
       classroomId,
     });
 
-    this.appLogger.info('Document submitted', { userId, classroomId });
+    this.appLogger.info('[VERIFY:doc] submitted', { userId, classroomId, expiresAt });
     await this.audit.log({
       eventType:  AuditEventType.VERIFICATION_SUBMITTED,
       actorId:    userId,
@@ -656,6 +676,8 @@ export class VerificationService {
     classroomId: string,
     req?: Request,
   ): Promise<{ verified: boolean }> {
+    this.appLogger.debug('[VERIFY:linkedin] entry', { userId, classroomId });
+
     const { data: profile } = await this.supabase
       .from('profiles')
       .select('linkedin_verified, linkedin_education')
@@ -695,8 +717,10 @@ export class VerificationService {
       return nameMatches && yearMatches;
     });
 
+    this.appLogger.debug('[VERIFY:linkedin] match result', { userId, classroomId, matched: match });
+
     if (!match) {
-      this.appLogger.warn('LinkedIn no match', { userId, classroomId });
+      this.appLogger.warn('[VERIFY:linkedin] no match', { userId, classroomId });
       throw new BadRequestException(
         'No matching institution and graduation year found in your LinkedIn education history',
       );
@@ -708,6 +732,7 @@ export class VerificationService {
     // same pattern addVouch() already follows for its auto-approve path.
     await this.approveVerification(userId, classroomId, VerificationMethod.LINKEDIN, req);
 
+    this.appLogger.info('[VERIFY:linkedin] verified', { userId, classroomId });
     return { verified: true };
   }
 
@@ -736,6 +761,8 @@ export class VerificationService {
     code: string,
     req?: Request,
   ): Promise<{ verified: boolean }> {
+    this.appLogger.debug('[VERIFY:code] entry', { userId, classroomId, codePrefix: code?.slice(0, 4) });
+
     // Validate code format before hitting DB
     if (!isValidInstitutionCode(code)) {
       throw new BadRequestException({
@@ -752,6 +779,7 @@ export class VerificationService {
       .maybeSingle();
 
     if (!codeRecord) {
+      this.appLogger.warn('[VERIFY:code] invalid code', { userId, classroomId });
       throw new BadRequestException({
         message: 'Invalid code or code not valid for this classroom',
         error: ErrorCode.VERIFICATION_CODE_INVALID,
@@ -788,7 +816,13 @@ export class VerificationService {
         .eq('id', codeRecord.id);
 
       if (updateError) {
-        this.logger.error('Failed to redeem personal code', { error: updateError, classroomId });
+        this.appLogger.error('[VERIFY:code] failed', {
+          classroomId,
+          error: updateError.message,
+          code: updateError.code,
+          hint: updateError.hint,
+          details: updateError.details,
+        });
         throw new BadRequestException('Failed to redeem this code. Please try again.');
       }
     } else {
@@ -799,7 +833,13 @@ export class VerificationService {
       });
 
       if (rpcError) {
-        this.logger.error('redeem_batch_code RPC failed', { error: rpcError, classroomId });
+        this.appLogger.error('[VERIFY:code] failed', {
+          classroomId,
+          error: rpcError.message,
+          code: rpcError.code,
+          hint: rpcError.hint,
+          details: rpcError.details,
+        });
         throw new BadRequestException('Failed to redeem this code. Please try again.');
       }
 
@@ -807,6 +847,7 @@ export class VerificationService {
       // fully redeemed, expired, or not found under lock — i.e. it lost a
       // race, or the pre-check above was stale by the time the RPC ran.
       if (!redeemed) {
+        this.appLogger.warn('[VERIFY:code] invalid code', { userId, classroomId, reason: 'redeemed_or_expired' });
         throw new BadRequestException({
           message: 'This code has expired or reached its maximum redemption limit',
           error: ErrorCode.VERIFICATION_CODE_REDEEMED,
@@ -835,6 +876,7 @@ export class VerificationService {
       req,
     });
 
+    this.appLogger.info('[VERIFY:code] verified', { userId, classroomId });
     return { verified: true };
   }
 

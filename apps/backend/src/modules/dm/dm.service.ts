@@ -53,7 +53,7 @@ export class DmService {
    * is simpler than a GROUP BY round trip per stat.
    */
   async getConversations(userId: string): Promise<DmConversation[]> {
-    this.appLogger.debug('Fetch conversations', { userId });
+    this.appLogger.debug('[DM:conversations] entry', { userId });
 
     const { data: rows, error } = await this.supabase
       .from('direct_messages')
@@ -61,9 +61,16 @@ export class DmService {
       .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
       .order('created_at', { ascending: false });
 
+    this.appLogger.debug('[DM:conversations] result', { count: rows?.length, error: error?.message, code: error?.code });
+
     if (error) {
-      this.appLogger.error('Fetch failed', { userId, error: error.message });
-      this.logger.error('Failed to load conversations', { error, userId });
+      this.appLogger.error('[DM:conversations] failed', {
+        userId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to load conversations');
     }
 
@@ -81,7 +88,10 @@ export class DmService {
     }
 
     const otherIds = Array.from(lastMessageByParty.keys());
-    if (otherIds.length === 0) return [];
+    if (otherIds.length === 0) {
+      this.appLogger.info('[DM:conversations] success', { userId, count: 0 });
+      return [];
+    }
 
     const { data: profiles } = await this.supabase
       .from('profiles')
@@ -93,6 +103,7 @@ export class DmService {
     // Map insertion order already mirrors the descending-by-time scan above
     // (first row seen per counterparty is that counterparty's most recent
     // message), so `otherIds` is already sorted most-recent-first.
+    this.appLogger.info('[DM:conversations] success', { userId, count: otherIds.length });
     return otherIds.map((otherId) => {
       const last = lastMessageByParty.get(otherId)!;
       const profile = profileById.get(otherId);
@@ -120,7 +131,17 @@ export class DmService {
    * caller re-sorting.
    */
   async getMessages(userId: string, otherUserId: string, page = 0): Promise<DmMessage[]> {
-    await this.assertSharedVerifiedClassroom(userId, otherUserId);
+    this.appLogger.debug('[DM:messages] entry', { userId, otherUserId, page });
+
+    let hasShared = true;
+    try {
+      await this.assertSharedVerifiedClassroom(userId, otherUserId);
+    } catch (e) {
+      hasShared = false;
+      throw e;
+    } finally {
+      this.appLogger.debug('[DM:messages] shared classroom check', { hasShared });
+    }
 
     const { from, to } = getRange(page, DM_PAGE_SIZE);
 
@@ -133,17 +154,37 @@ export class DmService {
       .order('created_at', { ascending: false })
       .range(from, to);
 
+    this.appLogger.debug('[DM:messages] result', { count: data?.length, error: error?.message });
+
     if (error) {
-      this.logger.error('Failed to load DM thread', { error, userId, otherUserId });
+      this.appLogger.error('[DM:messages] failed', {
+        userId,
+        otherUserId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to load messages');
     }
 
+    this.appLogger.info('[DM:messages] success', { userId, otherUserId, count: data?.length ?? 0 });
     return (data ?? []).reverse().map((m) => this.present(m));
   }
 
   /** senderId is always the caller — recipientId is the :userId route param. */
   async sendMessage(senderId: string, recipientId: string, content: string): Promise<DmMessage> {
-    await this.assertSharedVerifiedClassroom(senderId, recipientId);
+    this.appLogger.debug('[DM:send] entry', { senderId, recipientId, contentLength: content?.length });
+
+    let hasShared = true;
+    try {
+      await this.assertSharedVerifiedClassroom(senderId, recipientId);
+    } catch (e) {
+      hasShared = false;
+      throw e;
+    } finally {
+      this.appLogger.debug('[DM:send] shared classroom check', { hasShared });
+    }
 
     const trimmed = content?.trim() ?? '';
     if (!trimmed) {
@@ -159,18 +200,28 @@ export class DmService {
       .select()
       .single();
 
+    this.appLogger.debug('[DM:send] insert result', { success: !error && !!message, messageId: message?.id });
+
     if (error || !message) {
-      this.appLogger.error('Send failed', { error: error?.message });
-      this.logger.error('Failed to send DM', { error, senderId, recipientId });
+      this.appLogger.error('[DM:send] failed', {
+        senderId,
+        recipientId,
+        error: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+        details: error?.details,
+      });
       throw new BadRequestException('Failed to send message. Please try again.');
     }
 
-    this.appLogger.info('Message sent', { senderId, recipientId });
+    this.appLogger.info('[DM:send] success', { senderId, recipientId, messageId: message.id });
     return this.present(message);
   }
 
   /** Marks every unread message FROM otherUserId TO userId as read. */
   async markRead(userId: string, otherUserId: string): Promise<void> {
+    this.appLogger.debug('[DM:markRead] entry', { userId, otherUserId });
+
     const { error } = await this.supabase
       .from('direct_messages')
       .update({ is_read: true })
@@ -178,8 +229,17 @@ export class DmService {
       .eq('recipient_id', userId)
       .eq('is_read', false);
 
+    this.appLogger.debug('[DM:markRead] result', { success: !error });
+
     if (error) {
-      this.logger.error('Failed to mark DMs read', { error, userId, otherUserId });
+      this.appLogger.error('[DM:markRead] failed', {
+        userId,
+        otherUserId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to mark messages as read');
     }
   }
@@ -190,6 +250,8 @@ export class DmService {
    * common classroom.
    */
   private async assertSharedVerifiedClassroom(userId: string, otherUserId: string): Promise<void> {
+    this.appLogger.debug('[DM:sharedClassroom] entry', { userId, otherUserId });
+
     const [{ data: mineRows }, { data: theirRows }] = await Promise.all([
       this.supabase.from('memberships').select('classroom_id').eq('user_id', userId).eq('verification_status', 'verified'),
       this.supabase
@@ -203,7 +265,7 @@ export class DmService {
     const shared = (theirRows ?? []).some((r) => mineSet.has(r.classroom_id));
 
     if (!shared) {
-      this.appLogger.warn('Access denied - no shared classroom', { senderId: userId, recipientId: otherUserId });
+      this.appLogger.warn('[DM:sharedClassroom] no shared classroom', { userId, otherUserId });
       throw new ForbiddenException('You can only message verified members of your classrooms');
     }
   }

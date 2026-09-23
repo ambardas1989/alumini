@@ -34,6 +34,7 @@ const mockAppConfig = {
 jest.mock('@alumini/config/app', () => ({ appConfig: mockAppConfig }));
 
 import { PremiumService } from './premium.service';
+import { AppLogger } from '../../common/logger/logger.service';
 
 // ── Supabase mock (sequenced per table — see prior modules' specs for the same pattern) ──
 
@@ -83,7 +84,13 @@ describe('PremiumService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [PremiumService],
+      providers: [
+        PremiumService,
+        {
+          provide: AppLogger,
+          useValue: { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+        },
+      ],
     }).compile();
 
     service = module.get<PremiumService>(PremiumService);

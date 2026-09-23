@@ -63,6 +63,7 @@ import * as firebaseAdmin from 'firebase-admin';
 
 import { appConfig } from '@alumini/config/app';
 import { brand } from '@alumini/config/brand';
+import { AppLogger } from '../../common/logger/logger.service';
 
 /** Named Firebase app instance — avoids colliding with any other admin.initializeApp() call and survives repeated NotificationService construction (e.g. multiple test module compiles in one process) without throwing "app already exists". */
 const FIREBASE_APP_NAME = 'alumini-notification';
@@ -73,8 +74,10 @@ export class NotificationService {
   private readonly supabase: SupabaseClient;
   private readonly resend: Resend | null;
   private readonly firebaseApp: firebaseAdmin.app.App | null;
+  private readonly appLogger: AppLogger;
 
-  constructor() {
+  constructor(appLogger: AppLogger) {
+    this.appLogger = appLogger.setContext('NOTIFICATION');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -144,6 +147,8 @@ export class NotificationService {
 
   /** Paginated, newest-first. `unreadOnly` powers the badge-count poll without pulling full rows. */
   async getNotifications(userId: string, limit = 20, unreadOnly = false) {
+    this.appLogger.debug('[NOTIF:get] entry', { userId, limit, unreadOnly });
+
     let query = this.supabase
       .from('notifications')
       .select('id, type, title, body, data, is_read, created_at')
@@ -157,8 +162,16 @@ export class NotificationService {
 
     const { data, error } = await query;
 
+    this.appLogger.debug('[NOTIF:get] result', { count: data?.length, error: error?.message });
+
     if (error) {
-      this.logger.error('Failed to load notifications', { error, userId });
+      this.appLogger.error('[NOTIF:get] failed', {
+        userId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       return [];
     }
 
@@ -182,6 +195,8 @@ export class NotificationService {
 
   /** Marks specific notification ids as read, or every one of the caller's if `all` is set. Always scoped to `userId` — never trusts a bare id list alone. */
   async markRead(userId: string, notificationIds?: string[], all?: boolean): Promise<void> {
+    this.appLogger.debug('[NOTIF:markRead] entry', { userId, all: !!all, ids: notificationIds });
+
     if (!all && (!notificationIds || notificationIds.length === 0)) return;
 
     let query = this.supabase.from('notifications').update({ is_read: true }).eq('user_id', userId);
@@ -192,8 +207,16 @@ export class NotificationService {
 
     const { error } = await query;
 
+    this.appLogger.debug('[NOTIF:markRead] result', { success: !error });
+
     if (error) {
-      this.logger.error('Failed to mark notifications read', { error, userId });
+      this.appLogger.error('[NOTIF:markRead] failed', {
+        userId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
     }
   }
 
@@ -214,17 +237,33 @@ export class NotificationService {
     body: string,
     data?: Record<string, unknown>,
   ): Promise<void> {
-    const { error } = await this.supabase.from('notifications').insert({
-      user_id: userId,
-      type,
-      title,
-      body,
-      data: data ?? null,
-    });
+    this.appLogger.debug('[NOTIF:send] entry', { userId, type });
+
+    const { data: inserted, error } = await this.supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        type,
+        title,
+        body,
+        data: data ?? null,
+      })
+      .select()
+      .single();
 
     if (error) {
-      this.logger.error('Failed to insert in-app notification', { error, userId, type });
+      this.appLogger.error('[NOTIF:send] failed', {
+        userId,
+        type,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
+      return;
     }
+
+    this.appLogger.info('[NOTIF:send] success', { userId, type, notificationId: inserted?.id });
   }
 
   /**

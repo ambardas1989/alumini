@@ -19,6 +19,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 
 import { EventsService } from './events.service';
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, RsvpStatus } from '@alumini/types';
 
 // ── Supabase mock (sequenced per table — see prior modules' specs for the same pattern) ──
@@ -71,6 +72,10 @@ describe('EventsService', () => {
         EventsService,
         { provide: AuditService, useValue: { log: mockAuditLog } },
         { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
+        {
+          provide: AppLogger,
+          useValue: { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+        },
       ],
     }).compile();
 

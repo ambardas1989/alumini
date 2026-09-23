@@ -144,7 +144,8 @@ export class AuthService {
    * full session — MFA enrolment is mandatory and happens next.
    */
   async signup(dto: SignupDto, req?: Request): Promise<MfaRequiredResponse | TokenPairResponse> {
-    this.appLogger.info('Signup', { email: AppLogger.maskEmail(dto.email) });
+    this.appLogger.debug('[AUTH:signup] entry', { email: AppLogger.maskEmail(dto.email), fullName: dto.fullName });
+    this.appLogger.debug('[AUTH:signup] creating auth user', { email: AppLogger.maskEmail(dto.email) });
 
     const { data, error } = await this.supabase.auth.admin.createUser({
       email: dto.email,
@@ -169,9 +170,13 @@ export class AuthService {
       const isDuplicate = /already registered|already exists|user_already_exists|email_exists/i.test(
         error?.message ?? error?.code ?? '',
       );
-      this.appLogger.error('Signup failed', {
+      this.appLogger.error('[AUTH:signup] failed', {
         email: AppLogger.maskEmail(dto.email),
-        error: isDuplicate ? 'duplicate_email' : (error?.message ?? 'unknown'),
+        error: error?.message,
+        code: (error as { code?: string } | null)?.code,
+        hint: (error as { hint?: string } | null)?.hint,
+        details: (error as { details?: string } | null)?.details,
+        stack: undefined,
       });
       if (isDuplicate) {
         throw new ConflictException({
@@ -183,9 +188,12 @@ export class AuthService {
     }
 
     this.logger.log(`Account created: ${data.user.id}`);
+    // Profile row itself is created by the handle_new_user DB trigger, not this method.
+    this.appLogger.debug('[AUTH:signup] profile created via trigger', { userId: data.user.id });
     await this.emailService.sendWelcome(dto.email, dto.fullName);
 
     if (!appConfig.MFA_REQUIRED) {
+      this.appLogger.info('[AUTH:signup] success', { userId: data.user.id, mfaRequired: false });
       return this.issueTokenPair(data.user.id, dto.email, req, { event: 'signup' });
     }
 
@@ -194,21 +202,24 @@ export class AuthService {
       this.minutes(appConfig.MFA_PENDING_TOKEN_EXPIRY_MINUTES),
     );
 
+    this.appLogger.info('[AUTH:signup] success', { userId: data.user.id, mfaRequired: true });
     return { mfaRequired: true, mfaPendingToken, mfaMethod: null };
   }
 
   // ── Login (email + password) ────────────────────────────────────────────
 
   async login(dto: LoginDto, req?: Request): Promise<MfaRequiredResponse | TokenPairResponse> {
-    this.appLogger.debug('Login attempt', { email: AppLogger.maskEmail(dto.email) });
+    this.appLogger.debug('[AUTH:login] entry', { email: AppLogger.maskEmail(dto.email) });
 
     const { data, error } = await this.supabase.auth.signInWithPassword({
       email: dto.email,
       password: dto.password,
     });
 
+    this.appLogger.debug('[AUTH:login] user lookup result', { found: !!data.user });
+
     if (error || !data.user) {
-      this.appLogger.error('Login failed', { email: AppLogger.maskEmail(dto.email), reason: 'invalid_credentials' });
+      this.appLogger.warn('[AUTH:login] failed', { email: AppLogger.maskEmail(dto.email), reason: 'invalid_credentials' });
       await this.audit.log({
         eventType: AuditEventType.AUTH_LOGIN_FAILURE,
         metadata: { email_domain: dto.email.split('@')[1] ?? null },
@@ -220,7 +231,8 @@ export class AuthService {
       });
     }
 
-    this.appLogger.info('Login success', { userId: data.user.id });
+    this.appLogger.debug('[AUTH:login] password check', { valid: true });
+    this.appLogger.info('[AUTH:login] success', { userId: data.user.id });
     return this.completePasswordVerifiedLogin(data.user.id, dto.email, req);
   }
 
@@ -370,6 +382,8 @@ export class AuthService {
       this.minutes(appConfig.MFA_PENDING_TOKEN_EXPIRY_MINUTES),
     );
 
+    this.appLogger.debug('[AUTH:login] mfa method', { userId, mfaMethod: profile.mfa_method });
+
     // Email OTP has to be sent proactively — unlike TOTP (the app already
     // has a live code) or SMS (its own initiateSmsChallenge() is only ever
     // called from the setup flow, not login — an existing gap this task
@@ -433,6 +447,8 @@ export class AuthService {
   }
 
   private async initiateTotpSetup(userId: string, email: string): Promise<MfaSetupTotpResponse> {
+    this.appLogger.debug('[AUTH:totpSetup] entry', { userId });
+    this.appLogger.debug('[AUTH:totpSetup] generating secret', { userId });
     const secret = speakeasy.generateSecret({
       name: `${brand.name} (${email})`,
       length: 20,
@@ -440,11 +456,18 @@ export class AuthService {
 
     // Upsert — restarting setup before confirming replaces the previous,
     // still-unconfirmed secret rather than leaving an orphaned row behind.
+    this.appLogger.debug('[AUTH:totpSetup] storing secret', { userId });
     const { error } = await this.supabase.from('mfa_totp_secrets').upsert({
       user_id: userId,
       secret: secret.base32,
       confirmed: false,
       confirmed_at: null,
+    });
+
+    this.appLogger.debug('[AUTH:totpSetup] db result', {
+      success: !error,
+      error: error?.message,
+      code: (error as { code?: string } | null)?.code,
     });
 
     if (error) {
@@ -455,16 +478,19 @@ export class AuthService {
       // just its message. Pulled out explicitly so a real failure is
       // actually diagnosable from Render logs instead of just this generic
       // 400 the client sees.
-      this.appLogger.error('MFA setup failed', {
+      this.appLogger.error('[AUTH:totpSetup] failed', {
         userId,
+        error: error?.message,
         code: (error as { code?: string }).code,
         hint: (error as { hint?: string }).hint,
+        details: (error as { details?: string }).details,
       });
       throw new BadRequestException('Failed to start MFA setup. Please try again.');
     }
 
     const qrCodeDataUrl = await QRCode.toDataURL(secret.otpauth_url!);
 
+    this.appLogger.info('[AUTH:totpSetup] success', { userId });
     return { method: MfaMethod.TOTP, qrCodeDataUrl, secret: secret.base32 };
   }
 
@@ -505,6 +531,8 @@ export class AuthService {
    * drops the code, and this needs to actually work).
    */
   async sendEmailOtp(userId: string, email: string, purpose: EmailOtpPurpose): Promise<{ message: string }> {
+    this.appLogger.debug('[AUTH:sendOtp] entry', { userId, purpose });
+
     const windowStart = new Date(Date.now() - 10 * 60_000).toISOString();
     const { count, error: countError } = await this.supabase
       .from('email_otp_codes')
@@ -513,16 +541,31 @@ export class AuthService {
       .eq('purpose', purpose)
       .gte('created_at', windowStart);
 
+    this.appLogger.debug('[AUTH:sendOtp] rate limit query result', { count, error: countError?.message });
+
     if (countError) {
-      this.logger.error('Failed to check email OTP rate limit', { error: countError, userId });
+      this.appLogger.error('[AUTH:sendOtp] failed', {
+        userId,
+        purpose,
+        error: countError.message,
+        code: countError.code,
+        hint: countError.hint,
+        details: countError.details,
+      });
       throw new BadRequestException('Failed to send code. Please try again.');
     }
 
     if ((count ?? 0) >= appConfig.MFA_EMAIL_OTP_RATE_LIMIT_PER_10MIN) {
+      this.appLogger.warn('[AUTH:sendOtp] rate limited', { userId, purpose, count });
       throw new BadRequestException('Too many codes requested. Please wait a few minutes and try again.');
     }
 
+    this.appLogger.debug('[AUTH:sendOtp] generating code', { userId });
     const code = this.generateNumericCode(appConfig.MFA_EMAIL_OTP_LENGTH);
+    const codeHash = this.hash(code);
+    // Never logs the raw code — only enough of the hash to eyeball-correlate
+    // between a send and the matching verify attempt in Render logs.
+    this.appLogger.debug('[AUTH:sendOtp] code generated', { userId, hashPrefix: codeHash.slice(0, 20) });
     const expiresAt = new Date(Date.now() + appConfig.MFA_EMAIL_OTP_EXPIRY_MINUTES * 60_000);
 
     // Invalidate any still-unused codes from an earlier send for this same
@@ -534,6 +577,7 @@ export class AuthService {
     // against whichever row is newest. Only one unused code should exist
     // per user+purpose at a time. Not a hard failure if this delete errors —
     // the new code below is still correct and usable either way.
+    this.appLogger.debug('[AUTH:sendOtp] deleting old codes', { userId, purpose });
     const { error: cleanupError } = await this.supabase
       .from('email_otp_codes')
       .delete()
@@ -542,23 +586,41 @@ export class AuthService {
       .eq('used', false);
 
     if (cleanupError) {
-      this.logger.error('Failed to clean up old email OTP codes', { error: cleanupError, userId, purpose });
+      this.appLogger.error('[AUTH:sendOtp] cleanup failed', {
+        userId,
+        purpose,
+        error: cleanupError.message,
+        code: cleanupError.code,
+        hint: cleanupError.hint,
+        details: cleanupError.details,
+      });
     }
 
+    this.appLogger.debug('[AUTH:sendOtp] inserting to db', { userId, purpose, expiresAt: expiresAt.toISOString() });
     const { error } = await this.supabase.from('email_otp_codes').insert({
       user_id: userId,
-      code_hash: this.hash(code),
+      code_hash: codeHash,
       purpose,
       expires_at: expiresAt.toISOString(),
     });
 
+    this.appLogger.debug('[AUTH:sendOtp] db insert result', { success: !error, error: error?.message });
+
     if (error) {
-      this.logger.error('Failed to store email OTP', { error, userId, purpose });
+      this.appLogger.error('[AUTH:sendOtp] failed', {
+        userId,
+        purpose,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to send code. Please try again.');
     }
 
     await this.emailService.sendOtpCode(email, code, purpose);
 
+    this.appLogger.info('[AUTH:sendOtp] sent', { userId, purpose, email: AppLogger.maskEmail(email) });
     return { message: 'Code sent to your email' };
   }
 
@@ -569,22 +631,14 @@ export class AuthService {
    * wrong guess still counts against the attempt cap).
    */
   private async checkEmailOtp(userId: string, code: string, purpose: EmailOtpPurpose): Promise<MfaCodeCheckResult> {
-    // TEMPORARY, incident-response only — revert to .debug() once the
-    // production 401 investigation concludes. This was .debug() before,
-    // but the previous repro's Render logs proved LOG_LEVEL isn't
-    // actually 'debug' in production despite docs/DEVELOPMENT.md — those
-    // two lines never appeared even across an 11-second gap where they
-    // had to have run. .warn() survives every level except a strictly
-    // 'error' one, so this gets real data on the next attempt regardless
-    // of what LOG_LEVEL is actually set to. Never logs the full code,
-    // only enough to eyeball-correlate against what was emailed.
-    this.appLogger.warn('[EMAIL-OTP-VERIFY-DEBUG]', {
-      userId,
-      purposeSearching: purpose,
-      code: code.slice(0, 2) + '****',
-    });
+    const computedHash = this.hash(code);
+    // Never logs the raw submitted code — only enough of the hash to
+    // eyeball-correlate against sendEmailOtp()'s own hashPrefix log.
+    this.appLogger.debug('[AUTH:checkOtp] entry', { userId, purpose, codeLength: code?.length, codeType: typeof code });
+    this.appLogger.debug('[AUTH:checkOtp] computing hash', { hashPrefix: computedHash.slice(0, 20) });
+    this.appLogger.debug('[AUTH:checkOtp] query params', { userId, purpose, hashPrefix: computedHash.slice(0, 20) });
 
-    const { data: challenge } = await this.supabase
+    const { data: challenge, error } = await this.supabase
       .from('email_otp_codes')
       .select('id, purpose, code_hash, attempts, used, expires_at')
       .eq('user_id', userId)
@@ -594,18 +648,42 @@ export class AuthService {
       .limit(1)
       .maybeSingle();
 
-    this.appLogger.warn('[EMAIL-OTP-VERIFY-RESULT]', {
+    this.appLogger.debug('[AUTH:checkOtp] query result', {
       found: !!challenge,
       rowPurpose: challenge?.purpose ?? null,
       rowUsed: challenge?.used ?? null,
       rowExpired: challenge ? isExpired(challenge.expires_at) : null,
+      rowHashPrefix: challenge?.code_hash?.slice(0, 20) ?? null,
+      hashMatch: challenge ? challenge.code_hash === computedHash : null,
+      dbError: error?.message,
+      dbCode: error?.code,
+      dbHint: error?.hint,
     });
 
-    if (!challenge) return 'invalid';
-    if (isExpired(challenge.expires_at)) return 'expired';
-    if (challenge.attempts >= appConfig.MFA_EMAIL_OTP_RATE_LIMIT_PER_10MIN) return 'max_attempts';
+    if (error) {
+      this.appLogger.error('[AUTH:checkOtp] db error', {
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
+      return 'invalid';
+    }
 
-    const matches = challenge.code_hash === this.hash(code);
+    if (!challenge) {
+      this.appLogger.warn('[AUTH:checkOtp] not found', { userId, purpose });
+      return 'invalid';
+    }
+    if (isExpired(challenge.expires_at)) {
+      this.appLogger.warn('[AUTH:checkOtp] expired', { userId, purpose });
+      return 'expired';
+    }
+    if (challenge.attempts >= appConfig.MFA_EMAIL_OTP_RATE_LIMIT_PER_10MIN) {
+      this.appLogger.warn('[AUTH:checkOtp] max attempts', { userId, purpose });
+      return 'max_attempts';
+    }
+
+    const matches = challenge.code_hash === computedHash;
 
     await this.supabase
       .from('email_otp_codes')
@@ -615,6 +693,12 @@ export class AuthService {
         used_at: matches ? new Date().toISOString() : null,
       })
       .eq('id', challenge.id);
+
+    if (matches) {
+      this.appLogger.info('[AUTH:checkOtp] verified', { userId, purpose });
+    } else {
+      this.appLogger.warn('[AUTH:checkOtp] hash mismatch', { userId, purpose });
+    }
 
     return matches ? 'valid' : 'invalid';
   }
@@ -809,42 +893,27 @@ export class AuthService {
     opts: { confirmSetup: boolean },
   ): Promise<MfaCodeCheckResult> {
     if (method === MfaMethod.TOTP) {
-      const { data: record } = await this.supabase
+      this.appLogger.debug('[AUTH:totpVerify] entry', { userId });
+      this.appLogger.debug('[AUTH:totpVerify] fetching secret', { userId });
+
+      const { data: record, error: secretError } = await this.supabase
         .from('mfa_totp_secrets')
         .select('secret, confirmed')
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (!record) return 'invalid';
-      if (!opts.confirmSetup && !record.confirmed) return 'invalid';
+      this.appLogger.debug('[AUTH:totpVerify] secret fetch result', { found: !!record, error: secretError?.message });
 
-      // TEMPORARY — see commit "debug: add MFA verification logging".
-      // window: 2 didn't fix AUTH_MFA_INVALID_CODE, which rules out clock
-      // drift (both window: 1 and window: 2 already covered anything a
-      // *step-count* mismatch could explain) — this is here to find out
-      // whether the secret itself, its encoding, or the TOTP parameters
-      // (step/digits/algorithm) are the actual mismatch. Remove once the
-      // root cause is found; this logs the raw submitted code and a
-      // prefix of the stored secret.
-      const expectedCodeNow = speakeasy.totp({ secret: record.secret, encoding: 'base32' });
-      // TASKS_05 TASK 11 — now routed through AppLogger.debug() instead of
-      // a raw console.log, so this only prints when LOG_LEVEL=debug
-      // (development) instead of unconditionally on every TOTP check —
-      // still TEMPORARY per the investigation this was added for (see
-      // commit "debug: add MFA verification logging"), just no longer
-      // noisy in production regardless of that.
-      this.appLogger.debug('[MFA-DEBUG]', {
-        userId,
-        rawToken: code,
-        secretPrefix: record.secret.slice(0, 8),
-        secretLength: record.secret.length,
-        encoding: 'base32',
-        totpOptions: { step: 30, digits: 6, algorithm: 'sha1' }, // speakeasy defaults — none overridden below
-        serverTimestampMs: Date.now(),
-        serverTimeIso: new Date().toISOString(),
-        expectedCodeNow,
-        confirmed: record.confirmed,
-      });
+      if (!record) {
+        this.appLogger.warn('[AUTH:totpVerify] no secret on file', { userId });
+        return 'invalid';
+      }
+      if (!opts.confirmSetup && !record.confirmed) {
+        this.appLogger.warn('[AUTH:totpVerify] secret not confirmed', { userId });
+        return 'invalid';
+      }
+
+      this.appLogger.debug('[AUTH:totpVerify] verifying code', { userId, window: 2 });
 
       const isValid = speakeasy.totp.verify({
         secret: record.secret,
@@ -861,13 +930,17 @@ export class AuthService {
         window: 2,
       });
 
-      this.appLogger.debug('[MFA-DEBUG] verification result', { userId, isValid });
-
       if (isValid && opts.confirmSetup) {
         await this.supabase
           .from('mfa_totp_secrets')
           .update({ confirmed: true, confirmed_at: new Date().toISOString() })
           .eq('user_id', userId);
+      }
+
+      if (isValid) {
+        this.appLogger.info('[AUTH:totpVerify] success', { userId });
+      } else {
+        this.appLogger.warn('[AUTH:totpVerify] invalid code', { userId });
       }
 
       return isValid ? 'valid' : 'invalid';
@@ -1032,6 +1105,7 @@ export class AuthService {
   /** Revokes the current session (or, with allDevices, every session) for the caller. */
   async logout(authToken: AuthTokenPayload, dto: LogoutDto, req?: Request): Promise<void> {
     const userId = authToken.sub;
+    this.appLogger.debug('[AUTH:logout] entry', { userId, allDevices: !!dto.allDevices });
 
     if (dto.allDevices) {
       await this.supabase
@@ -1047,7 +1121,7 @@ export class AuthService {
         .eq('user_id', userId);
     }
 
-    this.appLogger.info('Logout', { userId });
+    this.appLogger.info('[AUTH:logout] success', { userId });
     await this.audit.log({
       eventType: AuditEventType.AUTH_LOGOUT,
       actorId: userId,
@@ -1065,7 +1139,7 @@ export class AuthService {
    * shared "incorrect email or password" message).
    */
   async forgotPassword(dto: ForgotPasswordDto, req?: Request): Promise<{ message: string }> {
-    this.appLogger.info('Password reset requested', { email: AppLogger.maskEmail(dto.email) });
+    this.appLogger.debug('[AUTH:forgotPwd] entry', { email: AppLogger.maskEmail(dto.email) });
     const message = 'If that email exists a reset link was sent';
 
     const { data: profile } = await this.supabase
@@ -1073,6 +1147,8 @@ export class AuthService {
       .select('id, mfa_enabled, mfa_method')
       .eq('email', dto.email)
       .maybeSingle();
+
+    this.appLogger.debug('[AUTH:forgotPwd] user lookup', { found: !!profile });
 
     if (!profile) {
       return { message };
@@ -1090,6 +1166,7 @@ export class AuthService {
       Date.now() + appConfig.PASSWORD_RESET_TOKEN_EXPIRY_MINUTES * 60_000,
     ).toISOString();
 
+    this.appLogger.debug('[AUTH:forgotPwd] storing token', { userId: profile.id });
     const { error } = await this.supabase.from('password_reset_tokens').insert({
       user_id: profile.id,
       token_hash: tokenHash,
@@ -1097,7 +1174,12 @@ export class AuthService {
     });
 
     if (error) {
-      this.logger.error('Failed to store password reset token', { error, userId: profile.id });
+      this.appLogger.error('[AUTH:forgotPwd] failed', {
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       return { message };
     }
 
@@ -1119,11 +1201,13 @@ export class AuthService {
       req,
     });
 
+    this.appLogger.info('[AUTH:forgotPwd] token created and email sent', { userId: profile.id });
     return { message };
   }
 
   async resetPassword(dto: ResetPasswordDto, req?: Request): Promise<{ message: string }> {
     const tokenHash = createHash('sha256').update(dto.token).digest('hex');
+    this.appLogger.debug('[AUTH:resetPwd] entry', { tokenPrefix: dto.token?.slice(0, 8) });
 
     const { data: record } = await this.supabase
       .from('password_reset_tokens')
@@ -1131,13 +1215,22 @@ export class AuthService {
       .eq('token_hash', tokenHash)
       .maybeSingle();
 
+    this.appLogger.debug('[AUTH:resetPwd] token lookup result', {
+      found: !!record,
+      used: record?.used,
+      expired: record ? isExpired(record.expires_at) : null,
+    });
+
     if (!record) {
+      this.appLogger.warn('[AUTH:resetPwd] invalid token', { reason: 'not_found' });
       throw new BadRequestException('Invalid or expired link');
     }
     if (record.used) {
+      this.appLogger.warn('[AUTH:resetPwd] invalid token', { reason: 'used' });
       throw new BadRequestException('Link already used');
     }
     if (isExpired(record.expires_at)) {
+      this.appLogger.warn('[AUTH:resetPwd] invalid token', { reason: 'expired' });
       throw new BadRequestException('Link has expired');
     }
 
@@ -1176,8 +1269,11 @@ export class AuthService {
       password: dto.password,
     });
     if (updateError) {
-      this.logger.error('Failed to update password via Supabase Admin API', {
-        error: updateError,
+      this.appLogger.error('[AUTH:resetPwd] failed', {
+        error: updateError.message,
+        code: updateError.code,
+        hint: undefined,
+        details: undefined,
         userId: record.user_id,
       });
       throw new BadRequestException('Could not reset password. Please try again.');
@@ -1197,7 +1293,7 @@ export class AuthService {
       .eq('user_id', record.user_id)
       .is('revoked_at', null);
 
-    this.appLogger.info('Password changed', { userId: record.user_id });
+    this.appLogger.info('[AUTH:resetPwd] success', { userId: record.user_id });
     await this.audit.log({
       eventType: AuditEventType.AUTH_PASSWORD_CHANGED,
       actorId: record.user_id,
@@ -1245,6 +1341,7 @@ export class AuthService {
    * an account — same privacy reasoning as forgotPassword().
    */
   async requestMfaRecovery(dto: MfaRecoveryRequestDto, req?: Request): Promise<{ message: string }> {
+    this.appLogger.debug('[AUTH:mfaRecovery] entry', { email: AppLogger.maskEmail(dto.email) });
     const message = 'If that email exists a recovery link was sent';
 
     const { data: profile } = await this.supabase
@@ -1270,7 +1367,13 @@ export class AuthService {
     });
 
     if (error) {
-      this.logger.error('Failed to store MFA recovery token', { error, userId: profile.id });
+      this.appLogger.error('[AUTH:mfaRecovery] failed', {
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+        userId: profile.id,
+      });
       return { message };
     }
 
@@ -1285,6 +1388,7 @@ export class AuthService {
       req,
     });
 
+    this.appLogger.info('[AUTH:mfaRecovery] email sent', { userId: profile.id });
     return { message };
   }
 
@@ -1365,6 +1469,7 @@ export class AuthService {
     req?: Request,
     auditMetadata: Record<string, unknown> = {},
   ): Promise<TokenPairResponse> {
+    this.appLogger.debug('[AUTH:session] creating', { userId });
     await this.enforceDeviceLimit(userId, req);
 
     const sessionId = randomUUID();
@@ -1387,12 +1492,20 @@ export class AuthService {
       expires_at: daysFromNow(appConfig.JWT_EXPIRY_DAYS).toISOString(),
     });
 
+    this.appLogger.debug('[AUTH:session] db result', { success: !error, error: error?.message });
+
     if (error) {
-      this.logger.error('Failed to create session record', { error, userId });
+      this.appLogger.error('[AUTH:session] failed', {
+        userId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to complete sign-in. Please try again.');
     }
 
-    this.appLogger.info('Session created', { userId });
+    this.appLogger.info('[AUTH:session] created', { userId, sessionId });
     await this.audit.log({
       eventType: AuditEventType.AUTH_LOGIN_SUCCESS,
       actorId: userId,

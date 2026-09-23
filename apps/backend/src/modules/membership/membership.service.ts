@@ -104,6 +104,8 @@ export class MembershipService {
    * access to the teacher-only room.
    */
   async canAccessChannel(userId: string, classroomId: string, channel: ChannelType): Promise<boolean> {
+    this.appLogger.debug('[MEMBERSHIP:canAccess] entry', { userId, classroomId, channel });
+
     const { data: membership } = await this.supabase
       .from('memberships')
       .select('role, verification_status')
@@ -111,27 +113,42 @@ export class MembershipService {
       .eq('classroom_id', classroomId)
       .maybeSingle();
 
+    this.appLogger.debug('[MEMBERSHIP:canAccess] membership lookup', {
+      found: !!membership,
+      role: membership?.role,
+      verificationStatus: membership?.verification_status,
+    });
+
     if (!membership) return false;
 
     const isVerified = membership.verification_status === 'verified';
     const isEarlyMember = membership.verification_status === 'pending_auto';
 
+    let result: boolean;
     switch (channel) {
       case ChannelType.CLASSROOM:
-        return isVerified || isEarlyMember; // any full/early member, any role
+        result = isVerified || isEarlyMember; // any full/early member, any role
+        break;
       case ChannelType.STAFF_ROOM:
-        return isVerified && (membership.role === MemberRole.TEACHER || membership.role === MemberRole.ADMIN);
+        result = isVerified && (membership.role === MemberRole.TEACHER || membership.role === MemberRole.ADMIN);
+        break;
       case ChannelType.STUDENT_ALLEY:
-        return (isVerified || isEarlyMember) && membership.role === MemberRole.STUDENT;
+        result = (isVerified || isEarlyMember) && membership.role === MemberRole.STUDENT;
+        break;
       default:
-        return false;
+        result = false;
     }
+
+    this.appLogger.debug('[MEMBERSHIP:canAccess] result', { userId, classroomId, channel, result });
+    return result;
   }
 
   // ── Membership lookup ────────────────────────────────────────────────────
 
   /** The caller's own membership details for one classroom. */
   async getMembership(userId: string, classroomId: string) {
+    this.appLogger.debug('[MEMBERSHIP:get] entry', { userId, classroomId });
+
     const { data, error } = await this.supabase
       .from('memberships')
       .select('id, classroom_id, role, verification_status, verification_method, verified_at, joined_at')
@@ -139,11 +156,21 @@ export class MembershipService {
       .eq('classroom_id', classroomId)
       .maybeSingle();
 
+    this.appLogger.debug('[MEMBERSHIP:get] result', { found: !!data, error: error?.message, code: error?.code });
+
     if (error) {
-      this.logger.error('Failed to fetch membership', { error, userId, classroomId });
+      this.appLogger.error('[MEMBERSHIP:get] failed', {
+        userId,
+        classroomId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to fetch membership');
     }
     if (!data) {
+      this.appLogger.warn('[MEMBERSHIP:get] not found', { userId, classroomId });
       throw new NotFoundException('You are not a member of this classroom');
     }
 
@@ -167,6 +194,7 @@ export class MembershipService {
    * powers the "verify now" nudge on the home screen.
    */
   async getPendingVerifications(userId: string, page = 0) {
+    this.appLogger.debug('[MEMBERSHIP:pending] entry', { userId, page });
     const { from, to } = getRange(page, appConfig.CLASSROOMS_PAGE_SIZE);
 
     const { data, error } = await this.supabase
@@ -180,8 +208,16 @@ export class MembershipService {
       .order('joined_at', { ascending: true })
       .range(from, to);
 
+    this.appLogger.debug('[MEMBERSHIP:pending] result', { count: data?.length, error: error?.message });
+
     if (error) {
-      this.logger.error('Failed to fetch pending verifications', { error, userId });
+      this.appLogger.error('[MEMBERSHIP:pending] failed', {
+        userId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to fetch pending verifications');
     }
 
@@ -201,6 +237,8 @@ export class MembershipService {
     dto: ChangeRoleDto,
     req?: Request,
   ) {
+    this.appLogger.debug('[MEMBERSHIP:changeRole] entry', { actorId, classroomId, targetUserId: dto.targetUserId, role: dto.role });
+
     const { data: actorMembership } = await this.supabase
       .from('memberships')
       .select('role, verification_status')
@@ -257,8 +295,16 @@ export class MembershipService {
       .select()
       .single();
 
+    this.appLogger.debug('[MEMBERSHIP:changeRole] update result', { success: !error && !!updated });
+
     if (error || !updated) {
-      this.logger.error('Failed to change member role', { error, classroomId, dto });
+      this.appLogger.error('[MEMBERSHIP:changeRole] failed', {
+        classroomId,
+        error: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+        details: error?.details,
+      });
       throw new BadRequestException('Failed to change this member’s role. Please try again.');
     }
 
@@ -276,6 +322,7 @@ export class MembershipService {
       req,
     });
 
+    this.appLogger.info('[MEMBERSHIP:changeRole] success', { actorId, classroomId, targetUserId: dto.targetUserId, fromRole, toRole });
     return updated;
   }
 }

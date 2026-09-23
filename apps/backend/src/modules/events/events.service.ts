@@ -37,6 +37,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, RsvpStatus } from '@alumini/types';
 
 import { CreateEventDto } from './dto/create-event.dto';
@@ -46,11 +47,14 @@ import { RsvpDto } from './dto/rsvp.dto';
 export class EventsService {
   private readonly logger = new Logger(EventsService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
+    appLogger: AppLogger,
   ) {
+    this.appLogger = appLogger.setContext('EVENTS');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -61,6 +65,7 @@ export class EventsService {
   // ── Create ───────────────────────────────────────────────────────────────
 
   async createEvent(userId: string, classroomId: string, dto: CreateEventDto, req?: Request) {
+    this.appLogger.debug('[EVENTS:create] entry', { userId, classroomId, title: dto.title });
     await this.assertVerifiedMember(userId, classroomId);
 
     // "must be in the future" is relative to request time — checked here,
@@ -85,9 +90,18 @@ export class EventsService {
       .single();
 
     if (error || !event) {
-      this.logger.error('Failed to create event', { error, userId, classroomId });
+      this.appLogger.error('[EVENTS:create] failed', {
+        userId,
+        classroomId,
+        error: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+        details: error?.details,
+      });
       throw new BadRequestException('Failed to create event. Please try again.');
     }
+
+    this.appLogger.info('[EVENTS:create] success', { userId, classroomId, eventId: event.id });
 
     // CorridorModule and NotificationModule both listen — see module comment.
     this.eventEmitter.emit('event.created', {

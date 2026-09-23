@@ -39,6 +39,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PersonaType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
+import { AppLogger } from '../../common/logger/logger.service';
 
 import { SearchStudentsDto } from './dto/search-students.dto';
 
@@ -46,8 +47,10 @@ import { SearchStudentsDto } from './dto/search-students.dto';
 export class SearchService {
   private readonly logger = new Logger(SearchService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
-  constructor() {
+  constructor(appLogger: AppLogger) {
+    this.appLogger = appLogger.setContext('SEARCH');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -66,6 +69,7 @@ export class SearchService {
    * detail, not one row per person).
    */
   async searchStudents(teacherId: string, dto: SearchStudentsDto) {
+    this.appLogger.debug('[SEARCH:students] entry', { query: dto.q, userId: teacherId, filters: { classroomId: dto.classroomId } });
     await this.assertTeacher(teacherId);
 
     const verifiedClassroomIds = await this.getVerifiedTeacherClassroomIds(teacherId);
@@ -89,8 +93,17 @@ export class SearchService {
       .in('memberships.classroom_id', targetClassroomIds)
       .limit(appConfig.MEMBERS_PAGE_SIZE);
 
+    this.appLogger.debug('[SEARCH:students] result', { count: data?.length, error: error?.message });
+
     if (error) {
-      this.logger.error('Student search failed', { error, teacherId, q: dto.q });
+      this.appLogger.error('[SEARCH:students] failed', {
+        teacherId,
+        q: dto.q,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to search students');
     }
 

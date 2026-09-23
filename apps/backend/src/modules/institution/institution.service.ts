@@ -103,7 +103,7 @@ export class InstitutionService {
    * "the institution database" per SPEC.md §15.3).
    */
   async searchInstitutions(dto: SearchInstitutionsDto) {
-    this.appLogger.debug('Search', { query: dto.q });
+    this.appLogger.debug('[INSTITUTION:search] entry', { query: dto.q, countryCode: dto.countryCode, limit: 10 });
     let queryBuilder = this.supabase
       .from('institutions')
       .select('id, name, slug, type, city_code, country_code, email_domain')
@@ -116,12 +116,19 @@ export class InstitutionService {
 
     const { data, error } = await queryBuilder;
 
+    this.appLogger.debug('[INSTITUTION:search] result', { count: data?.length, error: error?.message });
+
     if (error) {
-      this.logger.error('Institution search failed', { error, query: dto.q });
+      this.appLogger.error('[INSTITUTION:search] failed', {
+        query: dto.q,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       return [];
     }
 
-    this.appLogger.debug('Search', { query: dto.q, count: (data ?? []).length });
     return data ?? [];
   }
 
@@ -140,13 +147,18 @@ export class InstitutionService {
    * of creating a duplicate" pattern as ClassroomService.createClassroom().
    */
   async requestInstitution(userId: string, dto: RequestInstitutionDto, req?: Request) {
+    this.appLogger.debug('[INSTITUTION:request] entry', { name: dto.name, type: dto.type, city: dto.city, userId });
+
     const { data: existing } = await this.supabase
       .from('institutions')
       .select('id, name, slug, type, city_code, country_code')
       .ilike('name', `%${dto.name}%`)
       .maybeSingle();
 
+    this.appLogger.debug('[INSTITUTION:request] duplicate check', { duplicateFound: !!existing, existingName: existing?.name });
+
     if (existing) {
+      this.appLogger.warn('[INSTITUTION:request] duplicate', { name: dto.name, existingId: existing.id });
       // FIX 3F: include enough of the existing institution's own shape
       // (type/cityCode/countryCode, not just id/name/slug) so the frontend
       // can build a complete Institution object straight from this 409
@@ -183,13 +195,21 @@ export class InstitutionService {
       .select()
       .single();
 
+    this.appLogger.debug('[INSTITUTION:request] insert result', { success: !error && !!request, requestId: request?.id });
+
     if (error || !request) {
-      this.logger.error('Failed to create institution request', { error, userId, dto });
+      this.appLogger.error('[INSTITUTION:request] failed', {
+        userId,
+        error: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+        details: error?.details,
+      });
       throw new BadRequestException('Failed to submit this request. Please try again.');
     }
 
     this.logger.log(`[INSTITUTION-REQUEST] ${dto.name} (${dto.type}) ${dto.city ?? ''} by ${userId}`);
-    this.appLogger.info('Request submitted', { name: dto.name, type: dto.type, userId });
+    this.appLogger.info('[INSTITUTION:request] submitted', { requestId: request.id, name: dto.name, userId });
 
     await this.audit.log({
       eventType: AuditEventType.INSTITUTION_REQUEST_SUBMITTED,
@@ -325,6 +345,7 @@ export class InstitutionService {
    * platform-admin persona type to authenticate against yet).
    */
   async approveClaim(approverId: string, personaId: string, req?: Request) {
+    this.appLogger.debug('[INSTITUTION:approve] entry', { requestId: personaId, adminId: approverId });
     const persona = await this.getPendingClaim(personaId);
 
     const { data: institution } = await this.supabase
@@ -342,6 +363,8 @@ export class InstitutionService {
 
     const now = new Date().toISOString();
 
+    this.appLogger.debug('[INSTITUTION:approve] activating claim', { institutionId: persona.institution_id, userId: persona.user_id });
+
     const { error: personaError } = await this.supabase
       .from('personas')
       .update({ status: 'active', is_primary_admin: true })
@@ -353,15 +376,17 @@ export class InstitutionService {
       .eq('id', persona.institution_id);
 
     if (personaError || institutionError) {
-      this.logger.error('Failed to approve claim', {
-        personaError,
-        institutionError,
+      this.appLogger.error('[INSTITUTION:approve] failed', {
+        error: personaError?.message ?? institutionError?.message,
+        code: personaError?.code ?? institutionError?.code,
+        hint: personaError?.hint ?? institutionError?.hint,
+        details: personaError?.details ?? institutionError?.details,
         personaId,
       });
       throw new BadRequestException('Failed to approve this claim. Please try again.');
     }
 
-    this.appLogger.info('Approved', { institutionId: persona.institution_id, userId: persona.user_id });
+    this.appLogger.info('[INSTITUTION:approve] success', { institutionId: persona.institution_id, userId: persona.user_id });
     await this.audit.log({
       eventType: AuditEventType.INSTITUTION_CLAIM_APPROVED,
       actorId: approverId,
@@ -381,6 +406,7 @@ export class InstitutionService {
 
   /** Rejects a pending claim. Same "no public route" reasoning as approveClaim(). */
   async rejectClaim(approverId: string, personaId: string, dto: RejectClaimDto, req?: Request) {
+    this.appLogger.debug('[INSTITUTION:reject] entry', { requestId: personaId, adminId: approverId });
     const persona = await this.getPendingClaim(personaId);
 
     // Rejected claims are suspended, not deleted — personas has no
@@ -394,11 +420,17 @@ export class InstitutionService {
       .eq('id', personaId);
 
     if (error) {
-      this.logger.error('Failed to reject claim', { error, personaId });
+      this.appLogger.error('[INSTITUTION:reject] failed', {
+        personaId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to reject this claim. Please try again.');
     }
 
-    this.appLogger.info('Rejected', { requestId: personaId, reason: dto.reason });
+    this.appLogger.info('[INSTITUTION:reject] rejected', { requestId: personaId, reason: dto.reason });
     await this.audit.log({
       eventType: AuditEventType.INSTITUTION_CLAIM_REJECTED,
       actorId: approverId,

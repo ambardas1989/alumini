@@ -15,6 +15,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 
 import { SearchService } from './search.service';
+import { AppLogger } from '../../common/logger/logger.service';
 
 // ── Supabase mock (sequenced per table — see prior modules' specs for the same pattern) ──
 
@@ -57,7 +58,13 @@ describe('SearchService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SearchService],
+      providers: [
+        SearchService,
+        {
+          provide: AppLogger,
+          useValue: { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+        },
+      ],
     }).compile();
 
     service = module.get<SearchService>(SearchService);

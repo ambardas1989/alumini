@@ -37,6 +37,7 @@ import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { isExpired } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
+import { AppLogger } from '../../common/logger/logger.service';
 
 interface SubscriptionRow {
   status: 'active' | 'cancelled' | 'expired';
@@ -49,8 +50,10 @@ interface SubscriptionRow {
 export class PremiumService {
   private readonly logger = new Logger(PremiumService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
-  constructor() {
+  constructor(appLogger: AppLogger) {
+    this.appLogger = appLogger.setContext('PREMIUM');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -66,12 +69,16 @@ export class PremiumService {
    * false positive on a feature gate.
    */
   async isPremium(userId: string): Promise<boolean> {
+    this.appLogger.debug('[PREMIUM:isPremium] entry', { userId });
+
     if (!appConfig.FEATURE_PREMIUM) {
       return false;
     }
 
     const subscription = await this.getActiveSubscription(userId);
-    return !!subscription;
+    const result = !!subscription;
+    this.appLogger.debug('[PREMIUM:isPremium] result', { userId, isPremium: result });
+    return result;
   }
 
   /** Guard for other modules to call before premium-only logic — throws instead of returning a boolean. */
@@ -174,7 +181,13 @@ export class PremiumService {
       .limit(1);
 
     if (error) {
-      this.logger.error('Failed to check premium status', { error, userId });
+      this.appLogger.error('[PREMIUM:isPremium] failed', {
+        userId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       return null; // fail closed
     }
 

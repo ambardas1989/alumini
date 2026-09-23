@@ -77,6 +77,7 @@ export class AuditService {
    */
   async log(params: AuditLogParams): Promise<void> {
     const { eventType, actorId, targetId, targetType, metadata, req, persona } = params;
+    this.appLogger.debug('[AUDIT:record] entry', { actor: actorId ?? null, action: eventType, resource: targetId ?? null });
 
     // Extract IP and user agent from request if provided
     const ipAddress = req
@@ -100,17 +101,30 @@ export class AuditService {
 
       if (error) {
         // Log the failure but don't throw — audit must not break core flows
-        this.appLogger.error('Record failed', { error: error.message });
+        this.appLogger.error('[AUDIT:record] failed', {
+          actor: actorId ?? null,
+          action: eventType,
+          error: error.message,
+          code: error.code,
+          hint: error.hint,
+          details: error.details,
+        });
         this.logger.error(
           `Failed to write audit log [${eventType}]: ${error.message}`,
           { actorId, targetId, eventType },
         );
         return;
       }
-
-      this.appLogger.debug('Event recorded', { actor: actorId ?? null, action: eventType, resource: targetId ?? null });
     } catch (err) {
-      this.appLogger.error('Record failed', { error: err instanceof Error ? err.message : String(err) });
+      this.appLogger.error('[AUDIT:record] failed', {
+        actor: actorId ?? null,
+        action: eventType,
+        error: err instanceof Error ? err.message : String(err),
+        code: undefined,
+        hint: undefined,
+        details: undefined,
+        stack: err instanceof Error ? err.stack?.split('\n')[0] : undefined,
+      });
       this.logger.error(
         `Exception writing audit log [${eventType}]`,
         err instanceof Error ? err.stack : String(err),

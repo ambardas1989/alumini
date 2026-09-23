@@ -197,6 +197,8 @@ export class CorridorService {
    * table-access pattern every module since auth has used.
    */
   async getMessages(userId: string, classroomId: string, channel: ChannelType, page = 0) {
+    this.appLogger.debug('[CORRIDOR:getMessages] entry', { classroomId, channel, userId, page });
+
     const { data: membership } = await this.supabase
       .from('memberships')
       .select('role, verification_status')
@@ -204,14 +206,18 @@ export class CorridorService {
       .eq('classroom_id', classroomId)
       .maybeSingle();
 
+    this.appLogger.debug('[CORRIDOR:getMessages] membership check', {
+      role: membership?.role,
+      verificationStatus: membership?.verification_status,
+    });
+
     if (!membership) {
+      this.appLogger.warn('[CORRIDOR:getMessages] access denied', { userId, classroomId, channel, role: null });
       throw new ForbiddenException({
         message: 'Only members of this classroom can read its messages',
         error: ErrorCode.CHANNEL_ACCESS_DENIED,
       });
     }
-
-    this.appLogger.debug('Fetch messages', { classroomId, channel, userId });
 
     const hasFullAccess =
       membership.verification_status === 'verified' || membership.verification_status === 'pending_auto';
@@ -240,6 +246,7 @@ export class CorridorService {
     }
 
     if (!canRead) {
+      this.appLogger.warn('[CORRIDOR:getMessages] access denied', { userId, classroomId, channel, role: membership.role });
       throw new ForbiddenException({
         message: 'You do not have access to this channel',
         error: ErrorCode.CHANNEL_ACCESS_DENIED,
@@ -269,15 +276,24 @@ export class CorridorService {
       .order('created_at', { ascending: false })
       .range(from, to);
 
+    this.appLogger.debug('[CORRIDOR:getMessages] query result', { count: messages?.length, error: error?.message });
+
     if (error) {
-      this.appLogger.error('Fetch failed', { classroomId, channel, error: error.message });
-      this.logger.error('[CLASSROOM-ERROR] Failed to load messages', { error, classroomId, channel });
+      this.appLogger.error('[CORRIDOR:getMessages] failed', {
+        classroomId,
+        channel,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException({
         message: 'Failed to load messages',
         error: ErrorCode.MESSAGES_LOAD_FAILED,
       });
     }
 
+    this.appLogger.info('[CORRIDOR:getMessages] success', { classroomId, channel, count: messages?.length ?? 0 });
     return (messages ?? []).map((m: any) => this.presentMessage(m, redact));
   }
 
@@ -329,11 +345,12 @@ export class CorridorService {
    * even for the classroom channel.
    */
   async sendMessage(userId: string, classroomId: string, channel: ChannelType, dto: SendMessageDto, req?: Request) {
-    this.appLogger.debug('Send message', { classroomId, channel, userId });
+    this.appLogger.debug('[CORRIDOR:send] entry', { classroomId, channel, userId, contentLength: dto.content?.length });
 
     const canAccess = await this.membershipService.canAccessChannel(userId, classroomId, channel);
+    this.appLogger.debug('[CORRIDOR:send] membership check', { canAccess });
     if (!canAccess) {
-      this.appLogger.warn('Access denied', { userId, classroomId, channel });
+      this.appLogger.warn('[CORRIDOR:send] access denied', { userId, classroomId, channel });
       throw new ForbiddenException({
         message: 'You do not have access to post in this channel',
         error: ErrorCode.CHANNEL_ACCESS_DENIED,
@@ -353,11 +370,21 @@ export class CorridorService {
       .select()
       .single();
 
+    this.appLogger.debug('[CORRIDOR:send] insert result', { success: !error && !!message, messageId: message?.id });
+
     if (error || !message) {
-      this.appLogger.error('Send failed', { error: error?.message });
-      this.logger.error('Failed to send message', { error, userId, classroomId, channel });
+      this.appLogger.error('[CORRIDOR:send] failed', {
+        classroomId,
+        channel,
+        error: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+        details: error?.details,
+      });
       throw new BadRequestException('Failed to send message. Please try again.');
     }
+
+    this.appLogger.info('[CORRIDOR:send] success', { classroomId, channel, messageId: message.id });
 
     // Supabase Realtime delivers the row itself to subscribed clients —
     // this event is for OTHER BACKEND MODULES (e.g. a future notification

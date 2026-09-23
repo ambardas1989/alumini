@@ -98,12 +98,21 @@ export class ClassroomService {
     dto: CreateClassroomDto,
     req?: Request,
   ) {
+    this.appLogger.debug('[CLASSROOM:create] entry', {
+      userId: creatorId,
+      institutionId: dto.institutionId,
+      section: dto.section,
+      batchYear: dto.batchYear,
+    });
+
     // 1. Fetch institution details needed for ID generation
     const { data: institution, error: instError } = await this.supabase
       .from('institutions')
       .select('id, country_code, city_code, slug, type')
       .eq('id', dto.institutionId)
       .single();
+
+    this.appLogger.debug('[CLASSROOM:create] institution lookup', { found: !!institution });
 
     if (instError || !institution) {
       throw new BadRequestException('Institution not found');
@@ -130,6 +139,7 @@ export class ClassroomService {
     };
 
     const globalId = generateClassroomId(idParams);
+    this.appLogger.debug('[CLASSROOM:create] globalId generated', { globalId });
 
     // 3. Check for duplicate — show existing classroom instead of creating
     const { data: existing } = await this.supabase
@@ -138,7 +148,10 @@ export class ClassroomService {
       .eq('global_id', globalId)
       .maybeSingle();
 
+    this.appLogger.debug('[CLASSROOM:create] duplicate check', { exists: !!existing });
+
     if (existing) {
+      this.appLogger.warn('[CLASSROOM:create] duplicate', { globalId });
       throw new ConflictException({
         message: `Classroom ${globalId} already exists.`,
         error: ErrorCode.CLASSROOM_DUPLICATE,
@@ -182,9 +195,15 @@ export class ClassroomService {
       .select(CLASSROOM_SELECT_COLUMNS)
       .single();
 
+    this.appLogger.debug('[CLASSROOM:create] insert result', { success: !createError && !!classroom, classroomId: classroom?.id });
+
     if (createError || !classroom) {
-      this.appLogger.error('Creation failed', { error: createError?.message });
-      this.logger.error('Failed to create classroom', { error: createError, dto });
+      this.appLogger.error('[CLASSROOM:create] failed', {
+        error: createError?.message,
+        code: createError?.code,
+        hint: createError?.hint,
+        details: createError?.details,
+      });
       throw new BadRequestException('Failed to create classroom. Please try again.');
     }
 
@@ -199,6 +218,7 @@ export class ClassroomService {
     // defaults to 'admin'. A user who creates a classroom rather than
     // joining an existing one becomes its admin regardless of their
     // intended role; that's this rule working as designed, not the bug.
+    this.appLogger.debug('[CLASSROOM:create] adding creator membership', { userId: creatorId, classroomId: classroom.id });
     const { error: memberError } = await this.supabase
       .from('memberships')
       .insert({
@@ -239,7 +259,7 @@ export class ClassroomService {
     });
 
     this.logger.log(`Classroom created: ${globalId} by user ${creatorId}`);
-    this.appLogger.info('Created', { globalId, userId: creatorId });
+    this.appLogger.info('[CLASSROOM:create] success', { globalId, classroomId: classroom.id, userId: creatorId });
     return classroom;
   }
 
@@ -250,6 +270,7 @@ export class ClassroomService {
    * Does NOT check membership — public metadata is readable by all.
    */
   async getByGlobalId(globalId: string) {
+    this.appLogger.debug('[CLASSROOM:get] entry', { globalId });
     const { data, error } = await this.supabase
       .from('classrooms')
       .select(`
@@ -261,7 +282,12 @@ export class ClassroomService {
       .eq('global_id', globalId.toUpperCase())
       .single();
 
+    this.appLogger.debug('[CLASSROOM:get] result', { found: !!data });
+
     if (error || !data) {
+      if (error) {
+        this.appLogger.error('[CLASSROOM:get] failed', { globalId, error: error.message, code: error.code, hint: error.hint, details: error.details });
+      }
       throw new NotFoundException(`Classroom ${globalId} not found`);
     }
 
@@ -358,6 +384,7 @@ export class ClassroomService {
    * DOES enforce membership + redaction).
    */
   async getById(classroomId: string) {
+    this.appLogger.debug('[CLASSROOM:get] entry', { classroomId });
     const { data, error } = await this.supabase
       .from('classrooms')
       .select(`
@@ -369,7 +396,12 @@ export class ClassroomService {
       .eq('id', classroomId)
       .single();
 
+    this.appLogger.debug('[CLASSROOM:get] result', { found: !!data });
+
     if (error || !data) {
+      if (error) {
+        this.appLogger.error('[CLASSROOM:get] failed', { classroomId, error: error.message, code: error.code, hint: error.hint, details: error.details });
+      }
       throw new NotFoundException('Classroom not found');
     }
 
@@ -417,7 +449,7 @@ export class ClassroomService {
    * tends to leak data later.
    */
   async getMembers(classroomId: string, requesterId: string, page = 0) {
-    this.appLogger.debug('Fetch members', { classroomId });
+    this.appLogger.debug('[CLASSROOM:members] entry', { classroomId, page });
 
     const { data: requesterMembership } = await this.supabase
       .from('memberships')
@@ -454,9 +486,21 @@ export class ClassroomService {
       .order('joined_at', { ascending: true })
       .range(from, to);
 
+    this.appLogger.debug('[CLASSROOM:members] result', {
+      count: members?.length,
+      error: error?.message,
+      code: error?.code,
+      hint: error?.hint,
+    });
+
     if (error) {
-      this.appLogger.error('Members failed', { classroomId, error: error.message });
-      this.logger.error('Failed to load members', { error, classroomId });
+      this.appLogger.error('[CLASSROOM:members] failed', {
+        classroomId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to load members');
     }
 

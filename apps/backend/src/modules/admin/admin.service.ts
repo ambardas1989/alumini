@@ -87,6 +87,7 @@ import { AuditService } from '../audit/audit.service';
 import { VerificationService } from '../verification/verification.service';
 import { InstitutionService } from '../institution/institution.service';
 import { EmailService } from '../../common/email/email.service';
+import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, PersonaType } from '@alumini/types';
 import { getRange, isExpired } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
@@ -100,13 +101,16 @@ import { RejectInstitutionRequestDto } from './dto/reject-institution-request.dt
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
     private readonly verificationService: VerificationService,
     private readonly institutionService: InstitutionService,
     private readonly emailService: EmailService,
+    appLogger: AppLogger,
   ) {
+    this.appLogger = appLogger.setContext('ADMIN');
     // Service role — bypasses RLS, same pattern as every other module.
     // Also used for Supabase Storage signed URLs (getVerificationDocumentUrl()).
     this.supabase = createClient(
@@ -118,6 +122,7 @@ export class AdminService {
   // ── Dashboard overview ────────────────────────────────────────────────────
 
   async getOverview(userId: string, institutionId: string) {
+    this.appLogger.debug('[ADMIN:overview] entry', { institutionId, adminId: userId });
     await this.assertSchoolAdmin(userId, institutionId);
 
     const classroomIds = await this.getInstitutionClassroomIds(institutionId);
@@ -168,7 +173,7 @@ export class AdminService {
       pendingVerifications = pendingResult.count ?? 0;
     }
 
-    return {
+    const stats = {
       totalClassrooms:    totalClassroomsResult.count ?? 0,
       activeClassrooms:   activeClassroomsResult.count ?? 0,
       totalMembers,
@@ -179,6 +184,9 @@ export class AdminService {
       recentActivity:     await this.getRecentActivity(classroomIds),
       logoUrl:            institutionResult.data?.logo_url ?? null,
     };
+
+    this.appLogger.debug('[ADMIN:overview] stats result', { stats });
+    return stats;
   }
 
   /**
@@ -292,6 +300,7 @@ export class AdminService {
    * URL instead.
    */
   async getPendingDocumentVerifications(userId: string, institutionId: string) {
+    this.appLogger.debug('[ADMIN:verifications] entry', { institutionId });
     await this.assertSchoolAdmin(userId, institutionId);
 
     const { data: classroomRows } = await this.supabase
@@ -318,6 +327,8 @@ export class AdminService {
       this.logger.error('Failed to load pending verifications', { error, institutionId });
       throw new BadRequestException('Failed to load pending verifications');
     }
+
+    this.appLogger.debug('[ADMIN:verifications] result', { count: verifications?.length ?? 0 });
 
     return (verifications ?? []).map((v: any) => ({
       verificationId:  v.id,
@@ -381,10 +392,12 @@ export class AdminService {
     verificationId: string,
     req?: Request,
   ): Promise<void> {
+    this.appLogger.debug('[ADMIN:approve] entry', { verificationId, adminId: userId });
     const verification = await this.getVerificationRecord(verificationId);
     await this.assertInstitutionAdminCanAccessClassroom(userId, institutionId, verification.classroomId);
 
     await this.verificationService.adminApproveDocument(userId, verificationId, req);
+    this.appLogger.info('[ADMIN:approve] success', { verificationId });
   }
 
   /** Delegates to VerificationService.adminRejectDocument() — same reasoning as approveVerificationDocument(). */
@@ -395,15 +408,18 @@ export class AdminService {
     dto: RejectVerificationDocumentDto,
     req?: Request,
   ): Promise<void> {
+    this.appLogger.debug('[ADMIN:reject] entry', { verificationId, adminId: userId, reason: dto.reason });
     const verification = await this.getVerificationRecord(verificationId);
     await this.assertInstitutionAdminCanAccessClassroom(userId, institutionId, verification.classroomId);
 
     await this.verificationService.adminRejectDocument(userId, verificationId, dto.reason, req);
+    this.appLogger.info('[ADMIN:reject] success', { verificationId });
   }
 
   // ── Analytics ────────────────────────────────────────────────────────────
 
   async getAnalytics(userId: string, institutionId: string) {
+    this.appLogger.debug('[ADMIN:analytics] entry', { institutionId });
     await this.assertSchoolAdmin(userId, institutionId);
 
     const { data: classrooms, error } = await this.supabase
@@ -412,7 +428,13 @@ export class AdminService {
       .eq('institution_id', institutionId);
 
     if (error) {
-      this.logger.error('Failed to load classrooms for analytics', { error, institutionId });
+      this.appLogger.error('[ADMIN:analytics] failed', {
+        institutionId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
       throw new BadRequestException('Failed to load analytics');
     }
 
