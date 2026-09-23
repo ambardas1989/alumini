@@ -79,14 +79,15 @@ interface AdminInviteTokenPayload {
 export class InstitutionService {
   private readonly logger = new Logger(InstitutionService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly jwtService: JwtService,
-    private readonly appLogger: AppLogger,
+    appLogger: AppLogger,
   ) {
-    this.appLogger.setContext('INSTITUTION');
+    this.appLogger = appLogger.setContext('INSTITUTION');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,

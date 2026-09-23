@@ -70,13 +70,14 @@ type PersonaStatus = 'active' | 'pending_approval';
 export class IdentityService {
   private readonly logger = new Logger(IdentityService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly appLogger: AppLogger,
+    appLogger: AppLogger,
   ) {
-    this.appLogger.setContext('IDENTITY');
+    this.appLogger = appLogger.setContext('IDENTITY');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,

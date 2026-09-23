@@ -38,9 +38,10 @@ export interface DmMessage {
 export class DmService {
   private readonly logger = new Logger(DmService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
-  constructor(private readonly appLogger: AppLogger) {
-    this.appLogger.setContext('DM');
+  constructor(appLogger: AppLogger) {
+    this.appLogger = appLogger.setContext('DM');
     this.supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
   }
 

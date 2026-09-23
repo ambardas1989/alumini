@@ -132,14 +132,15 @@ export interface PresentedMessage {
 export class CorridorService {
   private readonly logger = new Logger(CorridorService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly membershipService: MembershipService,
-    private readonly appLogger: AppLogger,
+    appLogger: AppLogger,
   ) {
-    this.appLogger.setContext('CORRIDOR');
+    this.appLogger = appLogger.setContext('CORRIDOR');
     // Service role — bypasses RLS, same pattern as every other module.
     // (Client-side Realtime subscriptions are a completely separate
     // connection that goes through the ANON key and IS subject to RLS —

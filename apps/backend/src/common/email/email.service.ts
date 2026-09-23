@@ -21,9 +21,10 @@ type OtpPurpose = 'login' | 'password_reset' | 'mfa_change';
 export class EmailService {
   private resend: Resend | null = null;
   private readonly from: string;
+  private readonly logger: AppLogger;
 
-  constructor(private readonly logger: AppLogger) {
-    this.logger.setContext('EMAIL');
+  constructor(logger: AppLogger) {
+    this.logger = logger.setContext('EMAIL');
     this.from = process.env.FROM_EMAIL || `noreply@${brand.domain}`;
     const apiKey = process.env.RESEND_API_KEY;
     if (apiKey) {

@@ -55,9 +55,10 @@ export interface AuditLogParams {
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
-  constructor(private readonly appLogger: AppLogger) {
-    this.appLogger.setContext('AUDIT');
+  constructor(appLogger: AppLogger) {
+    this.appLogger = appLogger.setContext('AUDIT');
     // Use service role key — bypasses RLS for audit log writes
     this.supabase = createClient(
       process.env.SUPABASE_URL!,

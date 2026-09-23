@@ -119,15 +119,16 @@ export function isLinkedInOAuthConfigured(): boolean {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly appLogger: AppLogger,
+    appLogger: AppLogger,
     private readonly emailService: EmailService,
   ) {
-    this.appLogger.setContext('AUTH');
+    this.appLogger = appLogger.setContext('AUTH');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -548,14 +549,16 @@ export class AuthService {
    * wrong guess still counts against the attempt cap).
    */
   private async checkEmailOtp(userId: string, code: string, purpose: EmailOtpPurpose): Promise<MfaCodeCheckResult> {
-    // Diagnostic pair for exactly this class of bug (a code exists in
-    // Supabase but under a different `purpose`, is already used, or has
-    // expired by the time this runs) — permanent debug-level traces
-    // (respect LOG_LEVEL, currently 'debug' in Render per
-    // docs/DEVELOPMENT.md) since send/verify purpose or timing mismatches
-    // are otherwise invisible until a user reports a 401. Never logs the
-    // full code, only enough to eyeball-correlate against what was emailed.
-    this.appLogger.debug('[EMAIL-OTP-VERIFY-DEBUG]', {
+    // TEMPORARY, incident-response only — revert to .debug() once the
+    // production 401 investigation concludes. This was .debug() before,
+    // but the previous repro's Render logs proved LOG_LEVEL isn't
+    // actually 'debug' in production despite docs/DEVELOPMENT.md — those
+    // two lines never appeared even across an 11-second gap where they
+    // had to have run. .warn() survives every level except a strictly
+    // 'error' one, so this gets real data on the next attempt regardless
+    // of what LOG_LEVEL is actually set to. Never logs the full code,
+    // only enough to eyeball-correlate against what was emailed.
+    this.appLogger.warn('[EMAIL-OTP-VERIFY-DEBUG]', {
       userId,
       purposeSearching: purpose,
       code: code.slice(0, 2) + '****',
@@ -571,7 +574,7 @@ export class AuthService {
       .limit(1)
       .maybeSingle();
 
-    this.appLogger.debug('[EMAIL-OTP-VERIFY-RESULT]', {
+    this.appLogger.warn('[EMAIL-OTP-VERIFY-RESULT]', {
       found: !!challenge,
       rowPurpose: challenge?.purpose ?? null,
       rowUsed: challenge?.used ?? null,

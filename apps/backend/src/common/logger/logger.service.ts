@@ -20,19 +20,18 @@
  * something a resolution option works around. Reverted to the default
  * singleton scope this class needs to support app.get() at all.
  *
- * CONSEQUENCE — read before adding a new setContext() call site:
- * setContext() below still mutates `this.context` on the one shared
- * instance every service now injects. Whichever service's constructor
- * runs last during Nest's dependency graph setup "wins" that context for
- * every subsequent log call from every other service, app-wide — this is
- * a real, known regression from the transient-scope design, deliberately
- * left as-is here since the literal ask was "fix the scope," not
- * "redesign context handling," while the app.get() failure was an active
- * deploy-blocking incident. See the AppLogger doc comment for whoever
- * picks this up next: the fix is having setContext() return a NEW child
- * instance instead of mutating shared state, with every constructor
- * assigning that returned value to its own field rather than relying on
- * the injected singleton being mutated in place.
+ * BUG FIX (confirmed in production): setContext() used to mutate
+ * `this.context` on the one shared singleton instance every service
+ * injects. Whichever service's constructor ran last during Nest's
+ * dependency graph setup silently "won" that context for every other
+ * service's subsequent logs, permanently, for the process's life —
+ * production logs showed EVERY AuthService line ("Login success", "MFA
+ * setup initiated", "MFA verify failed", ...) tagged [CORRIDOR], because
+ * CorridorService's constructor happened to run after AuthService's.
+ * setContext() now returns a NEW child instance instead of mutating
+ * shared state — every constructor that calls it must store the
+ * RETURNED value in its own field (`this.appLogger = appLogger.setContext(...)`),
+ * not rely on the injected singleton parameter being mutated in place.
  */
 
 import { Injectable } from '@nestjs/common';
@@ -50,9 +49,11 @@ export class AppLogger {
     this.level = (process.env.LOG_LEVEL as LogLevel) || 'info';
   }
 
-  setContext(context: string): this {
-    this.context = context;
-    return this;
+  /** Returns a NEW logger carrying this context — see the class doc comment on why this can't mutate `this` in place. */
+  setContext(context: string): AppLogger {
+    const child = new AppLogger();
+    child.context = context;
+    return child;
   }
 
   private shouldLog(level: LogLevel): boolean {

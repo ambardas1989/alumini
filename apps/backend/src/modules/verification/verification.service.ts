@@ -69,13 +69,14 @@ import { Request } from 'express';
 export class VerificationService {
   private readonly logger = new Logger(VerificationService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly appLogger: AppLogger,
+    appLogger: AppLogger,
   ) {
-    this.appLogger.setContext('VERIFY');
+    this.appLogger = appLogger.setContext('VERIFY');
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,

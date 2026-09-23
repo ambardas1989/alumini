@@ -52,13 +52,14 @@ const INSTITUTION_JOIN_COLUMNS = 'id, name, slug, type, cityCode:city_code, coun
 export class ClassroomService {
   private readonly logger = new Logger(ClassroomService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
     private readonly events: EventEmitter2,
-    private readonly appLogger: AppLogger,
+    appLogger: AppLogger,
   ) {
-    this.appLogger.setContext('CLASSROOM');
+    this.appLogger = appLogger.setContext('CLASSROOM');
     // Use service role to bypass RLS for server-side operations
     this.supabase = createClient(
       process.env.SUPABASE_URL!,

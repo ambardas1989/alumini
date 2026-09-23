@@ -74,12 +74,13 @@ const ROLE_RANK: Record<MemberRole, number> = {
 export class MembershipService {
   private readonly logger = new Logger(MembershipService.name);
   private readonly supabase: SupabaseClient;
+  private readonly appLogger: AppLogger;
 
   constructor(
     private readonly audit: AuditService,
-    private readonly appLogger: AppLogger,
+    appLogger: AppLogger,
   ) {
-    this.appLogger.setContext('MEMBERSHIP');
+    this.appLogger = appLogger.setContext('MEMBERSHIP');
     // Service role — bypasses RLS, same pattern as every other module.
     this.supabase = createClient(
       process.env.SUPABASE_URL!,
