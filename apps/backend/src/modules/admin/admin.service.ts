@@ -86,6 +86,7 @@ import { Request } from 'express';
 import { AuditService } from '../audit/audit.service';
 import { VerificationService } from '../verification/verification.service';
 import { InstitutionService } from '../institution/institution.service';
+import { EmailService } from '../../common/email/email.service';
 import { AuditEventType, PersonaType } from '@alumini/types';
 import { getRange, isExpired } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
@@ -104,6 +105,7 @@ export class AdminService {
     private readonly audit: AuditService,
     private readonly verificationService: VerificationService,
     private readonly institutionService: InstitutionService,
+    private readonly emailService: EmailService,
   ) {
     // Service role — bypasses RLS, same pattern as every other module.
     // Also used for Supabase Storage signed URLs (getVerificationDocumentUrl()).
@@ -613,6 +615,13 @@ export class AdminService {
       .eq('id', requestId);
 
     this.logger.log(`[INSTITUTION-APPROVED] ${institution.name} (${institution.slug})`);
+    // PostgREST returns this embed as an array even though requested_by is
+    // a single FK — Supabase-js's select-string type inference can't tell
+    // a to-one relation from a to-many one, so [0] rather than a bare property.
+    const approvedRequesterEmail = request.requester?.[0]?.email;
+    if (approvedRequesterEmail) {
+      await this.emailService.sendInstitutionRequestUpdate(approvedRequesterEmail, institution.name, 'approved');
+    }
 
     await this.audit.log({
       eventType: AuditEventType.INSTITUTION_REQUEST_APPROVED,
@@ -647,6 +656,10 @@ export class AdminService {
     }
 
     this.logger.log(`[INSTITUTION-REJECTED] ${request.name} — ${dto.reason}`);
+    const rejectedRequesterEmail = request.requester?.[0]?.email;
+    if (rejectedRequesterEmail) {
+      await this.emailService.sendInstitutionRequestUpdate(rejectedRequesterEmail, request.name, 'rejected', dto.reason);
+    }
 
     await this.audit.log({
       eventType: AuditEventType.INSTITUTION_REQUEST_REJECTED,
@@ -663,7 +676,7 @@ export class AdminService {
   private async getPendingInstitutionRequest(requestId: string) {
     const { data: request } = await this.supabase
       .from('institution_requests')
-      .select('id, name, type, city_code, country_code, email_domain, status')
+      .select('id, name, type, city_code, country_code, email_domain, status, requester:profiles!institution_requests_requested_by_fkey(email)')
       .eq('id', requestId)
       .maybeSingle();
 

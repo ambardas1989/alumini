@@ -24,6 +24,7 @@ import { AdminService } from './admin.service';
 import { AuditService } from '../audit/audit.service';
 import { VerificationService } from '../verification/verification.service';
 import { InstitutionService } from '../institution/institution.service';
+import { EmailService } from '../../common/email/email.service';
 import { AuditEventType } from '@alumini/types';
 import { appConfig } from '@alumini/config/app';
 
@@ -88,6 +89,7 @@ describe('AdminService', () => {
           provide: InstitutionService,
           useValue: { approveClaim: mockApproveClaim, rejectClaim: mockRejectClaim },
         },
+        { provide: EmailService, useValue: { sendInstitutionRequestUpdate: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 

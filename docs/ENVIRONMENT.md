@@ -17,8 +17,8 @@
 | FRONTEND_URL | https://alumtribe.com | REQUIRED — Google OAuth redirect |
 | CORS_ORIGINS | https://alumtribe.com,https://www.alumtribe.com | |
 | APP_URL | https://api.alumtribe.com | |
-| RESEND_API_KEY | (from resend.com) | Optional — logs to console if missing |
-| FROM_EMAIL | noreply@alumtribe.com | Must be verified in Resend |
+| RESEND_API_KEY | re_xxxxx | From resend.com — emails log to console if missing |
+| FROM_EMAIL | noreply@alumtribe.com | Must be verified domain in Resend |
 | LOG_LEVEL | debug | Change to 'info' before public launch — see docs/DEVELOPMENT.md |
 | LINKEDIN_CLIENT_ID | (from LinkedIn Developer Portal) | Public — also needed as NEXT_PUBLIC_LINKEDIN_CLIENT_ID on the web service |
 | LINKEDIN_CLIENT_SECRET | (from LinkedIn Developer Portal) | Never expose publicly |
@@ -40,7 +40,6 @@
 
 | What | Where | Notes |
 |---|---|---|
-| RESEND_API_KEY | resend.com | Free tier: 3000 emails/month |
 | Zoho Mail MX records | Cloudflare DNS | For hello@alumtribe.com mailbox |
 | Firebase FCM | firebase.google.com | Push notifications — mobile P1 |
 

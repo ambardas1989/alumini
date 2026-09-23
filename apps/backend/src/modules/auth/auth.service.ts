@@ -43,11 +43,11 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createHash, randomBytes, randomInt, randomUUID } from 'crypto';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
-import { Resend } from 'resend';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
 import { AppLogger } from '../../common/logger/logger.service';
+import { EmailService } from '../../common/email/email.service';
 import { AuditEventType, ErrorCode, MfaMethod, PersonaType } from '@alumini/types';
 import { daysFromNow, isExpired, minutesFromNow } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
@@ -106,6 +106,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly eventEmitter: EventEmitter2,
     private readonly appLogger: AppLogger,
+    private readonly emailService: EmailService,
   ) {
     this.appLogger.setContext('AUTH');
     // Service role — bypasses RLS, same pattern as every other module.
@@ -162,6 +163,7 @@ export class AuthService {
     }
 
     this.logger.log(`Account created: ${data.user.id}`);
+    await this.emailService.sendWelcome(dto.email, dto.fullName);
 
     if (!appConfig.MFA_REQUIRED) {
       return this.issueTokenPair(data.user.id, dto.email, req, { event: 'signup' });
@@ -477,11 +479,10 @@ export class AuthService {
   // ── Email OTP (MFA) ──────────────────────────────────────────────────────
 
   /**
-   * Generates, hashes, and stores a 6-digit code, then emails it — inline
-   * Resend call with a console fallback, same pattern as forgotPassword()
-   * above (not the notification module's event-based delivery: mfa.sms.send
-   * above proves an emitted event with no listener silently drops the
-   * code, and this needs to actually work).
+   * Generates, hashes, and stores a 6-digit code, then emails it via
+   * EmailService (not the notification module's event-based delivery:
+   * mfa.sms.send above proves an emitted event with no listener silently
+   * drops the code, and this needs to actually work).
    */
   async sendEmailOtp(userId: string, email: string, purpose: EmailOtpPurpose): Promise<{ message: string }> {
     const windowStart = new Date(Date.now() - 10 * 60_000).toISOString();
@@ -516,21 +517,7 @@ export class AuthService {
       throw new BadRequestException('Failed to send code. Please try again.');
     }
 
-    if (process.env.RESEND_API_KEY) {
-      try {
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({
-          from: process.env.FROM_EMAIL || `noreply@${brand.domain}`,
-          to: email,
-          subject: `Your ${brand.name} verification code`,
-          text: `Your code is: ${code}\nValid for ${appConfig.MFA_EMAIL_OTP_EXPIRY_MINUTES} minutes.\nDo not share this code.`,
-        });
-      } catch (err) {
-        this.logger.error('Failed to send email OTP via Resend', { err, userId });
-      }
-    } else {
-      this.logger.log(`[EMAIL-OTP] Code for ${email} (${purpose}): ${code}`);
-    }
+    await this.emailService.sendOtpCode(email, code, purpose);
 
     return { message: 'Code sent to your email' };
   }
@@ -1059,24 +1046,10 @@ export class AuthService {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const resetUrl = `${frontendUrl}/auth/reset-password?token=${rawToken}`;
 
-    if (process.env.RESEND_API_KEY) {
-      try {
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({
-          from: process.env.FROM_EMAIL || `noreply@${brand.domain}`,
-          to: dto.email,
-          subject: `Reset your ${brand.name} password`,
-          text: `We received a request to reset your ${brand.name} password.\n\nReset it here: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.`,
-        });
-      } catch (err) {
-        // Delivery failing shouldn't surface as an API error (that would
-        // leak "this email exists but sending failed" vs. "doesn't
-        // exist") — log and fall through to the same generic response.
-        this.logger.error('Failed to send password reset email via Resend', { err, userId: profile.id });
-      }
-    } else {
-      this.logger.log(`[DEV] Password reset link for ${dto.email}: ${resetUrl}`);
-    }
+    // Delivery failures never surface as an API error here (that would leak
+    // "this email exists but sending failed" vs. "doesn't exist") —
+    // EmailService itself already swallows send failures after logging them.
+    await this.emailService.sendPasswordResetLink(dto.email, resetUrl);
 
     await this.audit.log({
       eventType: AuditEventType.AUTH_PASSWORD_RESET_REQUESTED,
@@ -1242,21 +1215,7 @@ export class AuthService {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const recoveryUrl = `${frontendUrl}/auth/mfa-recovery?token=${rawToken}`;
 
-    if (process.env.RESEND_API_KEY) {
-      try {
-        const resend = new Resend(process.env.RESEND_API_KEY);
-        await resend.emails.send({
-          from: process.env.FROM_EMAIL || `noreply@${brand.domain}`,
-          to: dto.email,
-          subject: `Recover access to your ${brand.name} account`,
-          text: `We received a request to recover access to your ${brand.name} account because you lost access to your authenticator app.\n\nContinue here: ${recoveryUrl}\n\nThis link expires in 1 hour and will reset your two-factor authentication — you'll need to set it up again afterward. If you didn't request this, you can safely ignore this email.`,
-        });
-      } catch (err) {
-        this.logger.error('Failed to send MFA recovery email via Resend', { err, userId: profile.id });
-      }
-    } else {
-      this.logger.log(`[DEV] MFA recovery link for ${dto.email}: ${recoveryUrl}`);
-    }
+    await this.emailService.sendMfaRecoveryLink(dto.email, recoveryUrl);
 
     await this.audit.log({
       eventType: AuditEventType.AUTH_MFA_RECOVERY_REQUESTED,
