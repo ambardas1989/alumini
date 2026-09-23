@@ -21,7 +21,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Unauthorize
 import * as speakeasy from 'speakeasy';
 import { createHash } from 'crypto';
 
-import { AuthService } from './auth.service';
+import { AuthService, resendPurposeFor } from './auth.service';
 import { AuditService } from '../audit/audit.service';
 import { AppLogger } from '../../common/logger/logger.service';
 import { EmailService } from '../../common/email/email.service';
@@ -315,6 +315,33 @@ describe('AuthService', () => {
       });
 
       await expect(service.verifyEmailOtp('user-1', '123456', 'login')).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  // ── resendPurposeFor() ───────────────────────────────────────────────────
+
+  describe('resendPurposeFor()', () => {
+    // BUG FIX regression — a resend during a login MFA challenge must map
+    // to 'login', matching what completePasswordVerifiedLogin() originally
+    // sent the code under.
+    it("maps 'mfa_login' to 'login'", () => {
+      expect(resendPurposeFor('mfa_login')).toBe('login');
+    });
+
+    // A brand-new account's first-ever enrolment — matches what
+    // initiateMfaSetup()'s email branch sends under.
+    it("maps 'mfa_setup' to 'mfa_change'", () => {
+      expect(resendPurposeFor('mfa_setup')).toBe('mfa_change');
+    });
+
+    // THE bug this was written for: an already-logged-in user switching
+    // MFA methods from the profile page reuses this endpoint with a real
+    // access token, not a pending one — the old inline ternary silently
+    // fell through to 'login' here, storing the resent code under the
+    // wrong purpose so it could never verify against completeMfaSetup()'s
+    // 'mfa_change' lookup.
+    it("maps 'access' to 'mfa_change', not 'login'", () => {
+      expect(resendPurposeFor('access')).toBe('mfa_change');
     });
   });
 

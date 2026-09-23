@@ -81,6 +81,25 @@ import {
 /** email_otp_codes.purpose — see supabase/migrations/018_email_otp_mfa.sql. */
 export type EmailOtpPurpose = 'login' | 'password_reset' | 'mfa_change';
 
+/**
+ * BUG FIX — used by AuthController.mfaEmailResend() to derive which
+ * email_otp_codes.purpose a resend belongs to from the pending/access
+ * token's OWN `purpose` claim (TokenPurpose, a different type — access/
+ * refresh/mfa_setup/mfa_login — from EmailOtpPurpose above). Only a
+ * completed login's own MFA step ('mfa_login') maps to 'login'; every
+ * other token purpose reaching that endpoint means setup or an
+ * already-logged-in user switching methods (a real 'access' token, not
+ * 'mfa_setup') — both cases must resend under 'mfa_change', matching
+ * whatever initiateMfaSetup()'s email branch originally sent under.
+ * Extracted as its own pure function (previously an inline ternary in the
+ * controller) so this exact mapping has real unit-test coverage — this
+ * codebase has no controller-level test file for any module, service-level
+ * is the established convention throughout.
+ */
+export function resendPurposeFor(tokenPurpose: AuthTokenPayload['purpose']): EmailOtpPurpose {
+  return tokenPurpose === 'mfa_login' ? 'login' : 'mfa_change';
+}
+
 /** Outcome of a single MFA code check — see verifyCode() and mfaFailureException(). */
 type MfaCodeCheckResult = 'valid' | 'invalid' | 'expired' | 'max_attempts';
 
@@ -538,6 +557,20 @@ export class AuthService {
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // Diagnostic for exactly this class of bug (a code exists in Supabase
+    // but under a different `purpose` than this call is looking for) — the
+    // real fix for one such mismatch is mfaEmailResend()'s purpose
+    // derivation in auth.controller.ts; this stays as a permanent debug-
+    // level trace (respects LOG_LEVEL, off by default in production) since
+    // send/verify purpose mismatches are exactly the kind of bug that's
+    // otherwise invisible until a user reports it.
+    this.appLogger.debug('[EMAIL-OTP-VERIFY]', {
+      userId,
+      purpose,
+      codeProvided: code,
+      lookupResult: challenge ? 'found' : 'not found',
+    });
 
     if (!challenge) return 'invalid';
     if (isExpired(challenge.expires_at)) return 'expired';

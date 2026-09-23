@@ -29,7 +29,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { timingSafeEqual } from 'crypto';
 
-import { AuthService } from './auth.service';
+import { AuthService, resendPurposeFor } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -201,7 +201,14 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Resend the email OTP code (rate-limited)' })
   async mfaEmailResend(@CurrentUser() authToken: AuthTokenPayload) {
-    const purpose = authToken.purpose === 'mfa_setup' ? 'mfa_change' : 'login';
+    // BUG FIX — see resendPurposeFor()'s own doc comment (auth.service.ts).
+    // This used to be an inline `authToken.purpose === 'mfa_setup' ?
+    // 'mfa_change' : 'login'`, which silently fell through to 'login' for
+    // an already-logged-in user switching MFA methods (a real 'access'
+    // token, not 'mfa_setup') — a resent code during that flow was stored
+    // under the wrong purpose and could never verify: 401 even with the
+    // correct code.
+    const purpose = resendPurposeFor(authToken.purpose);
     return this.authService.resendEmailOtp(authToken.sub, authToken.email!, purpose);
   }
 
