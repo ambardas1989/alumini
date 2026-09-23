@@ -29,11 +29,11 @@ async function bootstrap(): Promise<void> {
   // TASKS_05 TASK 11 — routes Nest's OWN internal logging (route
   // registration, lifecycle events, etc.) through AppLogger too, so
   // LOG_LEVEL governs the framework's own noise, not just this app's own
-  // service-level logs. AppLogger is TRANSIENT-scoped (see its own doc
-  // comment on why, a deviation from the task's plain @Injectable()) —
-  // `strict: false` resolves a single instance from the root module for
-  // this one bootstrap-level use, same as Nest's own docs show for
-  // getting a transient provider outside constructor injection.
+  // service-level logs. AppLogger is a plain singleton (see its own doc
+  // comment — it used to be TRANSIENT-scoped, which broke Render deploys:
+  // app.get() can never resolve a request/transient-scoped provider) —
+  // `strict: false` just resolves it from the root module for this one
+  // bootstrap-level use outside normal constructor injection.
   const appLogger = app.get(AppLogger, { strict: false });
   app.useLogger({
     log: (message) => appLogger.info(message),
