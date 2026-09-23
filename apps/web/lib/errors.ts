@@ -31,7 +31,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 const GENERIC_FALLBACK = 'Something went wrong. Please try again.';
-const SERVER_ERROR_FALLBACK = 'Server error. Please try again.';
+const SERVER_ERROR_FALLBACK = 'Server error. Please try again in a moment.';
 const NETWORK_ERROR_FALLBACK = 'Connection issue. Check your internet.';
 
 /**
@@ -70,6 +70,20 @@ export function getErrorMessage(error: ApiError | unknown): string {
 }
 
 /**
+ * Known field → friendly copy for class-validator's default templates
+ * ("email must be an email", "password must be longer than or equal to 8
+ * characters"), which read as internal-sounding when shown verbatim. A
+ * field's own hand-written custom validator message (e.g. SignupDto
+ * password's @Matches letter+number rule) is already user-safe and is
+ * shown as-is instead — see the loop below.
+ */
+const FIELD_ERROR_FALLBACKS: Record<string, string> = {
+  email: 'Please enter a valid email address',
+  password: 'Password must be at least 8 characters',
+  fullName: 'Please enter your full name',
+};
+
+/**
  * FIX 5E — "400 validation array → parse and show per field." class-
  * validator's default messages all start with the DTO property name
  * (e.g. "countryCode must be exactly 2 characters"), so the leading word
@@ -85,8 +99,23 @@ export function parseValidationErrors(error: ApiError | unknown): Record<string,
   const result: Record<string, string> = {};
   for (const raw of payload.message) {
     if (typeof raw !== 'string') continue;
-    const field = raw.split(' ')[0];
-    if (field) result[field] = raw;
+    const leadWord = raw.split(' ')[0];
+    if (!leadWord) continue;
+    // BUG FIX — a custom @Matches message (e.g. "Password must contain at
+    // least one letter and one number") starts with the field's
+    // capitalised display name, not its camelCase property name, so the
+    // raw leading word never matched a Field key ('password') and the
+    // error silently vanished into an unrecognised state key. Normalising
+    // to lowercase-first fixes the key match for both custom and default
+    // (already-lowercase) class-validator messages.
+    const field = leadWord.charAt(0).toLowerCase() + leadWord.slice(1);
+    // Default template messages ("X must be an email", "X must be longer
+    // than or equal to N characters") read as internal-sounding — swap in
+    // friendly copy for known fields. A custom validator message (e.g.
+    // SignupDto password's letter+number rule) doesn't match either
+    // template shape and is already user-safe, so it's kept as-is.
+    const isDefaultTemplate = /must be an email$/.test(raw) || /must be longer than or equal to \d+ characters?$/.test(raw);
+    result[field] = isDefaultTemplate ? (FIELD_ERROR_FALLBACKS[field] ?? raw) : raw;
   }
   return result;
 }

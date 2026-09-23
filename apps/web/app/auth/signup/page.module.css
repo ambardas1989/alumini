@@ -65,3 +65,23 @@
   font-weight: 600;
   text-decoration: none;
 }
+
+.accountExists {
+  margin-block-start: 6px;
+}
+
+.accountExistsMessage {
+  font-size: 12px;
+  color: var(--color-error);
+}
+
+.accountExistsLinks {
+  font-size: 12px;
+  margin-block-start: 4px;
+}
+
+.accountExistsLinks a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}

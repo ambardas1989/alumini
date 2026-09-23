@@ -146,20 +146,36 @@ export default function SignupPage() {
           onBlur={() => handleBlur('fullName')}
           className="auth-input"
         />
-        <Input
-          label={t('emailLabel')}
-          type="email"
-          autoComplete="email"
-          disabled={loading}
-          value={email}
-          error={errors.email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            clearError('email');
-          }}
-          onBlur={() => handleBlur('email')}
-          className="auth-input"
-        />
+        <div>
+          <Input
+            label={t('emailLabel')}
+            type="email"
+            autoComplete="email"
+            disabled={loading}
+            value={email}
+            error={errors.email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearError('email');
+              if (accountExists) {
+                setAccountExists(false);
+                setApiError(null);
+              }
+            }}
+            onBlur={() => handleBlur('email')}
+            className="auth-input"
+          />
+          {accountExists && (
+            <div className={styles.accountExists}>
+              <p className={styles.accountExistsMessage}>{t('errors.accountExists')}</p>
+              <p className={styles.accountExistsLinks}>
+                <Link href="/auth/login">{t('errors.signInInsteadLink')}</Link>
+                {' · '}
+                <Link href="/auth/forgot-password">{t('errors.resetPasswordLink')}</Link>
+              </p>
+            </div>
+          )}
+        </div>
         <div>
           <PasswordInput
             label={t('passwordLabel')}
@@ -190,19 +206,7 @@ export default function SignupPage() {
           className="auth-input"
         />
 
-        {apiError && (
-          <ErrorMessage
-            message={
-              accountExists ? (
-                <>
-                  {apiError} <Link href="/auth/login">{t('errors.signInInsteadLink')}</Link>
-                </>
-              ) : (
-                apiError
-              )
-            }
-          />
-        )}
+        {apiError && !accountExists && <ErrorMessage message={apiError} />}
 
         <Button
           type="submit"
