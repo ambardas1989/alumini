@@ -525,6 +525,26 @@ export class AuthService {
     const code = this.generateNumericCode(appConfig.MFA_EMAIL_OTP_LENGTH);
     const expiresAt = new Date(Date.now() + appConfig.MFA_EMAIL_OTP_EXPIRY_MINUTES * 60_000);
 
+    // Invalidate any still-unused codes from an earlier send for this same
+    // user+purpose before issuing a new one — checkEmailOtp() already only
+    // ever checks the LATEST unused row, so an old row sitting around isn't
+    // a verification hazard by itself, but it does mean a user who received
+    // two emails (a resend, a double-fired request) and types the older
+    // still-valid-looking code from their inbox gets a confusing mismatch
+    // against whichever row is newest. Only one unused code should exist
+    // per user+purpose at a time. Not a hard failure if this delete errors —
+    // the new code below is still correct and usable either way.
+    const { error: cleanupError } = await this.supabase
+      .from('email_otp_codes')
+      .delete()
+      .eq('user_id', userId)
+      .eq('purpose', purpose)
+      .eq('used', false);
+
+    if (cleanupError) {
+      this.logger.error('Failed to clean up old email OTP codes', { error: cleanupError, userId, purpose });
+    }
+
     const { error } = await this.supabase.from('email_otp_codes').insert({
       user_id: userId,
       code_hash: this.hash(code),
