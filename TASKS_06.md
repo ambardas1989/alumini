@@ -268,7 +268,7 @@ auth guard on protected pages"
 
 ---
 
-## TASK 07 — Fix: privacy policy accuracy [PENDING]
+## TASK 07 — Fix: privacy policy accuracy [DONE: updated provider list, added Data retention section, clarified account-deletion is an interim email process; corrected the LinkedIn data-collection claim to what the app actually collects (name + photo only) instead of the task's literal job-title/employer/location/education list, which this app's already-scoped-down LinkedIn integration never collects]
 
 The privacy policy makes claims that need updating
 to reflect the actual tech stack in use.

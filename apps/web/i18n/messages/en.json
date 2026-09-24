@@ -1023,7 +1023,7 @@
     "sections": {
       "collect": {
         "title": "What we collect",
-        "body": "Name, email address, profile photo (from Google if you use Google sign-in), classroom memberships, messages you send, and verification documents (auto-deleted after 30 days)."
+        "body": "Name, email address, profile photo (from Google if you use Google sign-in), classroom memberships, messages you send, and verification documents (auto-deleted after 30 days). If you connect LinkedIn: your LinkedIn name and profile photo only — LinkedIn's standard sign-in does not give us your job title, employer, location, or education history, so we never collect or store those."
       },
       "use": {
         "title": "How we use it",
@@ -1031,19 +1031,23 @@
       },
       "never": {
         "title": "What we never do",
-        "body": "We never sell your personal data. We never show ads. We never share your data with third parties except to operate the service (Supabase for database, Google for sign-in)."
+        "body": "We never sell your data or show ads. We use the following trusted services to operate AlumTribe: Supabase (database and authentication), Render (application hosting), Cloudflare (content delivery and DNS), Resend (transactional emails), Google (sign-in, if you use Google login), LinkedIn (profile sync, only if you connect LinkedIn). Each provider has their own privacy policy. We do not sell your data to any of these providers."
       },
       "protect": {
         "title": "How we protect it",
-        "body": "All data is encrypted in transit and at rest. Row-level security means you only see data you are permitted to see. Verification documents are automatically deleted after 30 days."
+        "body": "All data is encrypted in transit and at rest. Row-level security means you only see data you are permitted to see. We use Cloudflare to protect against DDoS attacks and malicious traffic — Cloudflare may log your IP address. Verification documents are automatically deleted after 30 days."
       },
       "rights": {
         "title": "Your rights",
-        "body": "You can request a copy of your data, correct it, or delete your account at any time. Email hello@alumtribe.com."
+        "body": "You can request a copy of your data or correct it at any time. To delete your account: email hello@alumtribe.com to request account deletion. We will delete your data within 30 days. (Self-service account deletion is not yet built in the app — this email process is the interim way to do it.)"
       },
       "contact": {
         "title": "Contact",
         "body": "hello@alumtribe.com | alumtribe.com"
+      },
+      "retention": {
+        "title": "Data retention",
+        "body": "Messages: kept until you delete them or your account. Verification documents: automatically deleted after 30 days. OTP codes: automatically deleted after use or expiry. Account data: kept until you request deletion."
       }
     }
   },

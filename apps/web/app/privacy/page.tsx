@@ -4,7 +4,7 @@ import { useTranslations } from '@/lib/useTranslations';
 import { StaticPageLayout } from '@/components/layout/StaticPageLayout';
 import styles from './page.module.css';
 
-const SECTION_KEYS = ['collect', 'use', 'never', 'protect', 'rights', 'contact'] as const;
+const SECTION_KEYS = ['collect', 'use', 'never', 'protect', 'retention', 'rights', 'contact'] as const;
 
 export default function PrivacyPage() {
   const t = useTranslations('privacy');
