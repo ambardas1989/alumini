@@ -760,6 +760,10 @@ export default function ClassroomPage() {
           currentUserId={user.id}
           viewerIsVerified={membership.isVerified}
           creatorId={classroom.createdBy}
+          viewerIsAdminOrCreator={membership.userRole === 'admin' || user.id === classroom.createdBy}
+          onMemberVerified={(userId) =>
+            setMembers((prev) => prev.map((m) => (m.userId === userId ? { ...m, verificationStatus: 'verified' } : m)))
+          }
           roleFilter={memberModalRoleFilter}
           onClose={() => setShowMemberModal(false)}
         />

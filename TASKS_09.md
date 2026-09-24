@@ -382,7 +382,7 @@ Commit: "fix: verify page loads correctly for new unverified members"
 
 ---
 
-## TASK 10 — Fix: admin cannot verify new unverified members [PENDING]
+## TASK 10 — Fix: admin cannot verify new unverified members [DONE: new classroom-scoped GET /verify/pending/:classroomId endpoint (assertClassroomAdmin — classroom role=admin/is_creator or school admin, not just institution admin); members tab shows MFA-guarded Verify/Reject buttons on pending document verifications with optimistic badge update; admin notification on document submission already existed (NotificationService.handleDocumentSubmitted)]
 
 Classroom admins and creators have no UI to approve or
 reject verification requests from new members.

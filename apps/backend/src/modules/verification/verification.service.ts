@@ -511,6 +511,37 @@ export class VerificationService {
   }
 
   /**
+   * TASKS_09 TASK 10 — pending document verifications for ONE classroom,
+   * for the classroom members tab's admin-only "Pending" view. Same
+   * assertClassroomAdmin() gate document approve/reject use below (not the
+   * admin module's institution-admin-only check — see this method's own
+   * controller-side doc comment for why).
+   */
+  async listPendingDocumentVerifications(adminId: string, classroomId: string) {
+    await this.assertClassroomAdmin(adminId, classroomId);
+
+    const { data: verifications, error } = await this.supabase
+      .from('verifications')
+      .select('id, user_id, created_at, profile:profiles(full_name)')
+      .eq('classroom_id', classroomId)
+      .eq('method', 'document')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      this.logger.error('Failed to load pending verifications', { error, classroomId });
+      throw new BadRequestException('Failed to load pending verifications');
+    }
+
+    return (verifications ?? []).map((v: any) => ({
+      verificationId:  v.id,
+      userId:          v.user_id,
+      userDisplayName: v.profile?.full_name ?? 'Unknown',
+      submittedAt:     v.created_at,
+    }));
+  }
+
+  /**
    * Admin approves a document verification.
    * Requires MFA re-challenge (enforced in controller guard).
    *

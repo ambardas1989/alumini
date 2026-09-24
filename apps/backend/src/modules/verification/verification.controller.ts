@@ -133,6 +133,28 @@ export class VerificationController {
     return this.verificationService.redeemCode(authToken.sub, dto.classroomId, dto.code, req);
   }
 
+  // ── Admin review queue (classroom-scoped) ────────────────────────────────
+
+  /**
+   * TASKS_09 TASK 10 — the admin dashboard's GET /admin/:institutionId/
+   * verifications/pending lists pending document verifications across a
+   * whole institution; this is the same data scoped to ONE classroom, for
+   * the classroom members tab's own Pending filter. Authorization is
+   * assertClassroomAdmin() (classroom-level admin/creator OR an active
+   * school_admin of the institution) — the same check document approve/
+   * reject already use below, not the admin module's institution-admin-only
+   * gate, so a classroom creator who has no school_admin persona can still
+   * review their own classroom's pending documents.
+   */
+  @Get('pending/:classroomId')
+  @ApiOperation({ summary: 'Pending document verifications for one classroom — classroom admin/creator or school admin only' })
+  async pendingForClassroom(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('classroomId') classroomId: string,
+  ) {
+    return this.verificationService.listPendingDocumentVerifications(authToken.sub, classroomId);
+  }
+
   // ── Status ───────────────────────────────────────────────────────────────
 
   @Get('status/:membershipId')

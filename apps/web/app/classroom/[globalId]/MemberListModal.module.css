@@ -31,6 +31,7 @@
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding-block: 10px;
@@ -105,4 +106,27 @@
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* TASKS_09 TASK 10 — admin document-verification review. Ghost + color
+   override, same pattern as VerifyTab.module.css's identical buttons on
+   the admin dashboard (no solid green variant exists on Button). */
+.approveButton {
+  color: var(--color-success) !important;
+}
+
+.rejectButton {
+  color: var(--color-error) !important;
+}
+
+.rejectRow {
+  flex-basis: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-block-start: 8px;
+}
+
+.rejectRow > :first-child {
+  flex: 1;
 }

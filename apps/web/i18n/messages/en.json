@@ -601,7 +601,19 @@
       "vouchFor": "Vouch for {name}",
       "vouched": "Vouched ✓",
       "vouchSent": "Vouch sent to {name}",
-      "message": "Message"
+      "message": "Message",
+      "admin": {
+        "verify": "Verify",
+        "reject": "Reject",
+        "confirmReject": "Confirm reject",
+        "reasonLabel": "Reason",
+        "approvedToast": "Verification approved.",
+        "rejectedToast": "Verification rejected.",
+        "mfaModal": {
+          "title": "Confirm your identity",
+          "description": "Enter your MFA code to confirm this action."
+        }
+      }
     }
   },
   "membership": {

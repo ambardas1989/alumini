@@ -793,6 +793,30 @@ export function getVerificationStatus(membershipId: string): Promise<{
   return request(`/verify/status/${membershipId}`);
 }
 
+// TASKS_09 TASK 10 — classroom-scoped pending document verification queue,
+// separate from the institution-wide admin dashboard one (getPendingVerifications
+// above) — see VerificationController.pendingForClassroom()'s own comment for why.
+export interface PendingClassroomVerification {
+  verificationId: string;
+  userId: string;
+  userDisplayName: string;
+  submittedAt: string;
+}
+
+export function getPendingClassroomVerifications(classroomId: string): Promise<PendingClassroomVerification[]> {
+  return request(`/verify/pending/${classroomId}`);
+}
+
+/** MFA-guarded — pair with MfaChallengeModal, same pattern as VerifyTab.tsx's admin-dashboard approve. */
+export function approveDocumentVerification(verificationId: string): Promise<void> {
+  return request(`/verify/document/${verificationId}/approve`, { method: 'POST', body: {} });
+}
+
+/** MFA-guarded — pair with MfaChallengeModal, same pattern as VerifyTab.tsx's admin-dashboard reject. */
+export function rejectDocumentVerification(verificationId: string, reason: string): Promise<void> {
+  return request(`/verify/document/${verificationId}/reject`, { method: 'POST', body: { reason } });
+}
+
 // ── EVENTS ───────────────────────────────────────────────────────────────
 
 export function getEvents(classroomId: string): Promise<{ upcoming: ClassroomEvent[]; past: ClassroomEvent[] }> {
