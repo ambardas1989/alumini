@@ -243,7 +243,7 @@ Commit: "fix: change password modal blocks on wrong OTP"
 
 ---
 
-## TASK 05 — Fix: change password endpoint CORS/missing [PENDING]
+## TASK 05 — Fix: change password endpoint CORS/missing [DONE: endpoint already existed (built in TASKS_06) — "missing" premise was false; found the likely real cause of the reported net::ERR_FAILED instead — X-MFA-Code (required by every MfaChallengeGuard route, including this one) was missing from CORS allowedHeaders in main.ts, so the preflight rejected it before the request ever reached the route, indistinguishable from a 404]
 
 Change password fails with CORS error:
 POST /v1/auth/change-password → net::ERR_FAILED

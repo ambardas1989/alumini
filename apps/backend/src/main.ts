@@ -105,7 +105,17 @@ async function bootstrap(): Promise<void> {
       }
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Dev-Key', 'Accept', 'Origin', 'X-Requested-With'],
+    // TASKS_07 TASK 05 — X-MFA-Code was missing here. Every
+    // MfaChallengeGuard-protected route (POST /auth/change-password,
+    // institution admin invite/remove, codes generation/import,
+    // verification document approve/reject) requires this header on the
+    // real request, not just Authorization — without it in allowedHeaders,
+    // the browser's CORS preflight (OPTIONS) rejects it before the actual
+    // request is ever sent, which surfaces in the browser console as
+    // net::ERR_FAILED — indistinguishable from "the route doesn't exist"
+    // even though it does. This is likely the actual root cause behind
+    // this task's reported symptom, not a missing endpoint.
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Dev-Key', 'X-MFA-Code', 'Accept', 'Origin', 'X-Requested-With'],
     credentials: true,
     preflightContinue: false,
     optionsSuccessStatus: 204,
