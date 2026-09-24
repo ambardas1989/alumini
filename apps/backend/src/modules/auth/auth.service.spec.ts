@@ -17,7 +17,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as speakeasy from 'speakeasy';
 import { createHash } from 'crypto';
 
@@ -635,6 +635,100 @@ describe('AuthService', () => {
           metadata: { all_devices: false },
         }),
       );
+    });
+  });
+
+  // ── validateSession() ────────────────────────────────────────────────────
+
+  describe('validateSession()', () => {
+    it('returns false when no sessionId is given', async () => {
+      await expect(service.validateSession(undefined, 'user-1')).resolves.toBe(false);
+    });
+
+    it('returns false when the session was revoked', async () => {
+      mockTables({
+        sessions: chain({ data: { id: 'sess-1', revoked_at: new Date().toISOString(), expires_at: daysFromNow(1).toISOString() }, error: null }),
+      });
+
+      await expect(service.validateSession('sess-1', 'user-1')).resolves.toBe(false);
+    });
+
+    it('returns false when the session has expired', async () => {
+      mockTables({
+        sessions: chain({ data: { id: 'sess-1', revoked_at: null, expires_at: new Date(Date.now() - 1000).toISOString() }, error: null }),
+      });
+
+      await expect(service.validateSession('sess-1', 'user-1')).resolves.toBe(false);
+    });
+
+    it('returns false when no matching session row exists', async () => {
+      mockTables({ sessions: chain({ data: null, error: null }) });
+
+      await expect(service.validateSession('sess-1', 'user-1')).resolves.toBe(false);
+    });
+
+    it('returns true for an active, unexpired session', async () => {
+      mockTables({
+        sessions: chain({ data: { id: 'sess-1', revoked_at: null, expires_at: daysFromNow(1).toISOString() }, error: null }),
+      });
+
+      await expect(service.validateSession('sess-1', 'user-1')).resolves.toBe(true);
+    });
+  });
+
+  // ── logoutAllDevices() ───────────────────────────────────────────────────
+
+  describe('logoutAllDevices()', () => {
+    it('revokes every active session and returns the count', async () => {
+      mockTables({
+        sessions: chain({ data: [{ id: 'sess-1' }, { id: 'sess-2' }], error: null }),
+      });
+
+      const result = await service.logoutAllDevices('user-1');
+
+      expect(result).toEqual({ message: 'Signed out from all devices', count: 2 });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: AuditEventType.AUTH_SESSION_INVALIDATED, actorId: 'user-1' }),
+      );
+    });
+  });
+
+  // ── listSessions() ───────────────────────────────────────────────────────
+
+  describe('listSessions()', () => {
+    it('maps rows to the response shape and flags the current session', async () => {
+      mockTables({
+        sessions: chain({
+          data: [
+            { id: 'sess-1', user_agent: 'Chrome', ip_address: '1.2.3.4', created_at: 'c1', last_used_at: 'l1' },
+            { id: 'sess-2', user_agent: 'Safari', ip_address: '5.6.7.8', created_at: 'c2', last_used_at: 'l2' },
+          ],
+          error: null,
+        }),
+      });
+
+      const result = await service.listSessions('user-1', 'sess-2');
+
+      expect(result).toEqual([
+        { id: 'sess-1', deviceInfo: 'Chrome', ipAddress: '1.2.3.4', createdAt: 'c1', lastSeenAt: 'l1', isCurrent: false },
+        { id: 'sess-2', deviceInfo: 'Safari', ipAddress: '5.6.7.8', createdAt: 'c2', lastSeenAt: 'l2', isCurrent: true },
+      ]);
+    });
+  });
+
+  // ── revokeSession() ──────────────────────────────────────────────────────
+
+  describe('revokeSession()', () => {
+    it('revokes a session the caller owns', async () => {
+      mockTables({ sessions: chain({ data: { id: 'sess-1' }, error: null }) });
+
+      await expect(service.revokeSession('user-1', 'sess-1')).resolves.toBeUndefined();
+    });
+
+    it('throws NotFoundException when no matching row was updated (not found or not owned)', async () => {
+      mockTables({ sessions: chain({ data: null, error: null }) });
+
+      await expect(service.revokeSession('user-1', 'sess-1')).rejects.toThrow(NotFoundException);
     });
   });
 

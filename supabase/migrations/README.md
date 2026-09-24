@@ -35,6 +35,7 @@ database has NOT been verified against Supabase itself. Run the query in
 | 016_institution_logos.sql | ⚠️ Check | `institutions.logo_url`, `classrooms.cover_url` | Yes — `ADD COLUMN IF NOT EXISTS` |
 | 017_linkedin_profile.sql | ⚠️ Check | `profiles.linkedin_connected/id/name/avatar_url` (scoped down — see migration's own comment) | Yes — `ADD COLUMN IF NOT EXISTS` |
 | 018_email_otp_mfa.sql | ⚠️ Check | `mfa_method` CHECK widened to include `'email'`, `email_otp_codes` table | Partially — the CHECK-widening ALTERs are re-runnable, the `CREATE TABLE` is not |
+| 020_session_token_hash.sql | ⚠️ Check | Defensive no-op — `sessions.user_agent/ip_address/last_used_at/revoked_at/revoked_reason` already exist as of 002_auth_module.sql; see the migration's own comment for why no new access-token-hash column was added | Yes — `ADD COLUMN IF NOT EXISTS` |
 
 ⚠️ Check = not verified against the live database from this environment —
 run the query below and confirm before relying on this table.

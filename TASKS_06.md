@@ -313,7 +313,7 @@ Commit: "fix: privacy policy updated to reflect actual tech stack"
 
 ---
 
-## TASK 08 — Feature: session security hardening [PENDING]
+## TASK 08 — Feature: session security hardening [DONE: server-side session validation on every request (JwtStrategy now checks sessions.revoked_at/expires_at via AuthService.validateSession()), POST /auth/logout/all, GET /auth/sessions, DELETE /auth/sessions/:id, device-fingerprint debug/info logging, frontend idle-timeout (30min/2min warning) + profile page Active Sessions UI; sessions table already had every column needed (user_agent/ip_address/last_used_at/revoked_at/revoked_reason) under different-but-equivalent names — no schema gap, only the missing request-path check]
 
 Implement proper session management — P1 and P2 features
 plus device fingerprinting for forensics logging.
@@ -531,13 +531,20 @@ supabase/migrations/020_session_token_hash.sql
 
 ## COMPLETION SUMMARY
 
-(Claude Code fills this in when all tasks are [DONE])
-
-Date completed:
-Tasks completed:
-Tests passing:
-Build status:
+Date completed: 2026-09-24
+Tasks completed: 8/8
+Tests passing: 351 backend/utils tests (339 → 351, +12 across TASK 05/08), 37 utils tests — all passing as of the final commit
+Build status: `next build` clean (0 errors) after every frontend task; `tsc --noEmit` clean after every backend task
 Notes:
+- Several tasks' literal premises didn't match the actual code/schema on inspection — each was investigated before acting, and declined/corrected in place with reasoning documented in the commit message (never silently complied or silently ignored):
+  - TASK 02/03: no live Supabase DB access from this environment (no access token, no DB connection string) — did the docs/migration-file portion, left live verification for the user; static audit found every table already RLS-policied (institution_requests/mfa_recovery_tokens premise was false); declined adding auth.uid()-ownership policies to email_otp_codes (would let clients bypass rate-limiting/hashing).
+  - TASK 04: no ti-* icon font/package exists in this repo — used a hand-rolled SVG matching the existing AuthLayout icon convention instead.
+  - TASK 05: building the change-password modal surfaced a real, previously-undiscovered bug — MfaChallengeGuard (used by institution admin, codes, and verification-review routes) never actually worked for email-MFA users, because verifyCode()'s EMAIL branch always checked the wrong OTP purpose for a sensitive-action re-challenge. Fixed with a regression test.
+  - TASK 06: both "missing" fixes (logout redirect, global 401 handler) already existed and were already correct; the real gap was two onboarding pages missing the existing auth-guard hook.
+  - TASK 07: corrected the LinkedIn data-collection claim to what the app actually collects (name + photo only) — the task's literal text listed job title/employer/location/education, which this app's already-scoped-down LinkedIn integration has never collected.
+  - TASK 08: sessions table already had every column P1/P2b needed, just under different (equivalent) names — no schema gap existed, only the missing session-validity check on the request path itself.
+- Migrations still needing manual confirmation in Supabase SQL Editor (see supabase/migrations/README.md's ⚠️ Check rows): 011, 012, 013, 016, 017, 018, and the new 020_session_token_hash.sql (020 is a defensive no-op against the schema this repo's own migrations already produce — see its own header comment).
+- TASK 03's RLS policy addition to 018_email_otp_mfa.sql and TASK 08's 020 migration must both be (re-)run manually if not already applied — see each file's own header for exact SQL.
 
 ---
 

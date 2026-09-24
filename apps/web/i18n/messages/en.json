@@ -22,7 +22,13 @@
     "backToHome": "← Back to home",
     "termsLink": "Terms",
     "privacyLink": "Privacy",
-    "contactLink": "Contact"
+    "contactLink": "Contact",
+    "idleTimeout": {
+      "title": "Still there?",
+      "message": "You'll be signed out in {seconds} seconds.",
+      "stayButton": "Stay signed in",
+      "signOutButton": "Sign out now"
+    }
   },
   "nav": {
     "primaryLabel": "Primary",
@@ -676,7 +682,21 @@
         "incorrectCode": "Incorrect code. Please try again.",
         "passwordTooShort": "At least 8 characters",
         "passwordMismatch": "Passwords do not match"
-      }
+      },
+      "signOutAllLabel": "Sign out all devices",
+      "sessions": {
+        "heading": "ACTIVE SESSIONS",
+        "unknownDevice": "Unknown device",
+        "lastActive": "Last active: {time}",
+        "ip": "IP: {ip}",
+        "currentBadge": "Current",
+        "revokeLink": "Revoke",
+        "signOutOtherDevicesLink": "Sign out all other devices",
+        "signOutAllConfirmTitle": "Sign out all devices?",
+        "signOutAllConfirmBody": "This will sign you out from all browsers and devices. Continue?",
+        "signOutAllButton": "Sign out all devices"
+      },
+      "signOutAllButton": "Sign out all devices"
     }
   },
   "linkedinConnect": {

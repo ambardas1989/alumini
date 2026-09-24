@@ -14,10 +14,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Query,
   Req,
@@ -308,6 +310,35 @@ export class AuthController {
     @Req() req: Request,
   ): Promise<void> {
     await this.authService.logout(authToken, dto, req);
+  }
+
+  /** TASKS_06 TASK 08 P2a — distinct from POST /auth/logout {allDevices:true} (unused by the frontend today, left as-is): a dedicated route with the response shape the profile page's "Sign out all devices" confirm flow needs. */
+  @Post('logout/all')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revoke every active session for this account' })
+  async logoutAll(@CurrentUser() authToken: AuthTokenPayload, @Req() req: Request) {
+    return this.authService.logoutAllDevices(authToken.sub, req);
+  }
+
+  /** TASKS_06 TASK 08 P2b — active sessions list for the profile page's "Active sessions" section. */
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List every active session for this account' })
+  async listSessions(@CurrentUser() authToken: AuthTokenPayload) {
+    return this.authService.listSessions(authToken.sub, authToken.sessionId);
+  }
+
+  /** TASKS_06 TASK 08 P2b — revokes one specific session (e.g. "Revoke" on a device row that isn't the current one). */
+  @Delete('sessions/:sessionId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revoke one specific session' })
+  async revokeSession(@CurrentUser() authToken: AuthTokenPayload, @Param('sessionId') sessionId: string): Promise<void> {
+    await this.authService.revokeSession(authToken.sub, sessionId);
   }
 
   // ── LinkedIn connect (profile enrichment, not login) ────────────────────

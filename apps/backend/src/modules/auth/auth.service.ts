@@ -1050,6 +1050,145 @@ export class AuthService {
   // ── Session management ───────────────────────────────────────────────────
 
   /**
+   * TASKS_06 TASK 08 P1 — server-side session validation, called from
+   * JwtStrategy on every request carrying an access token. Before this, the
+   * JWT guard only checked the token's signature/expiry/purpose — logout()
+   * (and enforceDeviceLimit()'s eviction) already correctly set
+   * sessions.revoked_at, but nothing ever consulted that column on the
+   * request path, so a still-unexpired access token kept working right up
+   * to its own natural JWT expiry even after the session behind it had been
+   * revoked. Looks up by sessionId (already embedded in every access
+   * token's payload, see issueTokenPair()) rather than re-hashing and
+   * matching the access token itself — sessions.id is already a unique,
+   * indexed primary key, so hashing the JWT and storing/matching a second
+   * hash column would be redundant complexity for the same lookup.
+   *
+   * Also bumps last_used_at (fire-and-forget — never blocks or fails the
+   * request on a write hiccup here) so GET /auth/sessions can show real
+   * "last active" times, per P2b.
+   */
+  async validateSession(sessionId: string | undefined, userId: string): Promise<boolean> {
+    if (!sessionId) return false;
+
+    const { data: session } = await this.supabase
+      .from('sessions')
+      .select('id, revoked_at, expires_at')
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!session || session.revoked_at || isExpired(session.expires_at)) {
+      return false;
+    }
+
+    void this.supabase
+      .from('sessions')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', sessionId)
+      .then(({ error }) => {
+        if (error) {
+          this.appLogger.warn('[AUTH:session] last_used_at update failed', { sessionId, error: error.message });
+        }
+      });
+
+    return true;
+  }
+
+  /** TASKS_06 TASK 08 P2a — revokes every active session for this account. */
+  async logoutAllDevices(userId: string, req?: Request): Promise<{ message: string; count: number }> {
+    this.appLogger.debug('[AUTH:logoutAll] entry', { userId });
+
+    const { data: revoked, error } = await this.supabase
+      .from('sessions')
+      .update({ revoked_at: new Date().toISOString(), revoked_reason: 'user_logout_all' })
+      .eq('user_id', userId)
+      .is('revoked_at', null)
+      .select('id');
+
+    if (error) {
+      this.appLogger.error('[AUTH:logoutAll] failed', {
+        userId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
+      throw new BadRequestException('Failed to sign out of all devices. Please try again.');
+    }
+
+    const count = revoked?.length ?? 0;
+
+    this.appLogger.info('[AUTH:logoutAll] all sessions revoked', { userId, count });
+    await this.audit.log({
+      eventType: AuditEventType.AUTH_SESSION_INVALIDATED,
+      actorId: userId,
+      metadata: { reason: 'user_logout_all', evicted_count: count },
+      req,
+    });
+
+    return { message: 'Signed out from all devices', count };
+  }
+
+  /** TASKS_06 TASK 08 P2b — every active session for the caller, newest-active first, flagging which one is the current request's own session. */
+  async listSessions(userId: string, currentSessionId: string | undefined) {
+    const { data, error } = await this.supabase
+      .from('sessions')
+      .select('id, user_agent, ip_address, created_at, last_used_at')
+      .eq('user_id', userId)
+      .is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('last_used_at', { ascending: false });
+
+    if (error) {
+      this.appLogger.error('[AUTH:sessions] failed', {
+        userId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
+      throw new BadRequestException('Failed to load sessions');
+    }
+
+    return (data ?? []).map((s) => ({
+      id: s.id,
+      deviceInfo: s.user_agent,
+      ipAddress: s.ip_address,
+      createdAt: s.created_at,
+      lastSeenAt: s.last_used_at,
+      isCurrent: s.id === currentSessionId,
+    }));
+  }
+
+  /** TASKS_06 TASK 08 P2b — revokes one specific session. Scoped to the caller's own userId, same as every other per-row ownership check in this file. */
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    const { data, error } = await this.supabase
+      .from('sessions')
+      .update({ revoked_at: new Date().toISOString(), revoked_reason: 'user_revoked' })
+      .eq('id', sessionId)
+      .eq('user_id', userId)
+      .is('revoked_at', null)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      this.appLogger.error('[AUTH:sessions] revoke failed', {
+        userId,
+        sessionId,
+        error: error.message,
+        code: error.code,
+        hint: error.hint,
+        details: error.details,
+      });
+      throw new BadRequestException('Failed to revoke this session. Please try again.');
+    }
+
+    if (!data) {
+      throw new NotFoundException('Session not found');
+    }
+  }
+
+  /**
    * Exchanges a refresh token for a new access + refresh pair (rotation —
    * the old refresh token is immediately replaced so a leaked-but-unused
    * one stops working the moment the legitimate client refreshes).
@@ -1525,6 +1664,25 @@ export class AuthService {
     await this.enforceDeviceLimit(userId, req);
 
     const sessionId = randomUUID();
+    const userAgent = (req?.headers['user-agent'] as string) ?? null;
+    const ipAddress = this.extractIp(req) ?? null;
+
+    // TASKS_06 TASK 08 P3 — device fingerprinting for forensics/debugging
+    // only. Never blocks or restricts the login itself — just a fact for
+    // Render logs. "New device" is a simple heuristic (has this exact
+    // User-Agent string ever been recorded for this user before?), not a
+    // real device-identity system — good enough for a forensic trail, not
+    // meant to be spoof-proof.
+    let isNewDevice = true;
+    if (userAgent) {
+      const { data: priorDeviceSessions } = await this.supabase
+        .from('sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('user_agent', userAgent)
+        .limit(1);
+      isNewDevice = !priorDeviceSessions || priorDeviceSessions.length === 0;
+    }
 
     const accessToken = await this.signToken(
       { sub: userId, email, purpose: 'access', sessionId },
@@ -1539,8 +1697,8 @@ export class AuthService {
       id: sessionId,
       user_id: userId,
       refresh_token_hash: this.hash(refreshToken),
-      user_agent: (req?.headers['user-agent'] as string) ?? null,
-      ip_address: this.extractIp(req) ?? null,
+      user_agent: userAgent,
+      ip_address: ipAddress,
       expires_at: daysFromNow(appConfig.JWT_EXPIRY_DAYS).toISOString(),
     });
 
@@ -1558,6 +1716,12 @@ export class AuthService {
     }
 
     this.appLogger.info('[AUTH:session] created', { userId, sessionId });
+    this.appLogger.info('[AUTH:login:device]', {
+      userId,
+      userAgent: userAgent?.slice(0, 100) ?? null,
+      ip: ipAddress,
+      isNewDevice,
+    });
     await this.audit.log({
       eventType: AuditEventType.AUTH_LOGIN_SUCCESS,
       actorId: userId,

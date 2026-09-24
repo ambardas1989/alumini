@@ -7,7 +7,7 @@ import type { Classroom, Institution, Profile } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { clearSession, getToken } from '@/lib/auth';
-import { safeFormatDate, formatPhoneDisplay } from '@/lib/format';
+import { safeFormatDate, formatPhoneDisplay, safeRelativeTime } from '@/lib/format';
 import { supabase, PROFILE_AVATARS_BUCKET } from '@/lib/supabase';
 import { isLinkedInConnectEnabled, buildLinkedInAuthorizeUrl } from '@/lib/linkedin';
 import { Badge } from '@/components/ui/Badge';
@@ -80,6 +80,14 @@ export default function ProfilePage() {
   const [changePasswordError, setChangePasswordError] = useState<string | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // ── Active sessions + sign out all devices (TASKS_06 TASK 08 P2a/P2b) ───
+  const [sessions, setSessions] = useState<api.SessionInfo[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [showSignOutAllConfirm, setShowSignOutAllConfirm] = useState(false);
+  const [signingOutAll, setSigningOutAll] = useState(false);
+
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
@@ -108,6 +116,23 @@ export default function ProfilePage() {
     if (!ready) return;
     load();
   }, [ready, load]);
+
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    setSessionsError(null);
+    try {
+      setSessions(await api.listSessions());
+    } catch (err) {
+      setSessionsError(getErrorMessage(err));
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!ready) return;
+    loadSessions();
+  }, [ready, loadSessions]);
 
   useEffect(() => {
     return () => {
@@ -397,6 +422,29 @@ export default function ProfilePage() {
     router.push('/auth/login?message=signed_out');
   };
 
+  const handleSignOutAllDevices = async () => {
+    setSigningOutAll(true);
+    try {
+      await api.logoutAllDevices();
+    } catch {
+      // Best-effort, same reasoning as handleSignOut() — the local session is cleared either way below.
+    }
+    clearSession();
+    router.push('/auth/login?message=signed_out');
+  };
+
+  const handleRevokeSession = async (sessionId: string) => {
+    setRevokingSessionId(sessionId);
+    try {
+      await api.revokeSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setRevokingSessionId(null);
+    }
+  };
+
   if (!ready) return null;
 
   if (loading) {
@@ -684,6 +732,64 @@ export default function ProfilePage() {
                 {t('account.signOutButton')}
               </Button>
             </div>
+
+            <div className={styles.accountRow}>
+              <span className={styles.accountLabel}>{t('account.signOutAllLabel')}</span>
+              <Button variant="ghost" size="sm" onClick={() => setShowSignOutAllConfirm(true)}>
+                {t('account.signOutAllButton')}
+              </Button>
+            </div>
+
+            <h3 className={styles.sectionSubheading}>{t('account.sessions.heading')}</h3>
+
+            {sessionsLoading && (
+              <div className={styles.sessionsLoading}>
+                <LoadingSpinner size="sm" />
+              </div>
+            )}
+            {sessionsError && !sessionsLoading && <ErrorMessage message={sessionsError} onRetry={loadSessions} />}
+
+            {!sessionsLoading && !sessionsError && (
+              <>
+                <ul className={styles.sessionsList}>
+                  {sessions.map((session) => {
+                    const isMobile = /mobile/i.test(session.deviceInfo ?? '');
+                    return (
+                      <li key={session.id} className={styles.sessionRow}>
+                        <span className={styles.sessionIcon} aria-hidden="true">
+                          {isMobile ? '📱' : '💻'}
+                        </span>
+                        <span className={styles.sessionInfo}>
+                          <span className={styles.sessionDevice}>{session.deviceInfo ?? t('account.sessions.unknownDevice')}</span>
+                          <span className={styles.sessionMeta}>
+                            {t('account.sessions.lastActive', { time: safeRelativeTime(session.lastSeenAt) })}
+                          </span>
+                          {session.ipAddress && <span className={styles.sessionMeta}>{t('account.sessions.ip', { ip: session.ipAddress })}</span>}
+                        </span>
+                        {session.isCurrent ? (
+                          <Badge label={t('account.sessions.currentBadge')} variant="verified" />
+                        ) : (
+                          <button
+                            type="button"
+                            className={styles.sessionRevokeLink}
+                            disabled={revokingSessionId === session.id}
+                            onClick={() => handleRevokeSession(session.id)}
+                          >
+                            {t('account.sessions.revokeLink')}
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {sessions.length > 1 && (
+                  <button type="button" className={styles.troubleLink} onClick={() => setShowSignOutAllConfirm(true)}>
+                    {t('account.sessions.signOutOtherDevicesLink')}
+                  </button>
+                )}
+              </>
+            )}
           </>
         )}
       </PageContainer>
@@ -724,6 +830,20 @@ export default function ProfilePage() {
             </Button>
             <Button variant="danger" size="md" loading={signingOut} onClick={handleSignOut}>
               {t('signOut')}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {showSignOutAllConfirm && (
+        <Modal title={t('account.sessions.signOutAllConfirmTitle')} onClose={() => setShowSignOutAllConfirm(false)}>
+          <p>{t('account.sessions.signOutAllConfirmBody')}</p>
+          <div className={styles.confirmActions}>
+            <Button variant="ghost" size="md" onClick={() => setShowSignOutAllConfirm(false)} disabled={signingOutAll}>
+              {tCommon('cancel')}
+            </Button>
+            <Button variant="danger" size="md" loading={signingOutAll} onClick={handleSignOutAllDevices}>
+              {t('account.sessions.signOutAllButton')}
             </Button>
           </div>
         </Modal>

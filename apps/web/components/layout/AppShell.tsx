@@ -1,6 +1,12 @@
+'use client';
+
 import type { ReactNode } from 'react';
 import { BottomNav } from '../BottomNav';
 import { ThemeToggle } from '../ThemeToggle';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
+import { useIdleTimeout } from '@/lib/useIdleTimeout';
+import { useTranslations } from '@/lib/useTranslations';
 import '@/styles/layout.css';
 
 interface AppShellProps {
@@ -24,6 +30,9 @@ interface AppShellProps {
  * wide monitor — see --app-max-width / --app-margin in globals.css.
  */
 export function AppShell({ children, showNav = true }: AppShellProps) {
+  const t = useTranslations('common.idleTimeout');
+  const { showWarning, warningSecondsLeft, staySignedIn, signOutNow } = useIdleTimeout();
+
   return (
     <div className="app-shell">
       {/* No shared top nav/hamburger exists anywhere in this app — each
@@ -37,6 +46,20 @@ export function AppShell({ children, showNav = true }: AppShellProps) {
       </div>
       <main className="app-content">{children}</main>
       {showNav && <BottomNav />}
+
+      {showWarning && (
+        <Modal title={t('title')} onClose={staySignedIn}>
+          <p>{t('message', { seconds: warningSecondsLeft })}</p>
+          <div className="idle-timeout-actions">
+            <Button variant="ghost" size="md" onClick={signOutNow}>
+              {t('signOutButton')}
+            </Button>
+            <Button variant="primary" size="md" onClick={staySignedIn}>
+              {t('stayButton')}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

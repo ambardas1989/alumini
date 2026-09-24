@@ -50,3 +50,10 @@
 .page-container--no-padding {
   padding: 0;
 }
+
+.idle-timeout-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-block-start: 16px;
+}

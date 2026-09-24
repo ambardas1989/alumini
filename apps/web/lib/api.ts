@@ -346,6 +346,30 @@ export function logout(): Promise<void> {
   return request('/auth/logout', { method: 'POST', body: {} });
 }
 
+/** TASKS_06 TASK 08 P2a — revokes every active session for this account, distinct from logout()'s single-session default. */
+export function logoutAllDevices(): Promise<{ message: string; count: number }> {
+  return request('/auth/logout/all', { method: 'POST' });
+}
+
+export interface SessionInfo {
+  id: string;
+  deviceInfo: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  lastSeenAt: string;
+  isCurrent: boolean;
+}
+
+/** TASKS_06 TASK 08 P2b — every active session for this account, for the profile page's "Active sessions" list. */
+export function listSessions(): Promise<SessionInfo[]> {
+  return request('/auth/sessions');
+}
+
+/** TASKS_06 TASK 08 P2b — revokes one specific session (not necessarily the current one). */
+export function revokeSession(sessionId: string): Promise<void> {
+  return request(`/auth/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+}
+
 // ── IDENTITY ─────────────────────────────────────────────────────────────
 
 export function getProfile(): Promise<Profile> {
