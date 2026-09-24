@@ -630,7 +630,26 @@ export class AuthService {
    * user+purpose, attempt-capped, hash-compared, marked used either way (a
    * wrong guess still counts against the attempt cap).
    */
-  private async checkEmailOtp(userId: string, code: string, purpose: EmailOtpPurpose): Promise<MfaCodeCheckResult> {
+  /**
+   * @param consume - TASKS_07 TASK 04. Defaults true (preserves every
+   *   existing call site's behaviour). false is a non-consuming "peek" —
+   *   still increments `attempts` (so it counts toward the same brute-force
+   *   cap a real check would, closing off using peek as a free guessing
+   *   oracle) but never sets `used`, so a correct code stays valid for a
+   *   SUBSEQUENT real check to consume. Exists for the change-password
+   *   modal's two-step UI: Step 1 needs real, immediate pass/fail feedback
+   *   on the code the user just typed, but the modal's actual password
+   *   change (Step 2) is a single combined verify+act request against
+   *   POST /auth/change-password (see MfaChallengeGuard) — if Step 1
+   *   consumed the code, Step 2's re-submission of that same code would
+   *   always fail as "already used", even though it was correct.
+   */
+  private async checkEmailOtp(
+    userId: string,
+    code: string,
+    purpose: EmailOtpPurpose,
+    consume: boolean = true,
+  ): Promise<MfaCodeCheckResult> {
     const computedHash = this.hash(code);
     // Never logs the raw submitted code — only enough of the hash to
     // eyeball-correlate against sendEmailOtp()'s own hashPrefix log.
@@ -684,13 +703,14 @@ export class AuthService {
     }
 
     const matches = challenge.code_hash === computedHash;
+    const shouldMarkUsed = matches && consume;
 
     await this.supabase
       .from('email_otp_codes')
       .update({
         attempts: challenge.attempts + 1,
-        used: matches,
-        used_at: matches ? new Date().toISOString() : null,
+        used: shouldMarkUsed,
+        used_at: shouldMarkUsed ? new Date().toISOString() : null,
       })
       .eq('id', challenge.id);
 
@@ -818,12 +838,23 @@ export class AuthService {
       throw new BadRequestException('No MFA method is configured for this account');
     }
 
+    // TASKS_07 TASK 04 — dto.peek lets a caller get a real pass/fail check
+    // without consuming the code, for a UI that needs to verify a code
+    // "now" but still submit that SAME code again for the real action
+    // later (see checkEmailOtp()'s own doc comment on `consume`). Login
+    // completion (mfa_login) must ALWAYS consume — it's a one-time state
+    // transition (issuing a session), never re-checked afterward — so
+    // peek is force-disabled for that case regardless of what the caller
+    // asked for.
+    const consume = authToken.purpose === 'mfa_login' ? true : !dto.peek;
+
     // BUG FIX — see verifyCode()'s own doc comment on opts.emailPurpose.
     // Must match resendPurposeFor()'s mapping exactly, since that's what
     // decides which purpose an EMAIL-method code was actually sent under.
     const result = await this.verifyCode(userId, method, dto.code, {
       confirmSetup: false,
       emailPurpose: resendPurposeFor(authToken.purpose),
+      consume,
     });
 
     if (result !== 'valid') {
@@ -837,13 +868,19 @@ export class AuthService {
       throw this.mfaFailureException(result);
     }
 
-    this.appLogger.info('MFA verified', { userId, method });
+    this.appLogger.info('MFA verified', { userId, method, peek: !consume });
     await this.audit.log({
       eventType: AuditEventType.AUTH_MFA_SUCCESS,
       actorId: userId,
-      metadata: { method, purpose: authToken.purpose },
+      metadata: { method, purpose: authToken.purpose, peek: !consume },
       req,
     });
+
+    if (!consume) {
+      // Peeked successfully — the caller still needs to re-submit the same
+      // code for the real action; nothing further to do here.
+      return { verified: true };
+    }
 
     if (authToken.purpose === 'mfa_login') {
       const email = profile?.email ?? authToken.email ?? '';
@@ -910,7 +947,7 @@ export class AuthService {
     userId: string,
     method: MfaMethod,
     code: string,
-    opts: { confirmSetup: boolean; emailPurpose?: EmailOtpPurpose },
+    opts: { confirmSetup: boolean; emailPurpose?: EmailOtpPurpose; consume?: boolean },
   ): Promise<MfaCodeCheckResult> {
     if (method === MfaMethod.TOTP) {
       this.appLogger.debug('[AUTH:totpVerify] entry', { userId });
@@ -968,7 +1005,7 @@ export class AuthService {
 
     if (method === MfaMethod.EMAIL) {
       const purpose = opts.emailPurpose ?? (opts.confirmSetup ? 'mfa_change' : 'login');
-      return this.checkEmailOtp(userId, code, purpose);
+      return this.checkEmailOtp(userId, code, purpose, opts.consume ?? true);
     }
 
     // SMS — check against the most recent unconsumed, unexpired challenge.

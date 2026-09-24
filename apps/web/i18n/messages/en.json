@@ -684,7 +684,8 @@
         "successToast": "Password changed successfully",
         "incorrectCode": "Incorrect code. Please try again.",
         "passwordTooShort": "At least 8 characters",
-        "passwordMismatch": "Passwords do not match"
+        "passwordMismatch": "Passwords do not match",
+        "tooManyAttempts": "Too many attempts. Try again in {seconds}s"
       },
       "signOutAllLabel": "Sign out all devices",
       "sessions": {

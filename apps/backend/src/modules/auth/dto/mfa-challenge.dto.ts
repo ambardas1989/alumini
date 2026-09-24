@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MfaMethod } from '@alumini/types';
 
@@ -20,4 +20,14 @@ export class MfaChallengeDto {
   @IsString()
   @Length(6, 6)
   code: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Non-consuming check — verifies the code without marking an email OTP as used, so the same code can be ' +
+      'submitted again for the real action afterward. Ignored (always treated as false) when completing a login.',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  peek?: boolean;
 }

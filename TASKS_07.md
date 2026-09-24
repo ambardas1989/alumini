@@ -209,7 +209,7 @@ Commit: "feat: storage bucket policies migration 021"
 
 ---
 
-## TASK 04 — Fix: change password accepts wrong OTP [PENDING]
+## TASK 04 — Fix: change password accepts wrong OTP [DONE: Step 1 now calls the real MFA challenge endpoint (new non-consuming `peek` mode added backend-side so a correct email code isn't burned before Step 2 re-submits it), properly blocks and shows an inline error on a wrong code, clears the input, and locks the form for 60s with a countdown after 3 wrong attempts]
 
 The change password modal proceeds to the new password screen
 even when the user enters a wrong OTP code. The MFA verification

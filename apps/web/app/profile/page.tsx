@@ -72,6 +72,9 @@ export default function ProfilePage() {
   const [mfaCodeComplete, setMfaCodeComplete] = useState(false);
   const [mfaCodeError, setMfaCodeError] = useState<string | null>(null);
   const [mfaCodeShakeKey, setMfaCodeShakeKey] = useState(0);
+  const [mfaVerifying, setMfaVerifying] = useState(false);
+  const [mfaWrongAttempts, setMfaWrongAttempts] = useState(0);
+  const [mfaLockSeconds, setMfaLockSeconds] = useState(0);
   const [sendingCode, setSendingCode] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(0);
   const [resendJustSent, setResendJustSent] = useState(false);
@@ -320,28 +323,32 @@ export default function ProfilePage() {
     }
   };
 
-  // ── Change password modal (TASKS_06 TASK 05) ────────────────────────────
+  // ── Change password modal (TASKS_06 TASK 05, hardened in TASKS_07 TASK 04) ─
   //
-  // Two UI steps (MFA verify, then new password), but only ONE real API
-  // call — POST /auth/change-password verifies mfaCode and sets the new
-  // password together, via MfaChallengeGuard, same "one combined
-  // verify+act request" pattern every other MFA-gated action in this app
-  // already uses (institution admin invite/remove, codes generation,
-  // verification review). Deliberately NOT a separate "verify now, act
-  // later" pair of requests: an email-method code is single-use
-  // (email_otp_codes.used), so a first "verify" call would consume it and
-  // the second "act" call would then fail against the exact same code —
-  // the Step 1 "Verify" button below only checks the code is 6 digits and
-  // moves to Step 2; the real check happens once, on Step 2's submit. If
-  // that fails on the code specifically, the user is sent back to Step 1
-  // with an inline error rather than leaving them stuck on the password
-  // step with a code-related error.
+  // Two UI steps, two real API calls. Step 1 ("Verify") calls
+  // challengeMfa(peek: true) — a real, immediate pass/fail check that does
+  // NOT consume a single-use email code, so the SAME code can be
+  // re-submitted for the real action afterward. Step 2's submit is the
+  // actual change: POST /auth/change-password, verifying mfaCode and
+  // setting the new password together via MfaChallengeGuard, the same
+  // "one combined verify+act request" pattern every other MFA-gated
+  // action in this app uses (institution admin invite/remove, codes
+  // generation, verification review). TASKS_06's original version had
+  // Step 1 only check the code was 6 digits, deferring the real check
+  // entirely to Step 2 — any code (right or wrong) reached the password
+  // screen, which is the exact bug TASKS_07 TASK 04 was filed against.
+  // Step 2 still falls back to sending the user back to Step 1 with an
+  // inline error if the code somehow fails there too (e.g. it expired in
+  // the gap between the two steps) — same safety net as before.
 
   const resetChangePasswordState = () => {
     setChangePasswordStep('mfa');
     setMfaCode('');
     setMfaCodeComplete(false);
     setMfaCodeError(null);
+    setMfaVerifying(false);
+    setMfaWrongAttempts(0);
+    setMfaLockSeconds(0);
     setResendSeconds(0);
     setResendJustSent(false);
     setNewPassword('');
@@ -389,10 +396,45 @@ export default function ProfilePage() {
     return () => clearTimeout(timer);
   }, [resendSeconds]);
 
-  const handleMfaStepContinue = () => {
-    if (!mfaCodeComplete) return;
-    setChangePasswordError(null);
-    setChangePasswordStep('password');
+  useEffect(() => {
+    if (mfaLockSeconds <= 0) return;
+    const timer = setTimeout(() => setMfaLockSeconds((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [mfaLockSeconds]);
+
+  const MFA_MAX_ATTEMPTS = 3;
+  const MFA_LOCKOUT_SECONDS = 60;
+
+  // TASKS_07 TASK 04 — real, immediate verification against the code the
+  // user just typed, using challengeMfa(peek: true) so a correct email
+  // code isn't consumed here (it gets re-submitted for the real change in
+  // Step 2 — see that handler's own comment). A wrong code now properly
+  // blocks: it's rejected right here, the input is cleared, and after
+  // MFA_MAX_ATTEMPTS wrong attempts the form locks for
+  // MFA_LOCKOUT_SECONDS with a visible countdown.
+  const handleMfaStepContinue = async () => {
+    if (!mfaCodeComplete || mfaVerifying || mfaLockSeconds > 0) return;
+    setMfaVerifying(true);
+    setMfaCodeError(null);
+    try {
+      await api.challengeMfa(getToken() ?? '', mfaCode, true);
+      setChangePasswordStep('password');
+    } catch {
+      const nextAttempts = mfaWrongAttempts + 1;
+      setMfaWrongAttempts(nextAttempts);
+      setMfaCode('');
+      setMfaCodeComplete(false);
+      setMfaCodeShakeKey((k) => k + 1);
+      if (nextAttempts >= MFA_MAX_ATTEMPTS) {
+        setMfaWrongAttempts(0);
+        setMfaLockSeconds(MFA_LOCKOUT_SECONDS);
+        setMfaCodeError(null);
+      } else {
+        setMfaCodeError(t('account.changePasswordModal.incorrectCode'));
+      }
+    } finally {
+      setMfaVerifying(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -886,41 +928,55 @@ export default function ProfilePage() {
                   : t('account.changePasswordModal.totpInstruction')}
               </p>
 
-              <CodeInput
-                key={mfaCodeShakeKey}
-                label={t('account.changePasswordModal.codeLabel')}
-                error={!!mfaCodeError}
-                disabled={changingPassword || sendingCode}
-                onChange={(value, complete) => {
-                  setMfaCode(value);
-                  setMfaCodeComplete(complete);
-                  if (mfaCodeError) setMfaCodeError(null);
-                }}
-                onComplete={() => {
-                  /* handled by the explicit Verify button below, not auto-submit */
-                }}
-              />
-              {mfaCodeError && <ErrorMessage message={mfaCodeError} />}
-
-              {profile?.mfaMethod === 'email' && (
-                <p className={styles.resendRow}>
-                  {resendJustSent ? (
-                    t('account.changePasswordModal.resent')
-                  ) : resendSeconds > 0 ? (
-                    t('account.changePasswordModal.resendIn', { seconds: resendSeconds })
-                  ) : (
-                    <button type="button" className={styles.troubleLink} onClick={handleResendCode} disabled={sendingCode}>
-                      {t('account.changePasswordModal.resendLink')}
-                    </button>
-                  )}
+              {mfaLockSeconds > 0 ? (
+                <p className={styles.mfaLockedText}>
+                  {t('account.changePasswordModal.tooManyAttempts', { seconds: mfaLockSeconds })}
                 </p>
+              ) : (
+                <>
+                  <CodeInput
+                    key={mfaCodeShakeKey}
+                    label={t('account.changePasswordModal.codeLabel')}
+                    error={!!mfaCodeError}
+                    disabled={mfaVerifying || sendingCode}
+                    onChange={(value, complete) => {
+                      setMfaCode(value);
+                      setMfaCodeComplete(complete);
+                      if (mfaCodeError) setMfaCodeError(null);
+                    }}
+                    onComplete={() => {
+                      /* handled by the explicit Verify button below, not auto-submit */
+                    }}
+                  />
+                  {mfaCodeError && <ErrorMessage message={mfaCodeError} />}
+
+                  {profile?.mfaMethod === 'email' && (
+                    <p className={styles.resendRow}>
+                      {resendJustSent ? (
+                        t('account.changePasswordModal.resent')
+                      ) : resendSeconds > 0 ? (
+                        t('account.changePasswordModal.resendIn', { seconds: resendSeconds })
+                      ) : (
+                        <button type="button" className={styles.troubleLink} onClick={handleResendCode} disabled={sendingCode}>
+                          {t('account.changePasswordModal.resendLink')}
+                        </button>
+                      )}
+                    </p>
+                  )}
+                </>
               )}
 
               <div className={styles.confirmActions}>
                 <Button variant="ghost" size="md" onClick={handleCloseChangePasswordModal}>
                   {tCommon('cancel')}
                 </Button>
-                <Button variant="primary" size="md" disabled={!mfaCodeComplete} onClick={handleMfaStepContinue}>
+                <Button
+                  variant="primary"
+                  size="md"
+                  loading={mfaVerifying}
+                  disabled={!mfaCodeComplete || mfaLockSeconds > 0}
+                  onClick={handleMfaStepContinue}
+                >
                   {t('account.changePasswordModal.verifyButton')}
                 </Button>
               </div>

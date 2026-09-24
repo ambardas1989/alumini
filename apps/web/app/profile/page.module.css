@@ -348,6 +348,13 @@
   color: var(--color-text-secondary);
 }
 
+.mfaLockedText {
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  text-align: center;
+  padding: 12px 0;
+}
+
 .resendRow {
   font-size: var(--text-sm);
   color: var(--color-text-muted);

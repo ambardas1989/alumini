@@ -264,8 +264,19 @@ export function resendMfaEmail(token: string): Promise<{ message: string }> {
  * explicitly rather than relying on the default, since by then it's a real
  * access token, not an mfaPendingToken.
  */
-export function challengeMfa(token: string, code: string): Promise<LoginResponse> {
-  return request('/auth/mfa/challenge', { method: 'POST', body: { code }, token });
+/**
+ * @param peek - TASKS_07 TASK 04. Non-consuming check — verifies the code
+ *   without marking a single-use email OTP as used, so the SAME code can
+ *   be submitted again for the real action afterward. Used by the profile
+ *   page's change-password modal: Step 1 needs a real pass/fail check on
+ *   the code the user just typed, but the actual password change (Step 2)
+ *   re-submits that same code to POST /auth/change-password. Ignored
+ *   server-side when completing a login (mfa_login purpose always
+ *   consumes) — every other call site omits it and gets the original,
+ *   consuming behaviour unchanged.
+ */
+export function challengeMfa(token: string, code: string, peek?: boolean): Promise<LoginResponse> {
+  return request('/auth/mfa/challenge', { method: 'POST', body: { code, peek }, token });
 }
 
 /**

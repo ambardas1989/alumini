@@ -534,6 +534,82 @@ describe('AuthService', () => {
       expect(emailOtpChain.eq).toHaveBeenCalledWith('purpose', 'mfa_change');
       expect(emailOtpChain.eq).not.toHaveBeenCalledWith('purpose', 'login');
     });
+
+    // TASKS_07 TASK 04 — the change-password modal's Step 1 needs a real,
+    // immediate pass/fail check without burning a single-use email code,
+    // since Step 2 re-submits that same code for the actual password change.
+    describe('peek (non-consuming check)', () => {
+      const hash = (code: string) => createHash('sha256').update(code).digest('hex');
+
+      it('verifies a correct email code without marking it used', async () => {
+        const emailOtpChain = chain({
+          data: { id: 'otp-1', code_hash: hash('123456'), attempts: 0, expires_at: daysFromNow(1).toISOString() },
+          error: null,
+        });
+        mockTables({
+          profiles: chain({
+            data: { id: 'user-1', email: 'user@example.com', mfa_enabled: true, mfa_method: MfaMethod.EMAIL },
+            error: null,
+          }),
+          email_otp_codes: emailOtpChain,
+        });
+
+        const result: any = await service.challengeMfa(
+          { sub: 'user-1', email: 'user@example.com', purpose: 'access', sessionId: 'sess-1' },
+          { code: '123456', peek: true } as any,
+        );
+
+        expect(result).toEqual({ verified: true });
+        expect(emailOtpChain.update).toHaveBeenCalledWith(
+          expect.objectContaining({ used: false, used_at: null }),
+        );
+      });
+
+      it('still rejects a wrong code while peeking', async () => {
+        mockTables({
+          profiles: chain({
+            data: { id: 'user-1', email: 'user@example.com', mfa_enabled: true, mfa_method: MfaMethod.EMAIL },
+            error: null,
+          }),
+          email_otp_codes: chain({
+            data: { id: 'otp-1', code_hash: hash('123456'), attempts: 0, expires_at: daysFromNow(1).toISOString() },
+            error: null,
+          }),
+        });
+
+        await expect(
+          service.challengeMfa(
+            { sub: 'user-1', email: 'user@example.com', purpose: 'access', sessionId: 'sess-1' },
+            { code: '000000', peek: true } as any,
+          ),
+        ).rejects.toThrow(UnauthorizedException);
+      });
+
+      it('ignores peek and consumes the code when completing a real login', async () => {
+        const emailOtpChain = chain({
+          data: { id: 'otp-1', code_hash: hash('123456'), attempts: 0, expires_at: daysFromNow(1).toISOString() },
+          error: null,
+        });
+        mockTables({
+          profiles: chain({
+            data: { id: 'user-1', email: 'user@example.com', mfa_enabled: true, mfa_method: MfaMethod.EMAIL },
+            error: null,
+          }),
+          email_otp_codes: emailOtpChain,
+          sessions: chain({ data: [], error: null }),
+        });
+
+        const result: any = await service.challengeMfa(
+          { sub: 'user-1', email: 'user@example.com', purpose: 'mfa_login' },
+          { code: '123456', peek: true } as any,
+        );
+
+        expect(result.accessToken).toBeDefined();
+        expect(emailOtpChain.update).toHaveBeenCalledWith(
+          expect.objectContaining({ used: true }),
+        );
+      });
+    });
   });
 
   // ── changePassword() ─────────────────────────────────────────────────────
