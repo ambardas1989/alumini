@@ -432,7 +432,7 @@ icon stats row matching mockup"
 
 ---
 
-## TASK 08 — Fix: message alignment before page reload [PENDING]
+## TASK 08 — Fix: message alignment before page reload [DONE: the optimistic update already included sender.id correctly — the actual bug was CorridorService.sendMessage()'s bare .select() (no sender join, no camelCase mapping), so the real server response replacing the optimistic message wiped out sender/messageType/createdAt until a reload re-fetched via getMessages()'s properly-joined query; fixed by selecting the same joined columns and running the result through presentMessage()]
 
 Own messages show on the LEFT side immediately after sending,
 then move to the RIGHT after page reload. This is an optimistic

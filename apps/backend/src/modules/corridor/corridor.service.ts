@@ -355,6 +355,20 @@ export class CorridorService {
    * is no degraded "post while unverified" mode (SPEC.md §7.4: unverified
    * members are read-only), so a false result here is always a hard 403,
    * even for the classroom channel.
+   *
+   * TASKS_08 TASK 08 — BUG FIX: this used to `.select()` with no column
+   * list, returning the raw snake_case row with no `sender` join at all
+   * (unlike getMessages(), which aliases columns and joins profiles). The
+   * frontend's toUiMessage() reads camelCase fields and `sender.id` off
+   * whatever this returns — with the raw row, messageType/createdAt/sender
+   * all came back undefined/null, so the just-sent message's own bubble
+   * (message.sender?.id === user?.id) flipped to NOT-own the instant the
+   * optimistic placeholder was replaced by this response, then flipped
+   * back to right-aligned only once a reload re-fetched via getMessages()'s
+   * correctly-joined query. Selecting the same column list here (see
+   * presentMessage(), reused below) fixes it at the source instead of
+   * papering over it in the optimistic-update object, which already
+   * included sender_id correctly.
    */
   async sendMessage(userId: string, classroomId: string, channel: ChannelType, dto: SendMessageDto, req?: Request) {
     this.appLogger.debug('[CORRIDOR:send] entry', { classroomId, channel, userId, contentLength: dto.content?.length });
@@ -369,7 +383,11 @@ export class CorridorService {
       });
     }
 
-    const { data: message, error } = await this.supabase
+    // `as any` on the same combination Supabase's own generated types choke
+    // on here (a dynamic select string mixing plain columns with a `!fkey`
+    // embed loses proper inference on .single(), same as getMessages()'s
+    // own `(m: any) =>` cast below for the identical select shape).
+    const { data: message, error } = (await this.supabase
       .from('messages')
       .insert({
         classroom_id: classroomId,
@@ -379,8 +397,11 @@ export class CorridorService {
         message_type: dto.messageType ?? MessageType.TEXT,
         metadata:     dto.metadata ?? null,
       })
-      .select()
-      .single();
+      .select(
+        'id, classroom_id, channel, sender_id, content, message_type, metadata, ' +
+          'is_deleted, deleted_by, deleted_at, created_at, sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)',
+      )
+      .single()) as any;
 
     this.appLogger.debug('[CORRIDOR:send] insert result', { success: !error && !!message, messageId: message?.id });
 
@@ -408,7 +429,10 @@ export class CorridorService {
       senderId: userId,
     });
 
-    return message;
+    // redact=false — the sender is always shown their own message
+    // unredacted regardless of verification status; canAccessChannel()
+    // above already required full access to post in the first place.
+    return this.presentMessage(message, false);
   }
 
   // ── Delete (soft only) ───────────────────────────────────────────────────

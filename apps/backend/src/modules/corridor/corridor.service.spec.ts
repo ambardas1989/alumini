@@ -292,6 +292,39 @@ describe('CorridorService', () => {
         expect.objectContaining({ messageId: 'msg-1', classroomId: 'class-1', senderId: 'user-1' }),
       );
     });
+
+    // TASKS_08 TASK 08 — regression test: the insert's own .select() used to
+    // omit the sender join entirely, so the response the frontend uses to
+    // replace its optimistic placeholder had sender: undefined, flipping a
+    // just-sent message to NOT-own (left-aligned) until a reload re-fetched
+    // it via getMessages()'s correctly-joined query.
+    it('returns the joined sender (camelCased), not just sender_id, so the frontend can tell the message is its own', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      mockTables({
+        messages: chain({
+          data: {
+            id: 'msg-1',
+            classroom_id: 'class-1',
+            channel: ChannelType.CLASSROOM,
+            sender_id: 'user-1',
+            content: 'hi',
+            message_type: 'text',
+            metadata: null,
+            is_deleted: false,
+            deleted_at: null,
+            created_at: '2026-01-01T00:00:00Z',
+            sender: { id: 'user-1', full_name: 'Priya Sharma', avatar_url: 'x' },
+          },
+          error: null,
+        }),
+      });
+
+      const result = await service.sendMessage('user-1', 'class-1', ChannelType.CLASSROOM, { content: 'hi' } as any);
+
+      expect(result.sender).toEqual({ id: 'user-1', fullName: 'Priya Sharma', avatarUrl: 'x' });
+      expect((result as any).messageType).toBe('text');
+      expect((result as any).createdAt).toBe('2026-01-01T00:00:00Z');
+    });
   });
 
   // ── deleteMessage() ──────────────────────────────────────────────────────
