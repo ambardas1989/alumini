@@ -23,6 +23,7 @@
  */
 
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -31,22 +32,34 @@ import {
   HttpStatus,
   Param,
   Patch,
+  PayloadTooLargeException,
   Post,
   Query,
   Req,
+  UnsupportedMediaTypeException,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { ClassroomService } from './classroom.service';
 import { CreateClassroomDto } from './dto/create-classroom.dto';
 import { UpdateClassroomDto } from './dto/update-classroom.dto';
 import { JoinClassroomDto } from './dto/join-classroom.dto';
-import { UpdateCoverDto } from './dto/update-cover.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthTokenPayload } from '../auth/auth.types';
+
+// Same reasoning as IdentityController's UploadedAvatarFile — a local
+// structural type instead of Express.Multer.File, see its own comment.
+interface UploadedCoverFile {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+}
 
 @ApiTags('classroom')
 @Controller('classroom')
@@ -160,15 +173,35 @@ export class ClassroomController {
     return this.classroomService.updateClassroom(classroomId, authToken.sub, dto, req);
   }
 
+  // TASKS_08 TASK 04 — routed through the backend's service-role Supabase
+  // client instead of the frontend uploading straight to Storage, same fix
+  // pattern and same root cause as IdentityController.uploadAvatar() (see
+  // its own comment) — Storage's RLS is keyed on auth.uid(), which is
+  // always NULL for this app's custom-JWT sessions.
+  private static readonly MAX_COVER_SIZE_BYTES = 10 * 1024 * 1024;
+  private static readonly ALLOWED_COVER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
   @Post(':id/cover')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Set the classroom cover photo — verified admin of this classroom only' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('cover', { limits: { fileSize: 12 * 1024 * 1024 } }))
+  @ApiOperation({ summary: "Upload the classroom cover photo — multipart, field name 'cover', max 10MB, JPEG/PNG/WebP, verified admin of this classroom only" })
   async updateCover(
     @CurrentUser() authToken: AuthTokenPayload,
     @Param('id') classroomId: string,
-    @Body() dto: UpdateCoverDto,
+    @UploadedFile() file?: UploadedCoverFile,
   ) {
-    return this.classroomService.updateCover(classroomId, authToken.sub, dto.coverUrl);
+    if (!file) {
+      throw new BadRequestException('No file was uploaded');
+    }
+    if (!ClassroomController.ALLOWED_COVER_TYPES.includes(file.mimetype)) {
+      throw new UnsupportedMediaTypeException('Invalid file type. Use JPEG, PNG or WebP.');
+    }
+    if (file.size > ClassroomController.MAX_COVER_SIZE_BYTES) {
+      throw new PayloadTooLargeException('File too large. Maximum size is 10MB.');
+    }
+
+    return this.classroomService.uploadCover(classroomId, authToken.sub, file);
   }
 }

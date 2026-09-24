@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { formatNumber, safeRelativeTime } from '@/lib/format';
-import { supabase, INSTITUTION_ASSETS_BUCKET } from '@/lib/supabase';
 import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
@@ -83,21 +83,20 @@ export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) 
 
     setLogoUploading(true);
     try {
-      const ext = chosen.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const path = `institutions/${institutionId}/logo.${ext}`;
-      const { error: storageError } = await supabase.storage
-        .from(INSTITUTION_ASSETS_BUCKET)
-        .upload(path, chosen, { upsert: true });
-      if (storageError) throw storageError;
-
-      const { data: publicUrlData } = supabase.storage.from(INSTITUTION_ASSETS_BUCKET).getPublicUrl(path);
-      const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
-
-      const result = await api.updateInstitutionLogo(institutionId, publicUrl);
+      const result = await api.uploadInstitutionLogo(institutionId, chosen);
       setOverview({ ...overview, logoUrl: result.logoUrl });
       showToast(t('logo.updatedToast'), 'success');
     } catch (err) {
-      showToast(getErrorMessage(err), 'error');
+      const statusCode = err instanceof ApiError ? err.statusCode : null;
+      if (statusCode === 413) {
+        showToast(t('logo.errors.tooLarge'), 'error');
+      } else if (statusCode === 415) {
+        showToast(t('logo.errors.wrongType'), 'error');
+      } else if (statusCode === 403) {
+        showToast(t('logo.errors.permissionDenied'), 'error');
+      } else {
+        showToast(t('logo.errors.uploadFailedGeneric'), 'error');
+      }
     } finally {
       setLogoUploading(false);
     }

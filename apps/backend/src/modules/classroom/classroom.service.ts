@@ -824,9 +824,32 @@ export class ClassroomService {
 
   // ── Cover photo ──────────────────────────────────────────────────────────
 
-  /** See UpdateLogoDto's comment (institution module) on why this takes a Storage URL, not the file itself — same reasoning, same pattern. */
-  async updateCover(classroomId: string, actorId: string, coverUrl: string) {
+  /**
+   * TASKS_08 TASK 04 — uploads to Storage using the service-role client
+   * (bypassing RLS, which can never pass for this app's custom-JWT
+   * sessions — see ClassroomController.updateCover()'s comment) and saves
+   * the resulting public URL, instead of the caller uploading directly to
+   * Storage and just POSTing the URL here.
+   */
+  async uploadCover(classroomId: string, actorId: string, file: { buffer: Buffer; mimetype: string; size: number }) {
     await this.assertClassroomAdmin(actorId, classroomId);
+
+    this.appLogger.debug('[CLASSROOM:cover] upload start', { classroomId, size: file.size, type: file.mimetype });
+
+    const ext = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const path = `classrooms/${classroomId}/cover.${ext}`;
+
+    const { error: uploadError } = await this.supabase.storage
+      .from('institution-assets')
+      .upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
+
+    if (uploadError) {
+      this.appLogger.error('[CLASSROOM:cover] upload failed', { classroomId, error: uploadError });
+      throw new BadRequestException('Failed to upload cover photo. Please try again.');
+    }
+
+    const { data: publicUrlData } = this.supabase.storage.from('institution-assets').getPublicUrl(path);
+    const coverUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
 
     const { data, error } = await this.supabase
       .from('classrooms')
@@ -836,10 +859,11 @@ export class ClassroomService {
       .maybeSingle();
 
     if (error || !data) {
-      this.logger.error('Failed to update classroom cover', { error, classroomId });
+      this.appLogger.error('[CLASSROOM:cover] upload failed', { classroomId, error });
       throw new BadRequestException('Failed to update cover photo. Please try again.');
     }
 
+    this.appLogger.info('[CLASSROOM:cover] upload success', { classroomId, coverUrl });
     return { coverUrl: data.coverUrl as string };
   }
 }

@@ -171,7 +171,7 @@ supabase/migrations/024_membership_is_creator.sql
 
 ---
 
-## TASK 04 — Fix: classroom cover photo upload via backend API [PENDING]
+## TASK 04 — Fix: classroom cover photo upload via backend API [DONE: cover/logo uploads now route through backend service-role client (multipart POST /classroom/:id/cover, /institution/:id/logo) instead of broken direct-to-Storage; frontend rewired with 413/415/403 error handling]
 
 Classroom cover photo upload fails with 400 from Supabase Storage:
 POST .../institution-assets/classrooms/[id]/cover.jpeg 400

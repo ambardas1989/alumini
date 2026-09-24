@@ -405,24 +405,25 @@ export function getPersonas(): Promise<Persona[]> {
 }
 
 /**
- * TASKS_07 TASK 11 — routes the avatar upload through the backend
- * (service-role Supabase client) instead of the frontend uploading
- * straight to Storage with the anon key. That direct path can never
- * actually work for this app: Storage's RLS policies are keyed on
- * auth.uid(), which only resolves for a real Supabase Auth session — this
- * app issues its own NestJS JWTs and never establishes one, so auth.uid()
- * is always NULL for a client-side upload, and Storage rejects it (the
- * "Invalid Compact JWS" / 403 this task was filed against — Storage
- * trying and failing to parse this app's JWT as its own).
+ * TASKS_07 TASK 11 / TASKS_08 TASK 04 — routes image uploads (avatar,
+ * classroom cover, institution logo) through the backend (service-role
+ * Supabase client) instead of the frontend uploading straight to Storage
+ * with the anon key. That direct path can never actually work for this
+ * app: Storage's RLS policies are keyed on auth.uid(), which only resolves
+ * for a real Supabase Auth session — this app issues its own NestJS JWTs
+ * and never establishes one, so auth.uid() is always NULL for a
+ * client-side upload, and Storage rejects it (the "Invalid Compact JWS" /
+ * 403 the avatar-upload task was filed against — Storage trying and
+ * failing to parse this app's JWT as its own).
  *
  * Deliberately a raw fetch(), not request(): request() always sets
  * Content-Type: application/json and JSON.stringifies the body — a
  * multipart/form-data upload needs the browser to set Content-Type itself
  * (with the multipart boundary), and FormData isn't JSON-serializable.
  */
-export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+async function uploadFile<T>(path: string, fieldName: string, file: File): Promise<T> {
   const formData = new FormData();
-  formData.append('avatar', file);
+  formData.append(fieldName, file);
 
   const token = getToken();
   const headers: Record<string, string> = {};
@@ -430,7 +431,7 @@ export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
 
   let response: Response;
   try {
-    response = await fetch(buildUrl('/identity/avatar'), {
+    response = await fetch(buildUrl(path), {
       method: 'POST',
       headers,
       body: formData,
@@ -445,7 +446,11 @@ export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
     throw new ApiError(response.status, extractErrorCode(payload), extractMessage(payload), payload);
   }
 
-  return payload as { avatarUrl: string };
+  return payload as T;
+}
+
+export function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+  return uploadFile('/identity/avatar', 'avatar', file);
 }
 
 // ── LinkedIn connect (profile enrichment) — see auth.service.ts's connectLinkedin() doc comment for scope ──
@@ -637,8 +642,8 @@ export function searchClassrooms(q: string, limit = 10): Promise<ClassroomSearch
 }
 
 /** classroomId is the internal id (Classroom.id), not the globalId in the URL — matches the backend's PATCH /classroom/:id (admin settings) route shape. */
-export function updateClassroomCover(classroomId: string, coverUrl: string): Promise<{ coverUrl: string }> {
-  return request(`/classroom/${classroomId}/cover`, { method: 'POST', body: { coverUrl } });
+export function uploadClassroomCover(classroomId: string, file: File): Promise<{ coverUrl: string }> {
+  return uploadFile(`/classroom/${classroomId}/cover`, 'cover', file);
 }
 
 export interface CreateClassroomData {
@@ -888,8 +893,8 @@ export function getOverview(institutionId: string): Promise<AdminOverview> {
   return request(`/admin/${institutionId}/overview`);
 }
 
-export function updateInstitutionLogo(institutionId: string, logoUrl: string): Promise<{ logoUrl: string }> {
-  return request(`/institution/${institutionId}/logo`, { method: 'POST', body: { logoUrl } });
+export function uploadInstitutionLogo(institutionId: string, file: File): Promise<{ logoUrl: string }> {
+  return uploadFile(`/institution/${institutionId}/logo`, 'logo', file);
 }
 
 export interface AdminClassroomEntry {

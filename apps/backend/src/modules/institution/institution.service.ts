@@ -870,7 +870,14 @@ export class InstitutionService {
    * See UpdateLogoDto's own comment on why this takes a Storage URL rather
    * than the file itself.
    */
-  async updateLogo(userId: string, institutionId: string, logoUrl: string) {
+  /**
+   * TASKS_08 TASK 04 — uploads to Storage using the service-role client
+   * (bypassing RLS, which can never pass for this app's custom-JWT
+   * sessions — same root cause as IdentityService.uploadAvatar()'s own
+   * comment) instead of the caller uploading directly to Storage and just
+   * POSTing the resulting URL here.
+   */
+  async uploadLogo(userId: string, institutionId: string, file: { buffer: Buffer; mimetype: string; size: number }) {
     const { data: profile } = await this.supabase
       .from('profiles')
       .select('is_platform_admin')
@@ -880,6 +887,21 @@ export class InstitutionService {
     if (!profile?.is_platform_admin) {
       await this.assertActiveAdmin(userId, institutionId);
     }
+
+    const ext = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const path = `institutions/${institutionId}/logo.${ext}`;
+
+    const { error: uploadError } = await this.supabase.storage
+      .from('institution-assets')
+      .upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
+
+    if (uploadError) {
+      this.logger.error('Failed to upload institution logo', { error: uploadError, institutionId });
+      throw new BadRequestException('Failed to upload logo. Please try again.');
+    }
+
+    const { data: publicUrlData } = this.supabase.storage.from('institution-assets').getPublicUrl(path);
+    const logoUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
 
     const { data, error } = await this.supabase
       .from('institutions')

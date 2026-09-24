@@ -418,7 +418,9 @@
       "coverUpdatedToast": "Cover photo updated",
       "coverErrors": {
         "wrongType": "Choose a JPEG, PNG, or WEBP image",
-        "tooLarge": "Image must be under 5MB"
+        "tooLarge": "Image must be under 10MB",
+        "permissionDenied": "Only classroom admins can update the cover photo.",
+        "uploadFailedGeneric": "Upload failed. Please try again."
       },
       "role": {
         "admin": "Admin",
@@ -886,7 +888,9 @@
         "updatedToast": "Institution logo updated",
         "errors": {
           "wrongType": "Choose a JPEG, PNG, or WEBP image",
-          "tooLarge": "Image must be under 5MB"
+          "tooLarge": "Image must be under 5MB",
+          "permissionDenied": "Permission denied. Please sign in again.",
+          "uploadFailedGeneric": "Upload failed. Please try again."
         }
       },
       "classrooms": "Classrooms",

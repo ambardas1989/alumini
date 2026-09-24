@@ -3,8 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
-import { getErrorMessage } from '@/lib/errors';
-import { supabase, INSTITUTION_ASSETS_BUCKET } from '@/lib/supabase';
+import { ApiError } from '@/lib/api';
 import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -29,7 +28,7 @@ interface ClassroomHeaderProps {
 }
 
 const ACCEPTED_COVER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_COVER_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_COVER_SIZE_BYTES = 10 * 1024 * 1024;
 
 /**
  * FIX 4 — was rendering the classroom name (e.g. "Grade 9A") as the bold
@@ -96,21 +95,20 @@ export function ClassroomHeader({
 
     setUploadingCover(true);
     try {
-      const ext = chosen.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const path = `classrooms/${classroomId}/cover.${ext}`;
-      const { error: storageError } = await supabase.storage
-        .from(INSTITUTION_ASSETS_BUCKET)
-        .upload(path, chosen, { upsert: true });
-      if (storageError) throw storageError;
-
-      const { data: publicUrlData } = supabase.storage.from(INSTITUTION_ASSETS_BUCKET).getPublicUrl(path);
-      const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
-
-      const result = await api.updateClassroomCover(classroomId, publicUrl);
+      const result = await api.uploadClassroomCover(classroomId, chosen);
       onCoverUpdated(result.coverUrl);
       showToast(t('coverUpdatedToast'), 'success');
     } catch (err) {
-      showToast(getErrorMessage(err), 'error');
+      const statusCode = err instanceof ApiError ? err.statusCode : null;
+      if (statusCode === 413) {
+        showToast(t('coverErrors.tooLarge'), 'error');
+      } else if (statusCode === 415) {
+        showToast(t('coverErrors.wrongType'), 'error');
+      } else if (statusCode === 403) {
+        showToast(t('coverErrors.permissionDenied'), 'error');
+      } else {
+        showToast(t('coverErrors.uploadFailedGeneric'), 'error');
+      }
     } finally {
       setUploadingCover(false);
     }
