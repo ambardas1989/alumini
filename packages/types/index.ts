@@ -322,6 +322,8 @@ export interface Event {
   rsvpCounts?: { going: number; notGoing: number; maybe: number };
   userRsvp?: RsvpStatus;
   createdAt: string;
+  /** TASKS_08 TASK 05 — channel-scoped visibility, matching messages. */
+  channel: ChannelType;
 }
 
 export interface InstitutionCode {

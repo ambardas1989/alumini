@@ -726,6 +726,7 @@ export default function ClassroomPage() {
       {showEventModal && (
         <EventCreateModal
           classroomId={classroom.id}
+          channel={activeChannel}
           onClose={() => setShowEventModal(false)}
           onCreated={() => {
             setShowEventModal(false);

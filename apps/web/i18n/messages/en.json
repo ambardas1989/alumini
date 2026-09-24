@@ -476,7 +476,11 @@
       "online": "Online",
       "going": "Going",
       "maybe": "Maybe",
-      "notGoing": "Not going"
+      "notGoing": "Not going",
+      "badge": {
+        "staff_room": "Teachers only",
+        "student_alley": "Students only"
+      }
     },
     "infoSheet": {
       "membersCount": "{count, plural, one {# member} other {# members}}",
@@ -500,7 +504,12 @@
       "locationLabel": "Location",
       "descriptionLabel": "Description",
       "createButton": "Create event",
-      "successToast": "Event created"
+      "successToast": "Event created",
+      "visibleTo": {
+        "classroom": "This event will be visible to: All members",
+        "staff_room": "This event will be visible to: Teachers only",
+        "student_alley": "This event will be visible to: Students only"
+      }
     },
     "memberList": {
       "title": "{count, plural, one {# member} other {# members}}",

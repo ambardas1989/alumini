@@ -484,7 +484,15 @@ export class NotificationService {
   // posts the welcome system message (SPEC.md's "corridor handles system
   // message" per this task) — a notification here would be redundant.
 
-  /** SPEC.md §10.1: notify every verified member when an event is created. */
+  /**
+   * SPEC.md §10.1: notify every verified member when an event is created.
+   *
+   * TASKS_08 TASK 05 — only members who can actually see the event's
+   * channel are notified (defaulting to 'classroom' for payloads from
+   * before this field existed) — notifying a student about a staff_room
+   * event would leak its title/date/location even though they can't open
+   * it, same reasoning as CorridorService.handleEventCreated()'s own fix.
+   */
   @OnEvent('event.created')
   async handleEventCreated(payload: {
     eventId: string;
@@ -493,10 +501,11 @@ export class NotificationService {
     eventDate: string;
     location?: string;
     isOnline?: boolean;
+    channel?: 'classroom' | 'staff_room' | 'student_alley';
   }): Promise<void> {
-    const { data: verifiedMembers, error } = await this.supabase
+    const { data: allMembers, error } = await this.supabase
       .from('memberships')
-      .select('user_id')
+      .select('user_id, role')
       .eq('classroom_id', payload.classroomId)
       .eq('verification_status', 'verified');
 
@@ -504,6 +513,13 @@ export class NotificationService {
       this.logger.error('Failed to look up verified members to notify', { error, classroomId: payload.classroomId });
       return;
     }
+
+    const channel = payload.channel ?? 'classroom';
+    const verifiedMembers = (allMembers ?? []).filter((m) => {
+      if (channel === 'staff_room') return m.role === 'teacher' || m.role === 'admin';
+      if (channel === 'student_alley') return m.role === 'student';
+      return true;
+    });
 
     const body = this.formatEventWhenWhere(payload.eventDate, payload.location, payload.isOnline);
 

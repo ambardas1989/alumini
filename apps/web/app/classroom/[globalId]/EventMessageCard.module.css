@@ -13,6 +13,26 @@
   margin-block-end: 3px;
 }
 
+.channelBadge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-block-end: 6px;
+}
+
+.channelBadgeStaffRoom {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.channelBadgeStudentAlley {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
 .meta {
   font-size: var(--text-xs);
   color: var(--color-text-muted);

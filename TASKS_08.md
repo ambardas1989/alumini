@@ -243,7 +243,7 @@ routed through backend API"
 
 ---
 
-## TASK 05 — Feature: events channel visibility [PENDING]
+## TASK 05 — Feature: events channel visibility [DONE: added events.channel column + RLS (migration 025), create/list/detail/RSVP now gate and filter by channel matching messages, corridor/notification event.created listeners route to the right channel, frontend channel pre-select + visibility label + badges]
 
 Events need channel-based visibility matching messages:
   Created in 'classroom' channel → visible to all members

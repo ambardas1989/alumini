@@ -39,6 +39,7 @@ database has NOT been verified against Supabase itself. Run the query in
 | 021_storage_policies.sql | ⚠️ Check | Storage bucket RLS policies for `profile-avatars`/`institution-assets` (not marked ✅ Run per this environment's own no-live-DB-access rule above — see the migration's own note on why several of these policies can never actually pass for this app's frontend regardless) | Yes — `DROP POLICY IF EXISTS` before each `CREATE POLICY` |
 | 023_membership_constraints.sql | ✅ Run | Widens `memberships_verification_method_check` to include `'early_member'` (already applied manually in the SQL Editor per TASKS_08 TASK 02; this file just records it) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
 | 024_membership_is_creator.sql | ⚠️ Check | `memberships.is_creator` boolean column — creator management rights, independent of channel-access `role` (TASKS_08 TASK 03) | Yes — `ADD COLUMN IF NOT EXISTS` |
+| 025_events_channel.sql | ⚠️ Check | `events.channel` text column (default `'classroom'`) — channel-scoped event visibility matching messages (TASKS_08 TASK 05) | Yes — `ADD COLUMN IF NOT EXISTS` |
 
 ⚠️ Check = not verified against the live database from this environment —
 run the query below and confirm before relying on this table.

@@ -96,16 +96,24 @@ describe('EventsService', () => {
     });
 
     it('throws BadRequestException when event_date is not in the future', async () => {
-      mockTables({ memberships: chain({ data: { id: 'm1' }, error: null }) });
+      mockTables({ memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }) });
 
       await expect(
         service.createEvent('user-1', 'class-1', { title: 'Old', eventDate: past(1) } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('throws ForbiddenException when a student targets the staff_room channel', async () => {
+      mockTables({ memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }) });
+
+      await expect(
+        service.createEvent('user-1', 'class-1', { ...dto, channel: 'staff_room' } as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('creates the event, audits it, and emits event.created for corridor', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({ data: { id: 'event-1', event_date: dto.eventDate }, error: null }),
       });
 
@@ -127,7 +135,7 @@ describe('EventsService', () => {
   describe('listEvents()', () => {
     it('returns empty upcoming/past when there are no events', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({ data: [], error: null }),
       });
 
@@ -137,7 +145,7 @@ describe('EventsService', () => {
 
     it('splits events into upcoming/past with RSVP counts and the caller’s own status', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({
           data: [
             { id: 'e1', classroom_id: 'class-1', event_date: future(5), title: 'Upcoming' },
@@ -173,7 +181,7 @@ describe('EventsService', () => {
   describe('getEventDetail()', () => {
     it('throws NotFoundException for a missing event', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({ data: null, error: null }),
       });
 
@@ -184,7 +192,7 @@ describe('EventsService', () => {
 
     it('groups the RSVP list by status with names', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({ data: { id: 'e1', classroom_id: 'class-1', title: 'Reunion' }, error: null }),
         rsvps: chain({
           data: [
@@ -208,7 +216,7 @@ describe('EventsService', () => {
   describe('upsertRsvp()', () => {
     it('throws NotFoundException when the event is not in this classroom', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({ data: null, error: null }),
       });
 
@@ -219,7 +227,7 @@ describe('EventsService', () => {
 
     it('upserts the RSVP', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({ data: { id: 'e1' }, error: null }),
         rsvps: chain({ data: { id: 'r1', status: RsvpStatus.GOING }, error: null }),
       });
@@ -232,7 +240,7 @@ describe('EventsService', () => {
   describe('removeRsvp()', () => {
     it('throws NotFoundException when there is no existing RSVP', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({ data: { id: 'e1' }, error: null }),
         rsvps: chain({ data: null, error: null }),
       });
@@ -242,7 +250,7 @@ describe('EventsService', () => {
 
     it('removes an existing RSVP', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({ data: { id: 'e1' }, error: null }),
         rsvps: chain({ data: { id: 'r1' }, error: null }, { data: null, error: null }),
       });

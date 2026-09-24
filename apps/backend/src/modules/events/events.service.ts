@@ -3,10 +3,16 @@
  * (SPEC.md §10).
  *
  * ACCESS: every read and write requires the caller to be a VERIFIED member
- * of the classroom (assertVerifiedMember()) — SPEC.md §10.1/§10.2 both say
+ * of the classroom (getMembership()) — SPEC.md §10.1/§10.2 both say
  * "verified member(s)" with no unverified-read carve-out, unlike corridor's
  * messages. Deletion additionally requires a verified 'admin' membership
  * (assertClassroomAdmin()).
+ *
+ * CHANNELS (TASKS_08 TASK 05): events are channel-scoped like messages —
+ * classroom (all verified members), staff_room (teacher/admin only),
+ * student_alley (student only). channelAllowsRole()/visibleChannels() gate
+ * create/read the same way MembershipService.canAccessChannel() gates
+ * corridor messages.
  *
  * OWNERSHIP: owns `events` and `rsvps` (001_initial_schema.sql). Reads
  * `memberships` directly for the access checks above — the same
@@ -38,7 +44,7 @@ import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
 import { AppLogger } from '../../common/logger/logger.service';
-import { AuditEventType, RsvpStatus } from '@alumini/types';
+import { AuditEventType, ChannelType, MemberRole, RsvpStatus } from '@alumini/types';
 
 import { CreateEventDto } from './dto/create-event.dto';
 import { RsvpDto } from './dto/rsvp.dto';
@@ -65,8 +71,17 @@ export class EventsService {
   // ── Create ───────────────────────────────────────────────────────────────
 
   async createEvent(userId: string, classroomId: string, dto: CreateEventDto, req?: Request) {
-    this.appLogger.debug('[EVENTS:create] entry', { userId, classroomId, title: dto.title });
-    await this.assertVerifiedMember(userId, classroomId);
+    const channel = dto.channel ?? ChannelType.CLASSROOM;
+    this.appLogger.debug('[EVENTS:create] entry', { userId, classroomId, channel, title: dto.title });
+
+    const membership = await this.getMembership(userId, classroomId);
+    if (!membership || membership.verification_status !== 'verified') {
+      throw new ForbiddenException('Only verified members of this classroom can do this');
+    }
+    if (!this.channelAllowsRole(channel, membership.role)) {
+      this.appLogger.warn('[EVENTS:create] access denied', { userId, channel, role: membership.role });
+      throw new ForbiddenException(`You do not have access to the ${channel} channel`);
+    }
 
     // "must be in the future" is relative to request time — checked here,
     // not in the DTO (see CreateEventDto's comment).
@@ -85,6 +100,7 @@ export class EventsService {
         location:     dto.location ?? null,
         description:  dto.description ?? null,
         is_online:    dto.isOnline ?? false,
+        channel,
       })
       .select()
       .single();
@@ -101,9 +117,13 @@ export class EventsService {
       throw new BadRequestException('Failed to create event. Please try again.');
     }
 
-    this.appLogger.info('[EVENTS:create] success', { userId, classroomId, eventId: event.id });
+    this.appLogger.info('[EVENTS:create] success', { userId, classroomId, eventId: event.id, channel });
 
     // CorridorModule and NotificationModule both listen — see module comment.
+    // channel is included so CorridorService.handleEventCreated() posts the
+    // event_card into the SAME channel the event belongs to — posting a
+    // staff_room/student_alley event's card into the public classroom
+    // channel would leak its existence to members who can't see the event.
     this.eventEmitter.emit('event.created', {
       eventId:     event.id,
       classroomId,
@@ -111,6 +131,7 @@ export class EventsService {
       eventDate:   event.event_date,
       location:    dto.location,
       isOnline:    dto.isOnline ?? false,
+      channel,
     });
 
     await this.audit.log({
@@ -138,12 +159,18 @@ export class EventsService {
    * heavier tooling — Redis, BullMQ — at 10k+ users).
    */
   async listEvents(userId: string, classroomId: string) {
-    await this.assertVerifiedMember(userId, classroomId);
+    const membership = await this.getMembership(userId, classroomId);
+    if (!membership || membership.verification_status !== 'verified') {
+      throw new ForbiddenException('Only verified members of this classroom can do this');
+    }
+    const visibleChannels = this.visibleChannels(membership.role);
+    this.appLogger.debug('[EVENTS:get] entry', { classroomId, userId, visibleChannels });
 
     const { data: events, error } = await this.supabase
       .from('events')
-      .select('id, classroom_id, created_by, title, event_date, location, description, is_online, created_at')
+      .select('id, classroom_id, created_by, title, event_date, location, description, is_online, created_at, channel')
       .eq('classroom_id', classroomId)
+      .in('channel', visibleChannels)
       .order('event_date', { ascending: true });
 
     if (error) {
@@ -191,6 +218,7 @@ export class EventsService {
       description:  event.description,
       isOnline:     event.is_online,
       createdAt:    event.created_at,
+      channel:      event.channel,
       rsvpCounts,
       userRsvp,
     };
@@ -207,16 +235,22 @@ export class EventsService {
    * dilemma the way there is for classroom membership rosters.
    */
   async getEventDetail(userId: string, classroomId: string, eventId: string) {
-    await this.assertVerifiedMember(userId, classroomId);
+    const membership = await this.getMembership(userId, classroomId);
+    if (!membership || membership.verification_status !== 'verified') {
+      throw new ForbiddenException('Only verified members of this classroom can do this');
+    }
 
     const { data: event } = await this.supabase
       .from('events')
-      .select('id, classroom_id, created_by, title, event_date, location, description, is_online, created_at')
+      .select('id, classroom_id, created_by, title, event_date, location, description, is_online, created_at, channel')
       .eq('id', eventId)
       .eq('classroom_id', classroomId)
       .maybeSingle();
 
     if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+    if (!this.channelAllowsRole(event.channel, membership.role)) {
       throw new NotFoundException('Event not found');
     }
 
@@ -252,6 +286,7 @@ export class EventsService {
       description: event.description,
       isOnline:    event.is_online,
       createdAt:   event.created_at,
+      channel:     event.channel,
       rsvps:       grouped,
     };
   }
@@ -260,8 +295,7 @@ export class EventsService {
 
   /** Upserts the caller's RSVP — rsvps has UNIQUE(event_id, user_id), so this both creates and updates. */
   async upsertRsvp(userId: string, classroomId: string, eventId: string, dto: RsvpDto, req?: Request) {
-    await this.assertVerifiedMember(userId, classroomId);
-    await this.assertEventInClassroom(eventId, classroomId);
+    await this.assertCanAccessEvent(userId, classroomId, eventId);
 
     const { data, error } = await this.supabase
       .from('rsvps')
@@ -281,8 +315,7 @@ export class EventsService {
   }
 
   async removeRsvp(userId: string, classroomId: string, eventId: string): Promise<void> {
-    await this.assertVerifiedMember(userId, classroomId);
-    await this.assertEventInClassroom(eventId, classroomId);
+    await this.assertCanAccessEvent(userId, classroomId, eventId);
 
     const { data: existing } = await this.supabase
       .from('rsvps')
@@ -349,17 +382,58 @@ export class EventsService {
 
   // ── Internal: access control ─────────────────────────────────────────────
 
-  private async assertVerifiedMember(userId: string, classroomId: string): Promise<void> {
+  private async getMembership(userId: string, classroomId: string): Promise<{ role: MemberRole; verification_status: string } | null> {
     const { data } = await this.supabase
       .from('memberships')
-      .select('id')
+      .select('role, verification_status')
       .eq('user_id', userId)
       .eq('classroom_id', classroomId)
-      .eq('verification_status', 'verified')
       .maybeSingle();
 
-    if (!data) {
+    return data;
+  }
+
+  /**
+   * TASKS_08 TASK 05 — channel-scoped visibility, matching messages
+   * (MembershipService.canAccessChannel()'s rules, applied locally here
+   * rather than injecting MembershipModule — same direct-membership-read
+   * pattern CorridorService.getMessages() already uses for its own
+   * per-channel read rules).
+   */
+  private channelAllowsRole(channel: ChannelType | string, role: MemberRole): boolean {
+    switch (channel) {
+      case ChannelType.STAFF_ROOM:
+        return role === MemberRole.TEACHER || role === MemberRole.ADMIN;
+      case ChannelType.STUDENT_ALLEY:
+        return role === MemberRole.STUDENT;
+      default:
+        return true; // classroom — any verified member
+    }
+  }
+
+  private visibleChannels(role: MemberRole): ChannelType[] {
+    const channels: ChannelType[] = [ChannelType.CLASSROOM];
+    if (role === MemberRole.TEACHER || role === MemberRole.ADMIN) channels.push(ChannelType.STAFF_ROOM);
+    if (role === MemberRole.STUDENT) channels.push(ChannelType.STUDENT_ALLEY);
+    return channels;
+  }
+
+  /** Verified member of the classroom AND allowed into this specific event's channel — used by the RSVP endpoints. */
+  private async assertCanAccessEvent(userId: string, classroomId: string, eventId: string): Promise<void> {
+    const membership = await this.getMembership(userId, classroomId);
+    if (!membership || membership.verification_status !== 'verified') {
       throw new ForbiddenException('Only verified members of this classroom can do this');
+    }
+
+    const { data: event } = await this.supabase
+      .from('events')
+      .select('id, channel')
+      .eq('id', eventId)
+      .eq('classroom_id', classroomId)
+      .maybeSingle();
+
+    if (!event || !this.channelAllowsRole(event.channel, membership.role)) {
+      throw new NotFoundException('Event not found');
     }
   }
 

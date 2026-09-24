@@ -805,6 +805,8 @@ export interface CreateEventData {
   location?: string;
   description?: string;
   isOnline?: boolean;
+  /** TASKS_08 TASK 05 — defaults to 'classroom' on the backend when omitted. */
+  channel?: 'classroom' | 'staff_room' | 'student_alley';
 }
 
 export function createEvent(classroomId: string, data: CreateEventData): Promise<ClassroomEvent> {

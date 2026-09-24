@@ -3,3 +3,9 @@
   flex-direction: column;
   gap: 16px;
 }
+
+.visibilityLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-block-end: -8px;
+}

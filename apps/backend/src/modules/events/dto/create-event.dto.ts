@@ -1,5 +1,6 @@
-import { IsBoolean, IsISO8601, IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsIn, IsISO8601, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ChannelType } from '@alumini/types';
 
 /**
  * "event_date must be in the future" is enforced in EventsService, not
@@ -34,4 +35,11 @@ export class CreateEventDto {
   @IsOptional()
   @IsBoolean()
   isOnline?: boolean;
+
+  // TASKS_08 TASK 05 — channel-scoped visibility, matching messages.
+  // Defaults to 'classroom' (visible to all verified members).
+  @ApiPropertyOptional({ enum: Object.values(ChannelType), default: ChannelType.CLASSROOM })
+  @IsOptional()
+  @IsIn(Object.values(ChannelType))
+  channel?: ChannelType;
 }

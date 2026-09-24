@@ -29,6 +29,12 @@ export function EventMessageCard({ event, fallbackTitle, onRsvp }: EventMessageC
 
   return (
     <div className={styles.card}>
+      {event.channel === 'staff_room' && (
+        <span className={`${styles.channelBadge} ${styles.channelBadgeStaffRoom}`}>{t('badge.staff_room')}</span>
+      )}
+      {event.channel === 'student_alley' && (
+        <span className={`${styles.channelBadge} ${styles.channelBadgeStudentAlley}`}>{t('badge.student_alley')}</span>
+      )}
       <p className={styles.title}>{event.title}</p>
       <p className={styles.meta}>
         {safeFormatDate(event.eventDate)} · {event.isOnline ? t('online') : event.location || t('online')}

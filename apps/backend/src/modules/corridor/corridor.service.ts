@@ -535,12 +535,18 @@ export class CorridorService {
    * every other module's "emit just enough for the listener to act"
    * convention. Auto-posts an event_card; metadata.event_id is what lets
    * the frontend render RSVP buttons instead of plain text (SPEC.md §10.1).
+   *
+   * TASKS_08 TASK 05 — the card is posted into the SAME channel the event
+   * belongs to (defaulting to classroom for payloads from before this
+   * field existed), not always the public classroom channel — otherwise a
+   * staff_room/student_alley event's card would leak its existence to
+   * members who can't see the event itself.
    */
   @OnEvent('event.created')
-  async handleEventCreated(payload: { eventId: string; classroomId: string; title: string }): Promise<void> {
+  async handleEventCreated(payload: { eventId: string; classroomId: string; title: string; channel?: ChannelType }): Promise<void> {
     const { error } = await this.supabase.from('messages').insert({
       classroom_id: payload.classroomId,
-      channel:      ChannelType.CLASSROOM,
+      channel:      payload.channel ?? ChannelType.CLASSROOM,
       sender_id:    null,
       content:      payload.title,
       message_type: MessageType.EVENT_CARD,
