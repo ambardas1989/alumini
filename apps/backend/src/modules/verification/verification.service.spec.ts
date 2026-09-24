@@ -484,7 +484,7 @@ describe('VerificationService', () => {
           data: { user_id: 'applicant-1', classroom_id: 'class-1', status: 'approved', document_storage_path: 'p' },
           error: null,
         }),
-        memberships: chain({ data: { id: 'admin-membership' }, error: null }),
+        memberships: chain({ data: { id: 'admin-membership', role: 'admin' }, error: null }),
       });
 
       await expect(service.adminApproveDocument('admin-1', 'verification-1')).rejects.toThrow(
@@ -502,7 +502,7 @@ describe('VerificationService', () => {
           { data: null, error: null }, // status update
         ),
         memberships: chain(
-          { data: { id: 'admin-membership' }, error: null }, // assertClassroomAdmin
+          { data: { id: 'admin-membership', role: 'admin' }, error: null }, // assertClassroomAdmin
           { data: null, error: null }, // approveVerification update
         ),
       });
@@ -540,7 +540,7 @@ describe('VerificationService', () => {
           { data: { user_id: 'applicant-1', classroom_id: 'class-1', status: 'pending' }, error: null },
           { data: null, error: null },
         ),
-        memberships: chain({ data: { id: 'admin-membership' }, error: null }),
+        memberships: chain({ data: { id: 'admin-membership', role: 'admin' }, error: null }),
       });
 
       await service.adminRejectDocument('admin-1', 'verification-1', 'Document unreadable');
@@ -786,7 +786,7 @@ describe('VerificationService', () => {
       mockTables({
         memberships: chain(
           { data: { id: 'm1', user_id: 'owner-1', classroom_id: 'class-1', verification_status: 'pending' }, error: null },
-          { data: { id: 'admin-membership' }, error: null },
+          { data: { id: 'admin-membership', role: 'admin' }, error: null },
         ),
         verifications: chain({ data: null, error: null }),
       });

@@ -262,7 +262,7 @@ describe('EventsService', () => {
 
     it('throws NotFoundException when the event is not in this classroom', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'admin-m' }, error: null }),
+        memberships: chain({ data: { id: 'admin-m', role: 'admin' }, error: null }),
         events: chain({ data: null, error: null }),
       });
 
@@ -271,7 +271,7 @@ describe('EventsService', () => {
 
     it('deletes the event, audits it, and emits event.deleted', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'admin-m' }, error: null }),
+        memberships: chain({ data: { id: 'admin-m', role: 'admin' }, error: null }),
         events: chain({ data: { id: 'e1' }, error: null }, { data: null, error: null }),
       });
 

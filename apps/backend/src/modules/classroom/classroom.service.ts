@@ -83,15 +83,17 @@ export class ClassroomService {
    * @param dto - Validated creation data
    * @param req - Express request (for audit IP logging)
    *
-   * IMPORTANT: The classroom creator is always assigned
-   * role='admin' regardless of their persona.
-   * This is by design — the creator manages the classroom.
+   * TASKS_08 TASK 03: the creator's channel-access role now matches their
+   * own persona (dto.creatorRole, defaulting to 'student') instead of
+   * always being forced to 'admin' — a student creator was previously
+   * losing Student Alley access because 'admin' isn't 'student' or
+   * 'teacher' for MembershipService.canAccessChannel()'s purposes. The
+   * creator still gets full management rights via the separate
+   * `is_creator` flag, independent of `role`.
    *
    * For testing channel access:
-   * - Do NOT use the creator account (always admin)
-   * - Create a second account and JOIN as student
-   * - Test Staff Room restriction from student account
-   * - Test Student Alley access from student account
+   * - Create a second account and JOIN as student/teacher to test
+   *   Staff Room / Student Alley restrictions from a non-creator account
    */
   async createClassroom(
     creatorId: string,
@@ -210,26 +212,40 @@ export class ClassroomService {
       throw new BadRequestException('Failed to create classroom. Please try again.');
     }
 
-    // 5. Auto-add creator as verified admin
-    // Creator bypasses verification — they are implicitly trusted as classroom admin
+    // 5. Auto-add creator as a verified member with management rights
+    // Creator bypasses verification — they are implicitly trusted.
     //
-    // FIX 1 investigation: confirmed this is intentional, not a bug — SPEC's
-    // "creator is always admin" rule, unconditional on whatever persona
-    // they hold. joinClassroom() (below) is the one that derives role from
-    // the SECOND+ user's actual persona ('teacher' if they hold an active
-    // teacher persona at this institution, 'student' otherwise) — it never
-    // defaults to 'admin'. A user who creates a classroom rather than
-    // joining an existing one becomes its admin regardless of their
-    // intended role; that's this rule working as designed, not the bug.
-    this.appLogger.debug('[CLASSROOM:create] adding creator membership', { userId: creatorId, classroomId: classroom.id });
+    // TASKS_08 TASK 03: role now follows the creator's own persona so
+    // channel access works the same way it would if they'd joined instead
+    // of created — management rights come from is_creator, not from
+    // forcing role='admin'. Uses the client-supplied dto.creatorRole (the
+    // frontend sends the caller's own active persona) when present,
+    // otherwise falls back to the same active-teacher-persona-at-this-
+    // institution check joinClassroom() uses above, then to 'student'.
+    let creatorRole: 'student' | 'teacher' = 'student';
+    if (dto.creatorRole) {
+      creatorRole = dto.creatorRole;
+    } else {
+      const { data: creatorTeacherPersona } = await this.supabase
+        .from('personas')
+        .select('id')
+        .eq('user_id', creatorId)
+        .eq('type', PersonaType.TEACHER)
+        .eq('institution_id', dto.institutionId)
+        .eq('status', 'active')
+        .maybeSingle();
+      creatorRole = creatorTeacherPersona ? 'teacher' : 'student';
+    }
+    this.appLogger.debug('[CLASSROOM:create] adding creator membership', { userId: creatorId, classroomId: classroom.id, role: creatorRole });
     const { error: memberError } = await this.supabase
       .from('memberships')
       .insert({
         user_id:             creatorId,
         classroom_id:        classroom.id,
-        role:                'admin',
+        role:                creatorRole,
         verification_status: 'verified',
         verification_method: 'creator',
+        is_creator:          true,
         verified_at:         new Date().toISOString(),
       });
 
@@ -792,12 +808,16 @@ export class ClassroomService {
   private async assertClassroomAdmin(actorId: string, classroomId: string): Promise<void> {
     const { data: membership } = await this.supabase
       .from('memberships')
-      .select('role, verification_status')
+      .select('role, verification_status, is_creator')
       .eq('user_id', actorId)
       .eq('classroom_id', classroomId)
       .maybeSingle();
 
-    if (!membership || membership.role !== 'admin' || membership.verification_status !== 'verified') {
+    if (
+      !membership ||
+      (membership.role !== 'admin' && !membership.is_creator) ||
+      membership.verification_status !== 'verified'
+    ) {
       throw new ForbiddenException('Only a verified admin of this classroom can do this');
     }
   }

@@ -450,8 +450,8 @@ export class CorridorService {
         .select('id')
         .eq('user_id', userId)
         .eq('classroom_id', classroomId)
-        .eq('role', 'admin')
         .eq('verification_status', 'verified')
+        .or('role.eq.admin,is_creator.eq.true')
         .maybeSingle();
 
       if (!adminMembership) {

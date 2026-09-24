@@ -2,6 +2,7 @@ import {
   IsString,
   IsInt,
   IsBoolean,
+  IsIn,
   IsOptional,
   IsUUID,
   Min,
@@ -81,4 +82,13 @@ export class CreateClassroomDto {
   @IsString()
   @Length(2, 2)
   countryCode?: string;
+
+  // TASKS_08 TASK 03 — the creator's channel-access role now matches their
+  // own persona instead of always being forced to 'admin' (see
+  // ClassroomService.createClassroom()'s doc comment). Defaults to
+  // 'student' when omitted, same default the service used before.
+  @ApiPropertyOptional({ enum: ['student', 'teacher'], description: "Creator's persona — determines their channel-access role" })
+  @IsOptional()
+  @IsIn(['student', 'teacher'])
+  creatorRole?: 'student' | 'teacher';
 }

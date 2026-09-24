@@ -1017,14 +1017,13 @@ export class VerificationService {
   private async assertClassroomAdmin(adminId: string, classroomId: string): Promise<void> {
     const { data: classroomMembership } = await this.supabase
       .from('memberships')
-      .select('id')
+      .select('id, role, is_creator')
       .eq('user_id', adminId)
       .eq('classroom_id', classroomId)
-      .eq('role', 'admin')
       .eq('verification_status', 'verified')
       .maybeSingle();
 
-    if (classroomMembership) {
+    if (classroomMembership && (classroomMembership.role === 'admin' || classroomMembership.is_creator)) {
       return;
     }
 

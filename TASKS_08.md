@@ -101,7 +101,7 @@ Commit: "fix: memberships verification_method constraint includes early_member"
 
 ---
 
-## TASK 03 — Fix: classroom creator role matches persona [PENDING]
+## TASK 03 — Fix: classroom creator role matches persona [DONE: creator role now follows persona (creatorRole/active teacher persona check, default student) instead of forcing 'admin'; added is_creator flag (migration 024) for management rights; updated admin-permission checks in classroom/verification/events/corridor/notification/membership services to also accept is_creator]
 
 Currently creator always gets role='admin' regardless of persona.
 This breaks channel access — a student creating a classroom

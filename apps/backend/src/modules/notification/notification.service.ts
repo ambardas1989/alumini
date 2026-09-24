@@ -376,8 +376,8 @@ export class NotificationService {
       .from('memberships')
       .select('user_id')
       .eq('classroom_id', payload.classroomId)
-      .eq('role', 'admin')
-      .eq('verification_status', 'verified');
+      .eq('verification_status', 'verified')
+      .or('role.eq.admin,is_creator.eq.true');
 
     if (error) {
       this.logger.error('Failed to look up classroom admins to notify', { error, classroomId: payload.classroomId });

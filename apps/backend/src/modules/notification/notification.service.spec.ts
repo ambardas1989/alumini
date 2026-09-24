@@ -35,7 +35,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'update', 'eq', 'is', 'not', 'in', 'order', 'limit'].forEach((method) => {
+  ['select', 'insert', 'update', 'eq', 'or', 'is', 'not', 'in', 'order', 'limit'].forEach((method) => {
     builder[method] = jest.fn(() => builder);
   });
   builder.single = jest.fn(() => Promise.resolve(next()));

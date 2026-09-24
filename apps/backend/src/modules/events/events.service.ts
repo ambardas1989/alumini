@@ -366,14 +366,13 @@ export class EventsService {
   private async assertClassroomAdmin(userId: string, classroomId: string): Promise<void> {
     const { data } = await this.supabase
       .from('memberships')
-      .select('id')
+      .select('id, role, is_creator')
       .eq('user_id', userId)
       .eq('classroom_id', classroomId)
-      .eq('role', 'admin')
       .eq('verification_status', 'verified')
       .maybeSingle();
 
-    if (!data) {
+    if (!data || (data.role !== 'admin' && !data.is_creator)) {
       throw new ForbiddenException('Only a verified admin of this classroom can delete events');
     }
   }

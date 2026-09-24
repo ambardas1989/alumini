@@ -241,14 +241,14 @@ export class MembershipService {
 
     const { data: actorMembership } = await this.supabase
       .from('memberships')
-      .select('role, verification_status')
+      .select('role, verification_status, is_creator')
       .eq('user_id', actorId)
       .eq('classroom_id', classroomId)
       .maybeSingle();
 
     if (
       !actorMembership ||
-      actorMembership.role !== MemberRole.ADMIN ||
+      (actorMembership.role !== MemberRole.ADMIN && !actorMembership.is_creator) ||
       actorMembership.verification_status !== 'verified'
     ) {
       throw new ForbiddenException('Only a verified admin of this classroom can change member roles');
