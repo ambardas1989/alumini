@@ -130,7 +130,7 @@ Commit: "fix: institution-assets storage bucket verified"
 
 ---
 
-## TASK 03 — Add storage policies to migration file [PENDING]
+## TASK 03 — Add storage policies to migration file [DONE: created 021_storage_policies.sql and updated README.md; marked ⚠️ Check rather than ✅ Run since this environment has no live DB access to confirm it was actually applied, consistent with this repo's established status convention]
 
 Storage policies were added manually in Supabase SQL Editor.
 They need to be saved in a migration file so dev and staging

@@ -36,6 +36,7 @@ database has NOT been verified against Supabase itself. Run the query in
 | 017_linkedin_profile.sql | ⚠️ Check | `profiles.linkedin_connected/id/name/avatar_url` (scoped down — see migration's own comment) | Yes — `ADD COLUMN IF NOT EXISTS` |
 | 018_email_otp_mfa.sql | ⚠️ Check | `mfa_method` CHECK widened to include `'email'`, `email_otp_codes` table | Partially — the CHECK-widening ALTERs are re-runnable, the `CREATE TABLE` is not |
 | 020_session_token_hash.sql | ⚠️ Check | Defensive no-op — `sessions.user_agent/ip_address/last_used_at/revoked_at/revoked_reason` already exist as of 002_auth_module.sql; see the migration's own comment for why no new access-token-hash column was added | Yes — `ADD COLUMN IF NOT EXISTS` |
+| 021_storage_policies.sql | ⚠️ Check | Storage bucket RLS policies for `profile-avatars`/`institution-assets` (not marked ✅ Run per this environment's own no-live-DB-access rule above — see the migration's own note on why several of these policies can never actually pass for this app's frontend regardless) | Yes — `DROP POLICY IF EXISTS` before each `CREATE POLICY` |
 
 ⚠️ Check = not verified against the live database from this environment —
 run the query below and confirm before relying on this table.
@@ -49,6 +50,12 @@ by reading each file), except `012_institution_requests.sql`'s and
 verbatim will error if the table already exists. Check with the query
 below first, or wrap the `CREATE TABLE` in `CREATE TABLE IF NOT EXISTS`
 before re-running.
+
+Before running 021 on a new environment, create these buckets manually in
+the Supabase Storage dashboard:
+  - profile-avatars (public, 5MB limit)
+  - institution-assets (public, 10MB limit)
+Bucket creation cannot be done via SQL.
 
 ## How to verify what's actually applied
 
