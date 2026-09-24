@@ -139,10 +139,14 @@ export default function ClassroomPage() {
   const [pollingStopped, setPollingStopped] = useState(false);
 
   const [members, setMembers] = useState<ClassroomMember[]>([]);
-  const [memberStats, setMemberStats] = useState({ teacherCount: 0, verifiedCount: 0 });
+  const [memberStats, setMemberStats] = useState({ verifiedCount: 0 });
 
   const [showInfoSheet, setShowInfoSheet] = useState(false);
   const [showMemberModal, setShowMemberModal] = useState(false);
+  // TASKS_08 TASK 07 FIX B — set when the "+" button opens MemberListModal
+  // directly from the Staff Room/Student Alley tab; undefined (Classroom
+  // tab) opens ClassInfoSheet instead, or the full unfiltered roster.
+  const [memberModalRoleFilter, setMemberModalRoleFilter] = useState<'teacher' | 'student' | undefined>(undefined);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -236,7 +240,6 @@ export default function ClassroomPage() {
     }
     setMembers(all);
     setMemberStats({
-      teacherCount: all.filter((m) => m.role === 'teacher').length,
       verifiedCount: all.filter((m) => m.verificationStatus === 'verified').length,
     });
   }, [classroom]);
@@ -559,6 +562,21 @@ export default function ClassroomPage() {
   const staffRoomRoleLocked =
     activeChannel === ChannelType.STAFF_ROOM && hasFullAccess && membership.userRole === 'student';
 
+  // TASKS_08 TASK 07 FIX B — the "+" button's target depends on which tab
+  // is active: Classroom → the class info panel, Staff Room/Student Alley
+  // → that channel's member roster, filtered to the matching role.
+  const handleInfoButtonClick = () => {
+    if (activeChannel === ChannelType.STAFF_ROOM) {
+      setMemberModalRoleFilter('teacher');
+      setShowMemberModal(true);
+    } else if (activeChannel === ChannelType.STUDENT_ALLEY) {
+      setMemberModalRoleFilter('student');
+      setShowMemberModal(true);
+    } else {
+      setShowInfoSheet(true);
+    }
+  };
+
   return (
     <AppShell showNav={false}>
       <ClassroomHeader
@@ -570,14 +588,13 @@ export default function ClassroomPage() {
         institutionName={classroom.institution.name}
         batchYear={classroom.batchYear}
         memberCount={classroom.memberCount}
-        teacherCount={memberStats.teacherCount}
         verifiedCount={memberStats.verifiedCount}
         userRole={membership.userRole}
         coverUrl={classroom.coverUrl}
         onCoverUpdated={(coverUrl) => setClassroom((prev) => (prev ? { ...prev, coverUrl } : prev))}
         onStatsClick={() => setShowInfoSheet(true)}
       />
-      <ChannelTabs active={activeChannel} onChange={setActiveChannel} onInfoClick={() => setShowInfoSheet(true)} />
+      <ChannelTabs active={activeChannel} onChange={setActiveChannel} onInfoClick={handleInfoButtonClick} />
 
       {!canReadActive ? (
         staffRoomRoleLocked ? (
@@ -706,11 +723,14 @@ export default function ClassroomPage() {
           <ClassInfoSheet
             classroomName={classroom.name}
             institutionName={classroom.institution.name}
+            globalId={classroom.globalId}
+            createdAt={classroom.createdAt}
             memberCount={classroom.memberCount}
             memberPreview={members.map((m) => ({ userId: m.userId, fullName: m.fullName ?? '', avatarUrl: m.avatarUrl }))}
             upcomingEvents={upcomingEvents}
             onViewAllMembers={() => {
               setShowInfoSheet(false);
+              setMemberModalRoleFilter(undefined);
               setShowMemberModal(true);
             }}
             onCreateEvent={() => {
@@ -733,6 +753,7 @@ export default function ClassroomPage() {
           currentUserId={user.id}
           viewerIsVerified={membership.isVerified}
           creatorId={classroom.createdBy}
+          roleFilter={memberModalRoleFilter}
           onClose={() => setShowMemberModal(false)}
         />
       )}

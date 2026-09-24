@@ -410,9 +410,6 @@
     "header": {
       "back": "Back",
       "classroomBatch": "Class {identity} · Batch of {year}",
-      "members": "{count, plural, one {# member} other {# members}}",
-      "teachers": "{count, plural, one {# teacher} other {# teachers}}",
-      "verified": "{count, plural, one {# verified} other {# verified}}",
       "details": "Details",
       "changeCover": "Change cover photo",
       "coverUpdatedToast": "Cover photo updated",
@@ -431,7 +428,9 @@
         "classroom": "Open to all verified members",
         "staffRoom": "Teachers and admins only",
         "studentAlley": "Students only — private from teachers"
-      }
+      },
+      "yearsAgo": "{count, plural, one {(# year ago)} other {(# years ago)}}",
+      "statsRowLabel": "{memberCount} members, {verifiedCount} verified, batch of {batchYear}"
     },
     "locked": {
       "staff_room": {
@@ -494,7 +493,11 @@
       "leaveClassroom": "Leave classroom",
       "leaveConfirmTitle": "Leave {name}?",
       "leaveConfirmMessage": "You will lose access to all messages.",
-      "leaveButton": "Leave"
+      "leaveButton": "Leave",
+      "copyGlobalId": "Tap to copy",
+      "copied": "Copied!",
+      "copyFailed": "Could not copy — long-press to select instead",
+      "createdOn": "Created {date}"
     },
     "eventCreate": {
       "title": "Create an event",

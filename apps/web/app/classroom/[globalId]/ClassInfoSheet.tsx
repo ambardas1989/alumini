@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import type { Event as ClassroomEvent } from '@alumini/types';
 import { safeFormatDate } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
+import { useToast } from '@/components/providers/ToastProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import styles from './ClassInfoSheet.module.css';
@@ -16,6 +18,9 @@ interface MemberAvatar {
 interface ClassInfoSheetProps {
   classroomName: string;
   institutionName: string;
+  /** TASKS_08 TASK 07 FIX B — this panel's own explicit fields. */
+  globalId: string;
+  createdAt: string;
   memberCount: number;
   memberPreview: MemberAvatar[];
   upcomingEvents: ClassroomEvent[];
@@ -30,6 +35,8 @@ const PREVIEW_LIMIT = 8;
 export function ClassInfoSheet({
   classroomName,
   institutionName,
+  globalId,
+  createdAt,
   memberCount,
   memberPreview,
   upcomingEvents,
@@ -39,8 +46,20 @@ export function ClassInfoSheet({
   onLeave,
 }: ClassInfoSheetProps) {
   const t = useTranslations('classroom.infoSheet');
+  const { showToast } = useToast();
+  const [copied, setCopied] = useState(false);
   const visible = memberPreview.slice(0, PREVIEW_LIMIT);
   const overflow = memberCount - visible.length;
+
+  const handleCopyGlobalId = async () => {
+    try {
+      await navigator.clipboard.writeText(globalId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      showToast(t('copyFailed'), 'error');
+    }
+  };
 
   return (
     <div className={styles.wrap}>
@@ -48,6 +67,14 @@ export function ClassInfoSheet({
         <p className={styles.name}>{classroomName}</p>
         <p className={styles.institution}>{institutionName}</p>
       </div>
+
+      <section className={styles.section}>
+        <button type="button" className={styles.globalIdRow} onClick={handleCopyGlobalId}>
+          <span className={styles.globalId}>{globalId}</span>
+          <span className={styles.copyHint}>{copied ? t('copied') : t('copyGlobalId')}</span>
+        </button>
+        <p className={styles.createdAt}>{t('createdOn', { date: safeFormatDate(createdAt) })}</p>
+      </section>
 
       <section className={styles.section}>
         <p className={styles.sectionLabel}>{t('membersCount', { count: memberCount })}</p>

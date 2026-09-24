@@ -18,7 +18,6 @@ interface ClassroomHeaderProps {
   institutionName: string;
   batchYear: number;
   memberCount: number;
-  teacherCount: number;
   verifiedCount: number;
   /** FIX 3 — the CURRENT user's own role in this classroom, shown as a badge so they can tell why a channel is locked. */
   userRole: string | null;
@@ -62,7 +61,6 @@ export function ClassroomHeader({
   institutionName,
   batchYear,
   memberCount,
-  teacherCount,
   verifiedCount,
   userRole,
   coverUrl,
@@ -78,6 +76,10 @@ export function ClassroomHeader({
   const identity = grade ? `${grade}${section ?? ''}` : (program ?? name);
   const roleBadgeClass = userRole ? ROLE_BADGE_CLASS[userRole] : undefined;
   const isAdmin = userRole === 'admin';
+  // FIX C — "(N years ago)" is only worth showing once a batch has
+  // actually graduated; a same-year or future batch has nothing to be
+  // "ago" about.
+  const yearsAgo = new Date().getFullYear() - batchYear;
 
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const chosen = e.target.files?.[0];
@@ -131,15 +133,24 @@ export function ClassroomHeader({
       {roleBadgeClass && (
         <span className={`${styles.roleBadge} ${styles[roleBadgeClass]}`}>{t(`role.${userRole}`)}</span>
       )}
-      <button type="button" className={styles.statsRow} onClick={onStatsClick}>
-        <span>{t('members', { count: memberCount })}</span>
-        <span>·</span>
-        <span>{t('teachers', { count: teacherCount })}</span>
-        <span>·</span>
-        <span>{t('verified', { count: verifiedCount })}</span>
-      </button>
-      <button type="button" className={styles.detailsLink} onClick={onStatsClick}>
-        ⓘ {t('details')}
+      {/* FIX C — icon+number stats instead of text labels, matching the
+          mockup exactly: members/verified icons, then just the batch year
+          (no "Batch of" prefix — that's already in the subtitle above). */}
+      <button type="button" className={styles.statsRow} onClick={onStatsClick} aria-label={t('statsRowLabel', { memberCount, verifiedCount, batchYear })}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        <span>{memberCount}</span>
+        <span aria-hidden="true">·</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+        <span>{verifiedCount}</span>
+        <span aria-hidden="true">·</span>
+        <span>{batchYear}</span>
+        {yearsAgo > 0 && <span className={styles.yearsAgo}>{t('yearsAgo', { count: yearsAgo })}</span>}
       </button>
 
       {isAdmin && (

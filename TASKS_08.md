@@ -377,7 +377,7 @@ join date system message in corridor"
 
 ---
 
-## TASK 07 — Fix: classroom header UI [PENDING]
+## TASK 07 — Fix: classroom header UI [DONE: dark navy gradient was already correct (verified, no change needed); removed the "Details" link, "+" button now opens a tab-aware panel (class info w/ Global ID + created date for Classroom, filtered teacher/student roster for Staff Room/Student Alley); stats row is now icon+number (members/verified/batch year, optional years-ago)]
 
 Three issues in the classroom header:
 

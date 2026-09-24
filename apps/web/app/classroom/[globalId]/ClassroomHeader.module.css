@@ -111,6 +111,7 @@
 .statsRow {
   flex-basis: 100%;
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 5px;
   padding-inline-start: 44px;
@@ -123,15 +124,12 @@
   justify-content: flex-start;
 }
 
-.detailsLink {
-  flex-basis: 100%;
-  padding-inline-start: 44px;
-  margin-block-start: 2px;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
-  background: none;
-  border: none;
-  text-align: start;
-  justify-content: flex-start;
+.statsRow svg {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.yearsAgo {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-inline-start: 2px;
 }

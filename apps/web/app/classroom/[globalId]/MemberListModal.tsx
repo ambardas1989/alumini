@@ -19,6 +19,8 @@ interface MemberListModalProps {
   viewerIsVerified: boolean;
   /** classroom.createdBy — the one member shown as "Creator" instead of their plain role. */
   creatorId?: string | null;
+  /** TASKS_08 TASK 07 FIX B — opened from the Staff Room/Student Alley tab's "+" button restricts the roster to that role; omitted (Classroom tab) shows everyone. */
+  roleFilter?: 'teacher' | 'student';
   onClose: () => void;
 }
 
@@ -33,10 +35,11 @@ function statusDotClass(status: string): string {
 
 export function MemberListModal({
   classroomId,
-  members,
+  members: allMembers,
   currentUserId,
   viewerIsVerified,
   creatorId,
+  roleFilter,
   onClose,
 }: MemberListModalProps) {
   const router = useRouter();
@@ -46,6 +49,11 @@ export function MemberListModal({
   const [filter, setFilter] = useState<Filter>('all');
   const [vouchedIds, setVouchedIds] = useState<Set<string>>(new Set());
   const [vouchingId, setVouchingId] = useState<string | null>(null);
+
+  const members = useMemo(
+    () => (roleFilter ? allMembers.filter((m) => m.role === roleFilter) : allMembers),
+    [allMembers, roleFilter],
+  );
 
   const counts = useMemo(
     () => ({
