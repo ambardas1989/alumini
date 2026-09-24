@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Classroom, Institution } from '@alumini/types';
 import * as api from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import type { MembershipDetail, VerificationAttempt } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -72,11 +73,22 @@ export default function VerifyPage() {
         // Non-fatal — the accordion just falls back to no in-progress method highlighted.
       }
     } catch (err) {
-      setLoadError(getErrorMessage(err));
+      // eslint-disable-next-line no-console
+      console.error('[VERIFY-PAGE] Failed to load classroom/membership', { classroomId, err });
+      // BUG FIX (TASKS_09 TASK 09) — a plain NotFoundException has no
+      // errorCode, so getErrorMessage() fell through to the generic
+      // "Something went wrong" fallback instead of the specific,
+      // actionable "you're not a member" message the backend already
+      // sends as its exception text (MembershipService.getMembership()).
+      if (err instanceof ApiError && err.statusCode === 404) {
+        setLoadError(t('notAMember'));
+      } else {
+        setLoadError(getErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
-  }, [classroomId]);
+  }, [classroomId, t]);
 
   useEffect(() => {
     if (!ready) return;

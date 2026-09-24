@@ -706,7 +706,8 @@
           "redeemed": "This code has already been used"
         }
       }
-    }
+    },
+    "notAMember": "You are not a member of this classroom."
   },
   "profile": {
     "title": "Profile",

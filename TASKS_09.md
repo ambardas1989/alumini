@@ -340,7 +340,7 @@ Commit: "fix: pending members can see future events"
 
 ---
 
-## TASK 09 — Fix: verify link fails for new joiners [PENDING]
+## TASK 09 — Fix: verify link fails for new joiners [DONE: globalId vs UUID was already fixed by TASK 08's membership.service.ts resolution + the frontend link fix; found and fixed the actual remaining gap — a plain NotFoundException (no errorCode) fell through to a generic "Something went wrong" instead of the specific "You are not a member of this classroom" message, plus added console.error logging on load failure]
 
 Clicking the verify link as a new unverified member fails
 instead of showing the verification methods screen.
