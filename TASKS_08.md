@@ -467,7 +467,9 @@ DO NOT PUSH YET — wait for all tasks to complete.
 
 ---
 
-## TASK 09 — Feature: message attachments, events, polls via + button [PENDING]
+## TASK 09 — Feature: message attachments, events, polls via + button [DEFERRED — attachments and polls not needed right now]
+
+Deferred to a future task batch. Skip this task.
 
 Add a "+" button to the message input bar that opens
 an action menu with four options:
@@ -752,11 +754,11 @@ Also create 'classroom-media' bucket in Supabase Storage:
 
 (Claude Code fills this in when all tasks are [DONE])
 
-Date completed:
-Tasks completed:
-Tests passing:
-Build status:
-Notes:
+Date completed: In progress — not all tasks done yet (see below).
+Tasks completed: TASK 01–06 [DONE]. TASK 07–08 still [PENDING]. TASK 09 [DEFERRED] per explicit request — attachments/events/polls "+" button feature not needed right now, skipped for this batch.
+Tests passing: npm run test passing after every completed task (37 frontend/utils tests + full backend Jest suite, 16 suites).
+Build status: next build and backend nest build passing after every frontend-touching task.
+Notes: Still no `git push` — per the batch's own instruction, push is withheld until every non-deferred task is [DONE]. Resuming with TASK 07 next.
 
 ---
 
