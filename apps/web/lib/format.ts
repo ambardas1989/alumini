@@ -62,6 +62,32 @@ export function formatPhoneDisplay(phone: string | null | undefined): string {
   return `+${countryCode} ${groups.join(' ')}`;
 }
 
+/**
+ * TASKS_07 TASK 09 FIX B — allows only characters a phone number could
+ * legitimately contain while typing (digits, +, spaces, hyphens,
+ * parentheses); doesn't restructure the value or move the cursor, so it's
+ * safe to run on every keystroke without fighting mid-edit typing.
+ */
+export function sanitizePhoneInput(value: string): string {
+  return value.replace(/[^\d+\s\-()]/g, '');
+}
+
+/**
+ * TASKS_07 TASK 09 FIX B/D — best-effort normalization toward E.164,
+ * mirroring apps/backend's normalizePhone() (UpdateProfileDto) exactly so
+ * the value shown here after blur is the same one the API will accept.
+ * Run on blur, not on every keystroke — restructuring the value while the
+ * user is still typing the country code would fight their cursor.
+ */
+export function normalizePhoneForSubmit(value: string): string {
+  const stripped = value.replace(/[\s\-()]/g, '');
+  if (!stripped || stripped.startsWith('+')) return stripped;
+  if (/^0\d{10}$/.test(stripped)) return `+91${stripped.slice(1)}`;
+  if (/^\d{10}$/.test(stripped)) return `+91${stripped}`;
+  if (/^\d+$/.test(stripped)) return `+${stripped}`;
+  return stripped;
+}
+
 export function safeRelativeTime(date: string | null | undefined): string {
   if (!date) return 'just now';
   const parsed = new Date(date);

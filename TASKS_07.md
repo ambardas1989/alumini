@@ -422,7 +422,7 @@ Commit: "feat: institution search dropdown, city/state/country in classroom crea
 
 ---
 
-## TASK 09 — Fix: phone number format error handling [PENDING]
+## TASK 09 — Fix: phone number format error handling [DONE: always-visible format hint, sanitize-on-type + normalize-on-blur, friendly inline error for a 400 phone-format response instead of the shared generic fallback; backend now auto-corrects common shapes (bare 10-digit, leading-0, spaces/hyphens/parens) via a class-transformer @Transform before E.164 validation runs]
 
 Saving phone number shows raw API error:
 {

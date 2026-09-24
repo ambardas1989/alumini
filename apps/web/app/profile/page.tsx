@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Classroom, Institution, Profile } from '@alumini/types';
 import * as api from '@/lib/api';
-import { getErrorMessage } from '@/lib/errors';
+import { getErrorMessage, parseValidationErrors } from '@/lib/errors';
 import { clearSession, getToken } from '@/lib/auth';
-import { safeFormatDate, formatPhoneDisplay, safeRelativeTime } from '@/lib/format';
+import { safeFormatDate, formatPhoneDisplay, safeRelativeTime, sanitizePhoneInput, normalizePhoneForSubmit } from '@/lib/format';
 import { supabase, PROFILE_AVATARS_BUCKET } from '@/lib/supabase';
 import { isLinkedInConnectEnabled, buildLinkedInAuthorizeUrl } from '@/lib/linkedin';
 import { Badge } from '@/components/ui/Badge';
@@ -53,6 +53,7 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -153,14 +154,28 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
+    setPhoneError(null);
+    // TASKS_07 TASK 09 FIX B — normalize toward E.164 right before sending,
+    // not on every keystroke (see sanitizePhoneInput()'s own onChange use
+    // below) — this mirrors apps/backend's own normalizePhone() exactly, so
+    // what actually gets validated server-side matches what's shown here.
+    const normalizedPhone = phone ? normalizePhoneForSubmit(phone) : '';
     try {
-      const updated = await api.updateProfile({ fullName, phone: phone || undefined });
+      const updated = await api.updateProfile({ fullName, phone: normalizedPhone || undefined });
       setProfile(updated);
       updateUser({ fullName: updated.fullName, avatarUrl: updated.avatarUrl ?? null });
       setEditing(false);
       showToast(t('updatedToast'), 'success');
     } catch (err) {
-      setSaveError(getErrorMessage(err));
+      // TASKS_07 TASK 09 FIX C — a phone-format 400 gets its own friendly,
+      // field-scoped message instead of the shared generic fallback (or,
+      // worse, the raw class-validator string).
+      const fieldErrors = parseValidationErrors(err);
+      if (fieldErrors.phone) {
+        setPhoneError(t('phoneErrors.invalidFormat'));
+      } else {
+        setSaveError(getErrorMessage(err));
+      }
     } finally {
       setSaving(false);
     }
@@ -614,12 +629,20 @@ export default function ProfilePage() {
 
               <div className={styles.editForm}>
                 <Input label={t('fullNameLabel')} value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                <Input
-                  label={t('phoneLabel')}
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
+                <div>
+                  <Input
+                    label={t('phoneLabel')}
+                    type="tel"
+                    value={phone}
+                    error={phoneError ?? undefined}
+                    onChange={(e) => {
+                      setPhone(sanitizePhoneInput(e.target.value));
+                      if (phoneError) setPhoneError(null);
+                    }}
+                    onBlur={() => setPhone((prev) => (prev ? normalizePhoneForSubmit(prev) : prev))}
+                  />
+                  <p className={styles.phoneFormatHint}>{t('phoneFormatHint')}</p>
+                </div>
                 {saveError && <ErrorMessage message={saveError} />}
                 <div className={styles.editActions}>
                   <Button variant="ghost" size="md" onClick={() => setEditing(false)} disabled={saving}>

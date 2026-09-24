@@ -722,6 +722,10 @@
       "signOutRowLabel": "Sign out",
       "signOutThisDeviceButton": "This device",
       "signOutAllDevicesButton": "All devices"
+    },
+    "phoneFormatHint": "Format: +[country code][number] — e.g. +919876543210",
+    "phoneErrors": {
+      "invalidFormat": "Please use international format: +919876543210"
     }
   },
   "linkedinConnect": {
