@@ -69,6 +69,8 @@ interface RequestOptions {
    * getToken(), which is what every other call implicitly uses below.
    */
   token?: string;
+  /** Extra request headers beyond Content-Type/Authorization — e.g. X-MFA-Code for an MfaChallengeGuard-protected route. */
+  headers?: Record<string, string>;
 }
 
 function buildUrl(path: string, query?: Record<string, QueryValue>): string {
@@ -102,7 +104,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...options.headers };
   const sessionToken = getToken();
   const token = options.token ?? sessionToken;
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -277,6 +279,26 @@ export function forgotPassword(email: string): Promise<{ message: string }> {
 
 export function resetPassword(token: string, password: string): Promise<{ message: string }> {
   return request('/auth/reset-password', { method: 'POST', body: { token, password } });
+}
+
+/**
+ * Changes the password for the current session (profile page's "Change
+ * password" modal) — distinct from resetPassword()'s unauthenticated,
+ * emailed-link flow: this never signs the caller out. The backend
+ * verifies mfaCode in the SAME request via MfaChallengeGuard (X-MFA-Code
+ * header), not as a separate pre-verify call — same "one combined
+ * verify+act request" pattern every other MfaChallengeGuard route
+ * already uses. `token: getToken()` is passed explicitly, same reasoning
+ * as challengeMfa(): keeps a wrong-code 401 from being treated as "the
+ * session itself expired" and hard-redirecting out of the modal.
+ */
+export function changePassword(mfaCode: string, newPassword: string): Promise<{ message: string }> {
+  return request('/auth/change-password', {
+    method: 'POST',
+    body: { password: newPassword },
+    token: getToken() ?? undefined,
+    headers: { 'X-MFA-Code': mfaCode },
+  });
 }
 
 /**

@@ -502,6 +502,58 @@ describe('AuthService', () => {
         expect.objectContaining({ eventType: AuditEventType.AUTH_LOGIN_SUCCESS }),
       );
     });
+
+    // BUG FIX regression — a sensitive-action re-challenge (any token
+    // purpose other than 'mfa_login', e.g. MfaChallengeGuard re-authorising
+    // an already-logged-in user) for an EMAIL-MFA account must check the
+    // code against purpose 'mfa_change' — the same purpose
+    // resendPurposeFor() sends a resent code under for that exact case.
+    // Previously verifyCode()'s EMAIL branch always checked 'login'
+    // regardless of which case this was, so this path could never
+    // succeed for any email-MFA user.
+    it("checks the 'mfa_change' purpose for an email-MFA sensitive-action re-challenge, not 'login'", async () => {
+      const hash = (code: string) => createHash('sha256').update(code).digest('hex');
+      const emailOtpChain = chain({
+        data: { id: 'otp-1', code_hash: hash('123456'), attempts: 0, expires_at: daysFromNow(1).toISOString() },
+        error: null,
+      });
+      mockTables({
+        profiles: chain({
+          data: { id: 'user-1', email: 'user@example.com', mfa_enabled: true, mfa_method: MfaMethod.EMAIL },
+          error: null,
+        }),
+        email_otp_codes: emailOtpChain,
+      });
+
+      const result: any = await service.challengeMfa(
+        { sub: 'user-1', email: 'user@example.com', purpose: 'access', sessionId: 'sess-1' },
+        { code: '123456' } as any,
+      );
+
+      expect(result).toEqual({ verified: true });
+      expect(emailOtpChain.eq).toHaveBeenCalledWith('purpose', 'mfa_change');
+      expect(emailOtpChain.eq).not.toHaveBeenCalledWith('purpose', 'login');
+    });
+  });
+
+  // ── changePassword() ─────────────────────────────────────────────────────
+
+  describe('changePassword()', () => {
+    it('updates the password via Supabase Admin and audits it, without revoking sessions', async () => {
+      const result = await service.changePassword('user-1', 'NewPassw0rd');
+
+      expect(result).toEqual({ message: 'Password changed successfully' });
+      expect(mockUpdateUserById).toHaveBeenCalledWith('user-1', { password: 'NewPassw0rd' });
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: AuditEventType.AUTH_PASSWORD_CHANGED, actorId: 'user-1' }),
+      );
+    });
+
+    it('throws when the Supabase Admin update fails', async () => {
+      mockUpdateUserById.mockResolvedValueOnce({ data: null, error: { message: 'admin api down' } });
+
+      await expect(service.changePassword('user-1', 'NewPassw0rd')).rejects.toThrow(BadRequestException);
+    });
   });
 
   // ── refreshTokens() ──────────────────────────────────────────────────────

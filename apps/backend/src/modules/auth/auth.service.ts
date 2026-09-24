@@ -818,7 +818,13 @@ export class AuthService {
       throw new BadRequestException('No MFA method is configured for this account');
     }
 
-    const result = await this.verifyCode(userId, method, dto.code, { confirmSetup: false });
+    // BUG FIX — see verifyCode()'s own doc comment on opts.emailPurpose.
+    // Must match resendPurposeFor()'s mapping exactly, since that's what
+    // decides which purpose an EMAIL-method code was actually sent under.
+    const result = await this.verifyCode(userId, method, dto.code, {
+      confirmSetup: false,
+      emailPurpose: resendPurposeFor(authToken.purpose),
+    });
 
     if (result !== 'valid') {
       this.appLogger.error('MFA verify failed', { userId, reason: result });
@@ -885,12 +891,26 @@ export class AuthService {
    *   confirmed on success. Every other caller must fail against an
    *   unconfirmed secret — an in-progress re-enrolment should never be
    *   usable to complete a login or a sensitive-action re-challenge.
+   * @param opts.emailPurpose - BUG FIX: which email_otp_codes.purpose to
+   *   check for the EMAIL method, when it isn't simply derivable from
+   *   confirmSetup alone. challengeMfa() is called for TWO different
+   *   situations that both pass confirmSetup: false — completing a login
+   *   (authToken.purpose === 'mfa_login', code sent under 'login' by
+   *   completePasswordVerifiedLogin()) and a sensitive-action re-challenge
+   *   for an already-logged-in user (MfaChallengeGuard, any other token
+   *   purpose — code sent under 'mfa_change' by resendPurposeFor()'s own
+   *   mapping). Only the caller knows which case it is; without this,
+   *   every EMAIL-method sensitive-action re-challenge always checked the
+   *   wrong purpose ('login') against a code that was actually stored
+   *   under 'mfa_change' and could never succeed. Falls back to the old
+   *   confirmSetup-derived purpose when omitted (completeMfaSetup()'s own
+   *   call site, where confirmSetup: true unambiguously means 'mfa_change').
    */
   private async verifyCode(
     userId: string,
     method: MfaMethod,
     code: string,
-    opts: { confirmSetup: boolean },
+    opts: { confirmSetup: boolean; emailPurpose?: EmailOtpPurpose },
   ): Promise<MfaCodeCheckResult> {
     if (method === MfaMethod.TOTP) {
       this.appLogger.debug('[AUTH:totpVerify] entry', { userId });
@@ -947,13 +967,8 @@ export class AuthService {
     }
 
     if (method === MfaMethod.EMAIL) {
-      // confirmSetup (initial enrolment) and a normal challenge use the
-      // same 'mfa_change' purpose here — sendEmailOtp() was already called
-      // with 'mfa_change' by initiateMfaSetup()'s email branch above, and
-      // completePasswordVerifiedLogin()/loginWithGoogle() call it with
-      // 'login' for an already-enrolled account, so this always matches
-      // whichever purpose actually sent the code the user is submitting.
-      return this.checkEmailOtp(userId, code, opts.confirmSetup ? 'mfa_change' : 'login');
+      const purpose = opts.emailPurpose ?? (opts.confirmSetup ? 'mfa_change' : 'login');
+      return this.checkEmailOtp(userId, code, purpose);
     }
 
     // SMS — check against the most recent unconsumed, unexpired challenge.
@@ -1301,6 +1316,43 @@ export class AuthService {
     });
 
     return { message: 'Password reset successfully' };
+  }
+
+  /**
+   * TASKS_06 TASK 05 — changes the password for an already-logged-in
+   * user. Unlike resetPassword() (unauthenticated, reset-token-driven,
+   * revokes every session), this is reached via a session the caller
+   * already holds: MFA re-challenge is enforced by MfaChallengeGuard at
+   * the controller (X-MFA-Code header) before this ever runs, so there's
+   * no separate mfaCode field or MFA branch here. Per the task's own
+   * explicit requirement, this does NOT revoke sessions or log the caller
+   * out — only resetPassword()'s "reset via emailed link" flow does that,
+   * since that flow can't distinguish the legitimate owner acting from
+   * home from an attacker who intercepted the link.
+   */
+  async changePassword(userId: string, newPassword: string, req?: Request): Promise<{ message: string }> {
+    const { error } = await this.supabase.auth.admin.updateUserById(userId, {
+      password: newPassword,
+    });
+
+    if (error) {
+      this.appLogger.error('[AUTH:changePwd] failed', {
+        userId,
+        error: error.message,
+        code: error.code,
+      });
+      throw new BadRequestException('Could not change password. Please try again.');
+    }
+
+    this.appLogger.info('[AUTH:changePwd] success', { userId });
+    await this.audit.log({
+      eventType: AuditEventType.AUTH_PASSWORD_CHANGED,
+      actorId: userId,
+      metadata: { via: 'authenticated_change' },
+      req,
+    });
+
+    return { message: 'Password changed successfully' };
   }
 
   // ── MFA reset / recovery ─────────────────────────────────────────────────

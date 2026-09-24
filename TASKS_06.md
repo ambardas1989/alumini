@@ -195,7 +195,7 @@ Commit: "fix: add back button to MFA page"
 
 ---
 
-## TASK 05 — Fix: change password flow UX [PENDING]
+## TASK 05 — Fix: change password flow UX [DONE: two-step modal (MFA verify → new password) replacing the old forgot-password-email-link flow; new POST /auth/change-password endpoint reusing MfaChallengeGuard; found and fixed a real pre-existing bug — verifyCode()'s EMAIL branch always checked purpose 'login' for every non-setup challenge, so MfaChallengeGuard (institution admin, codes, verification-review routes) never actually worked for email-MFA users]
 
 Currently "Change password" sends an OTP code directly
 which is wrong. The correct flow is:

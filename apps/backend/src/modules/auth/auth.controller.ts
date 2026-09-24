@@ -40,10 +40,12 @@ import { MfaRecoveryVerifyDto } from './dto/mfa-recovery-verify.dto';
 import { MfaSetupQueryDto } from './dto/mfa-setup-query.dto';
 import { MfaVerifyDto } from './dto/mfa-verify.dto';
 import { MfaChallengeDto } from './dto/mfa-challenge.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthTokenGuard } from './guards/auth-token.guard';
+import { MfaChallengeGuard } from './guards/mfa-challenge.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthTokenPayload } from './auth.types';
@@ -261,6 +263,29 @@ export class AuthController {
   @ApiOperation({ summary: 'Complete MFA recovery using the token from the emailed link — clears MFA and returns a setup pending token' })
   async mfaRecoveryVerify(@Body() dto: MfaRecoveryVerifyDto, @Req() req: Request) {
     return this.authService.verifyMfaRecovery(dto, req);
+  }
+
+  /**
+   * TASKS_06 TASK 05 — password change for an already-logged-in user,
+   * from the profile page's modal. Requires the caller's current MFA code
+   * on the SAME request (X-MFA-Code header) via MfaChallengeGuard —
+   * same "sensitive action re-challenge" pairing as the institution
+   * admin/codes/verification-review routes. The frontend must call
+   * POST /auth/mfa/email/resend first for an email-MFA account (no code
+   * to submit otherwise); a TOTP-MFA account just reads its next code off
+   * the authenticator app, no resend needed.
+   */
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard, MfaChallengeGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password for the current session — requires MFA re-challenge (X-MFA-Code header)' })
+  async changePassword(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Body() dto: ChangePasswordDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.changePassword(authToken.sub, dto.password, req);
   }
 
   // ── Session management ───────────────────────────────────────────────────

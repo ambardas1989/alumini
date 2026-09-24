@@ -658,7 +658,25 @@
       "sendResetLinkButton": "Send reset link",
       "resetLinkSentToast": "Reset link sent to your email",
       "signOutLabel": "Sign out",
-      "signOutButton": "Sign out"
+      "signOutButton": "Sign out",
+      "changePasswordModal": {
+        "mfaStepTitle": "Verify your identity",
+        "emailInstruction": "Enter the 6-digit code we sent to your email",
+        "totpInstruction": "Enter the code from your authenticator app",
+        "codeLabel": "6-digit code",
+        "resendLink": "Didn't receive it? Resend code",
+        "resendIn": "Resend code in {seconds}s",
+        "resent": "Code resent to your email",
+        "verifyButton": "Verify",
+        "passwordStepTitle": "Set a new password",
+        "newPasswordLabel": "New password",
+        "confirmNewPasswordLabel": "Confirm new password",
+        "changeButton": "Change password",
+        "successToast": "Password changed successfully",
+        "incorrectCode": "Incorrect code. Please try again.",
+        "passwordTooShort": "At least 8 characters",
+        "passwordMismatch": "Passwords do not match"
+      }
     }
   },
   "linkedinConnect": {

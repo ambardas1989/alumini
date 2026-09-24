@@ -336,3 +336,35 @@
   justify-content: flex-end;
   gap: 10px;
 }
+
+.changePasswordStep {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.changePasswordInstruction {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.resendRow {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.troubleLink {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-family: var(--font-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.troubleLink:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { Classroom, Institution, Profile } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
-import { clearSession } from '@/lib/auth';
+import { clearSession, getToken } from '@/lib/auth';
 import { safeFormatDate, formatPhoneDisplay } from '@/lib/format';
 import { supabase, PROFILE_AVATARS_BUCKET } from '@/lib/supabase';
 import { isLinkedInConnectEnabled, buildLinkedInAuthorizeUrl } from '@/lib/linkedin';
@@ -22,9 +22,13 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { PasswordInput } from '@/components/ui/PasswordInput';
+import { PasswordStrength } from '@/components/ui/PasswordStrength';
+import { CodeInput } from '@/components/ui/CodeInput';
 import { Modal } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { ApiError } from '@/lib/api';
 import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import styles from './page.module.css';
@@ -61,7 +65,20 @@ export default function ProfilePage() {
     () => typeof window !== 'undefined' && window.localStorage.getItem('alumini_mfa_admin_nudge_dismissed') === 'true',
   );
 
-  const [passwordResetSending, setPasswordResetSending] = useState(false);
+  // ── Change password modal (TASKS_06 TASK 05) ────────────────────────────
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [changePasswordStep, setChangePasswordStep] = useState<'mfa' | 'password'>('mfa');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaCodeComplete, setMfaCodeComplete] = useState(false);
+  const [mfaCodeError, setMfaCodeError] = useState<string | null>(null);
+  const [mfaCodeShakeKey, setMfaCodeShakeKey] = useState(0);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
+  const [resendJustSent, setResendJustSent] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changePasswordError, setChangePasswordError] = useState<string | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -258,16 +275,114 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePasswordReset = async () => {
-    if (!profile) return;
-    setPasswordResetSending(true);
+  // ── Change password modal (TASKS_06 TASK 05) ────────────────────────────
+  //
+  // Two UI steps (MFA verify, then new password), but only ONE real API
+  // call — POST /auth/change-password verifies mfaCode and sets the new
+  // password together, via MfaChallengeGuard, same "one combined
+  // verify+act request" pattern every other MFA-gated action in this app
+  // already uses (institution admin invite/remove, codes generation,
+  // verification review). Deliberately NOT a separate "verify now, act
+  // later" pair of requests: an email-method code is single-use
+  // (email_otp_codes.used), so a first "verify" call would consume it and
+  // the second "act" call would then fail against the exact same code —
+  // the Step 1 "Verify" button below only checks the code is 6 digits and
+  // moves to Step 2; the real check happens once, on Step 2's submit. If
+  // that fails on the code specifically, the user is sent back to Step 1
+  // with an inline error rather than leaving them stuck on the password
+  // step with a code-related error.
+
+  const resetChangePasswordState = () => {
+    setChangePasswordStep('mfa');
+    setMfaCode('');
+    setMfaCodeComplete(false);
+    setMfaCodeError(null);
+    setResendSeconds(0);
+    setResendJustSent(false);
+    setNewPassword('');
+    setConfirmNewPassword('');
+    setChangePasswordError(null);
+  };
+
+  const handleOpenChangePasswordModal = () => {
+    resetChangePasswordState();
+    setShowChangePasswordModal(true);
+    if (profile?.mfaMethod === 'email') {
+      void handleSendCode();
+    }
+  };
+
+  const handleCloseChangePasswordModal = () => {
+    setShowChangePasswordModal(false);
+    resetChangePasswordState();
+  };
+
+  const handleSendCode = async () => {
+    setSendingCode(true);
+    setMfaCodeError(null);
     try {
-      await api.forgotPassword(profile.email);
-      showToast(t('account.resetLinkSentToast'), 'success');
+      await api.resendMfaEmail(getToken() ?? '');
+      setResendSeconds(60);
     } catch (err) {
-      showToast(getErrorMessage(err), 'error');
+      setMfaCodeError(getErrorMessage(err));
     } finally {
-      setPasswordResetSending(false);
+      setSendingCode(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (resendSeconds > 0) return;
+    setResendJustSent(false);
+    await handleSendCode();
+    setResendJustSent(true);
+    setTimeout(() => setResendJustSent(false), 3000);
+  };
+
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = setTimeout(() => setResendSeconds((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendSeconds]);
+
+  const handleMfaStepContinue = () => {
+    if (!mfaCodeComplete) return;
+    setChangePasswordError(null);
+    setChangePasswordStep('password');
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 8) {
+      setChangePasswordError(t('account.changePasswordModal.passwordTooShort'));
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setChangePasswordError(t('account.changePasswordModal.passwordMismatch'));
+      return;
+    }
+
+    setChangingPassword(true);
+    setChangePasswordError(null);
+    try {
+      await api.changePassword(mfaCode, newPassword);
+      setShowChangePasswordModal(false);
+      resetChangePasswordState();
+      showToast(t('account.changePasswordModal.successToast'), 'success');
+    } catch (err) {
+      const code = err instanceof ApiError ? err.errorCode : null;
+      if (code === 'AUTH_MFA_INVALID_CODE' || code === 'AUTH_MFA_EXPIRED' || code === 'AUTH_MFA_MAX_ATTEMPTS') {
+        // The code turned out wrong/expired by the time Step 2 actually
+        // submitted it — send the user back to re-enter it rather than
+        // showing an MFA error on the password form.
+        setChangePasswordStep('mfa');
+        setMfaCode('');
+        setMfaCodeComplete(false);
+        setMfaCodeError(t('account.changePasswordModal.incorrectCode'));
+        setMfaCodeShakeKey((k) => k + 1);
+      } else {
+        setChangePasswordError(getErrorMessage(err));
+      }
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -558,8 +673,8 @@ export default function ProfilePage() {
 
             <div className={styles.accountRow}>
               <span className={styles.accountLabel}>{t('account.changePasswordLabel')}</span>
-              <Button variant="ghost" size="sm" loading={passwordResetSending} onClick={handlePasswordReset}>
-                {t('account.sendResetLinkButton')}
+              <Button variant="ghost" size="sm" onClick={handleOpenChangePasswordModal}>
+                {t('account.changePasswordLabel')}
               </Button>
             </div>
 
@@ -611,6 +726,103 @@ export default function ProfilePage() {
               {t('signOut')}
             </Button>
           </div>
+        </Modal>
+      )}
+
+      {showChangePasswordModal && (
+        <Modal
+          title={
+            changePasswordStep === 'mfa'
+              ? t('account.changePasswordModal.mfaStepTitle')
+              : t('account.changePasswordModal.passwordStepTitle')
+          }
+          onClose={handleCloseChangePasswordModal}
+        >
+          {changePasswordStep === 'mfa' ? (
+            <div className={styles.changePasswordStep}>
+              <p className={styles.changePasswordInstruction}>
+                {profile?.mfaMethod === 'email'
+                  ? t('account.changePasswordModal.emailInstruction')
+                  : t('account.changePasswordModal.totpInstruction')}
+              </p>
+
+              <CodeInput
+                key={mfaCodeShakeKey}
+                label={t('account.changePasswordModal.codeLabel')}
+                error={!!mfaCodeError}
+                disabled={changingPassword || sendingCode}
+                onChange={(value, complete) => {
+                  setMfaCode(value);
+                  setMfaCodeComplete(complete);
+                  if (mfaCodeError) setMfaCodeError(null);
+                }}
+                onComplete={() => {
+                  /* handled by the explicit Verify button below, not auto-submit */
+                }}
+              />
+              {mfaCodeError && <ErrorMessage message={mfaCodeError} />}
+
+              {profile?.mfaMethod === 'email' && (
+                <p className={styles.resendRow}>
+                  {resendJustSent ? (
+                    t('account.changePasswordModal.resent')
+                  ) : resendSeconds > 0 ? (
+                    t('account.changePasswordModal.resendIn', { seconds: resendSeconds })
+                  ) : (
+                    <button type="button" className={styles.troubleLink} onClick={handleResendCode} disabled={sendingCode}>
+                      {t('account.changePasswordModal.resendLink')}
+                    </button>
+                  )}
+                </p>
+              )}
+
+              <div className={styles.confirmActions}>
+                <Button variant="ghost" size="md" onClick={handleCloseChangePasswordModal}>
+                  {tCommon('cancel')}
+                </Button>
+                <Button variant="primary" size="md" disabled={!mfaCodeComplete} onClick={handleMfaStepContinue}>
+                  {t('account.changePasswordModal.verifyButton')}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.changePasswordStep}>
+              <div>
+                <PasswordInput
+                  label={t('account.changePasswordModal.newPasswordLabel')}
+                  autoComplete="new-password"
+                  disabled={changingPassword}
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (changePasswordError) setChangePasswordError(null);
+                  }}
+                />
+                <PasswordStrength password={newPassword} />
+              </div>
+              <PasswordInput
+                label={t('account.changePasswordModal.confirmNewPasswordLabel')}
+                autoComplete="new-password"
+                disabled={changingPassword}
+                value={confirmNewPassword}
+                onChange={(e) => {
+                  setConfirmNewPassword(e.target.value);
+                  if (changePasswordError) setChangePasswordError(null);
+                }}
+              />
+
+              {changePasswordError && <ErrorMessage message={changePasswordError} />}
+
+              <div className={styles.confirmActions}>
+                <Button variant="ghost" size="md" onClick={handleCloseChangePasswordModal} disabled={changingPassword}>
+                  {tCommon('cancel')}
+                </Button>
+                <Button variant="primary" size="md" loading={changingPassword} onClick={handleChangePassword}>
+                  {t('account.changePasswordModal.changeButton')}
+                </Button>
+              </div>
+            </div>
+          )}
         </Modal>
       )}
     </AppShell>
