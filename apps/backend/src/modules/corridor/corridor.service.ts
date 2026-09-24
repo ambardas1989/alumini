@@ -128,6 +128,16 @@ export interface PresentedMessage {
   isRedacted?: true;
 }
 
+/**
+ * BUG FIX — "invalid input syntax for type uuid" (see
+ * MembershipService's identical UUID_RE comment for the full root cause:
+ * a stray frontend link sent the classroom.[globalId] route param instead
+ * of classroom.id). Every method below takes `:classroomId` straight off
+ * the URL — resolving it before it reaches a `.eq('classroom_id', ...)`
+ * query keeps this endpoint robust regardless of caller.
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class CorridorService {
   private readonly logger = new Logger(CorridorService.name);
@@ -173,6 +183,19 @@ export class CorridorService {
     );
   }
 
+  /** Resolves a `:classroomId` URL param to the classroom's internal UUID — see the UUID_RE comment above. */
+  private async resolveClassroomId(classroomId: string): Promise<string | null> {
+    if (UUID_RE.test(classroomId)) return classroomId;
+
+    const { data: classroom } = await this.supabase
+      .from('classrooms')
+      .select('id')
+      .eq('global_id', classroomId)
+      .maybeSingle();
+
+    return classroom?.id ?? null;
+  }
+
   // ── Read ─────────────────────────────────────────────────────────────────
 
   /**
@@ -198,6 +221,11 @@ export class CorridorService {
    */
   async getMessages(userId: string, classroomId: string, channel: ChannelType, page = 0) {
     this.appLogger.debug('[CORRIDOR:getMessages] entry', { classroomId, channel, userId, page });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
 
     const { data: membership } = await this.supabase
       .from('memberships')
@@ -372,6 +400,11 @@ export class CorridorService {
    */
   async sendMessage(userId: string, classroomId: string, channel: ChannelType, dto: SendMessageDto, req?: Request) {
     this.appLogger.debug('[CORRIDOR:send] entry', { classroomId, channel, userId, contentLength: dto.content?.length });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
 
     const canAccess = await this.membershipService.canAccessChannel(userId, classroomId, channel);
     this.appLogger.debug('[CORRIDOR:send] membership check', { canAccess });
@@ -448,6 +481,12 @@ export class CorridorService {
    * be a verified classroom admin.
    */
   async deleteMessage(userId: string, classroomId: string, messageId: string, req?: Request): Promise<void> {
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
+
     const { data: message } = await this.supabase
       .from('messages')
       .select('id, sender_id, is_deleted')

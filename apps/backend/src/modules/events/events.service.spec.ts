@@ -44,9 +44,31 @@ function mockTables(overrides: Record<string, ReturnType<typeof chain>>) {
   fromTables = overrides;
 }
 
+/**
+ * Default `classrooms` lookup for resolveClassroomId() — every fixture
+ * classroomId here ('class-1', ...) is already what the test means by "the
+ * classroom's own id", not a real UUID, so this just echoes back whatever
+ * `.eq('global_id', x)` was called with rather than requiring every single
+ * test to add its own `classrooms: chain(...)` override. Tests that
+ * specifically want an unresolvable global ID still override this via
+ * their own mockTables({ classrooms: ... }).
+ */
+function classroomsEchoTable() {
+  let queriedId: string | null = null;
+  const builder: any = {
+    select: jest.fn(() => builder),
+    eq: jest.fn((column: string, value: string) => {
+      if (column === 'global_id') queriedId = value;
+      return builder;
+    }),
+  };
+  builder.maybeSingle = jest.fn(() => Promise.resolve({ data: queriedId ? { id: queriedId } : null, error: null }));
+  return builder;
+}
+
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
-    from: (table: string) => fromTables[table] ?? chain({ data: null, error: null }),
+    from: (table: string) => fromTables[table] ?? (table === 'classrooms' ? classroomsEchoTable() : chain({ data: null, error: null })),
   })),
 }));
 
@@ -145,11 +167,11 @@ describe('EventsService', () => {
 
     it('splits events into upcoming/past with RSVP counts and the caller’s own status', async () => {
       mockTables({
-        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified', joined_at: past(30) }, error: null }),
         events: chain({
           data: [
-            { id: 'e1', classroom_id: 'class-1', event_date: future(5), title: 'Upcoming' },
-            { id: 'e2', classroom_id: 'class-1', event_date: past(5), title: 'Past' },
+            { id: 'e1', classroom_id: 'class-1', event_date: future(5), title: 'Upcoming', created_at: past(1) },
+            { id: 'e2', classroom_id: 'class-1', event_date: past(5), title: 'Past', created_at: past(6) },
           ],
           error: null,
         }),
@@ -173,6 +195,35 @@ describe('EventsService', () => {
       expect(result.past[0].id).toBe('e2');
       expect(result.past[0].rsvpCounts).toEqual({ going: 0, notGoing: 0, maybe: 0 });
       expect(result.past[0].userRsvp).toBeUndefined();
+    });
+
+    // TASKS_09 TASK 08 — regression tests for the "new joiner can't see
+    // classroom events" fix: a pending/pending_auto member must see future
+    // events (no verified-only gate on the whole list any more) but still
+    // not past ones; a non-member is still rejected outright.
+    it('shows a pending member future events but not past ones', async () => {
+      mockTables({
+        memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'pending', joined_at: past(1) }, error: null }),
+        events: chain({
+          data: [
+            { id: 'e1', classroom_id: 'class-1', event_date: future(5), title: 'Upcoming', created_at: past(1) },
+            { id: 'e2', classroom_id: 'class-1', event_date: past(5), title: 'Past', created_at: past(10) },
+          ],
+          error: null,
+        }),
+        rsvps: chain({ data: [], error: null }),
+      });
+
+      const result = await service.listEvents('user-1', 'class-1');
+
+      expect(result.upcoming.map((e) => e.id)).toEqual(['e1']);
+      expect(result.past).toEqual([]);
+    });
+
+    it('throws ForbiddenException for a non-member', async () => {
+      mockTables({ memberships: chain({ data: null, error: null }) });
+
+      await expect(service.listEvents('user-1', 'class-1')).rejects.toThrow(ForbiddenException);
     });
   });
 

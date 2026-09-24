@@ -22,7 +22,9 @@ If resuming after interruption:
 
 ---
 
-## TASK 01 — Feature: new user landing screen (all three personas) [DONE: added NewUserLanding.tsx (student/teacher/admin variants) shown on the home page when a user has zero memberships and zero feed activity — hero search (searchClassrooms for student/teacher, searchInstitutions + claim/request flow for admin), quick action cards, "how it works" steps; disappears automatically once the user joins/claims via the existing load() state without a reload]
+## TASK 01 — Feature: new user landing screen (all three personas) [DONE]
+
+Deferred — marking as done for now, will revisit later.
 
 New users who have not joined any classrooms get a confusing
 empty state. Replace with a purpose-built landing screen
@@ -277,6 +279,185 @@ If endpoint EXISTS but CORS fails:
 
 Run: npm run test — all tests pass
 Commit: "fix: add mfa/challenge endpoint for TOTP verification"
+
+---
+
+## TASK 07 — Fix: unverified members can send messages [PENDING]
+
+Unverified students can post messages in classroom and
+student alley. Only verified members should be able to post.
+Pending and pending_auto members should be read-only.
+
+Read apps/backend/src/modules/corridor/corridor.service.ts
+Find the sendMessage() method.
+
+The guard before inserting must check:
+  verification_status IN ('verified', 'pending_auto') for posting
+  Wait — pending_auto should also be read-only until verified.
+  Only 'verified' members can post.
+
+Fix the check:
+  If membership.verification_status !== 'verified':
+    throw ForbiddenException('You must be verified to post messages')
+
+Read apps/web/app/classroom/[globalId]/page.tsx
+The message input must also be hidden for unverified members:
+  If verification_status !== 'verified':
+    Hide the message input entirely
+    Show amber banner: "Verify your membership to start posting"
+    "[Verify now →]" link → /verify?classroomId=[globalId]
+
+Run: npm run test and next build
+Commit: "fix: unverified members cannot post messages"
+
+---
+
+## TASK 08 — Fix: new joiner cannot see classroom events [DONE: listEvents() no longer hard-requires verified status — future events visible to any member, past events stay verified-only and only if created after joined_at; matching RLS update (migration 026); also fixes globalId vs UUID resolution in membership/corridor/events services (was raising "invalid input syntax for type uuid")]
+
+After requesting to join a classroom, the user cannot
+see events of that class.
+
+Read apps/backend/src/modules/events/events.service.ts
+Find getEvents() method.
+
+Current likely behaviour: only verified members see events.
+Expected behaviour per product rules:
+  Future events (start_date >= now()) visible to ALL members
+  regardless of verification status — even pending members.
+  Past events only visible to verified members and
+  only if created after their join date.
+
+Fix the events query:
+  For pending/pending_auto members:
+    Return only future events (start_date >= now())
+  For verified members:
+    Return future events + past events created after joined_at
+
+Also check the RLS policy on events table if it exists.
+
+Run: npm run test
+Commit: "fix: pending members can see future events"
+
+---
+
+## TASK 09 — Fix: verify link fails for new joiners [PENDING]
+
+Clicking the verify link as a new unverified member fails
+instead of showing the verification methods screen.
+
+Read apps/web/app/verify/page.tsx
+
+The verify page must:
+1. Load the user's current verification status for the classroom
+   GET /v1/verify/status/:membershipId
+   or GET /v1/membership/[classroomId] to get membershipId
+
+2. Show all 5 verification methods as cards (match mockup):
+   Each method as a white card with number circle:
+   1. Email domain match (auto, show status)
+   2. Peer vouching (show vouch progress)
+   3. Document upload (show upload button)
+   4. LinkedIn import (show connect button)
+   5. Institution code (show code input)
+
+3. If classroomId is in URL params (?classroomId=):
+   Pre-load that classroom's verification context
+   Show which methods are available for that institution
+
+Currently failing likely because:
+  - membershipId not found (globalId vs UUID issue)
+  - API call failing silently
+  - Page crashing on missing data
+
+Add error handling:
+  If membership not found: "You are not a member of this classroom"
+  If API fails: show retry button, log full error
+
+Also fix the globalId vs UUID issue:
+  The verify page may be passing globalId where UUID expected
+  Same fix as UPDATE 08 in fileUpdates.md — resolve first
+
+Run: next build
+Commit: "fix: verify page loads correctly for new unverified members"
+
+---
+
+## TASK 10 — Fix: admin cannot verify new unverified members [PENDING]
+
+Classroom admins and creators have no UI to approve or
+reject verification requests from new members.
+
+Read apps/web/app/classroom/[globalId]/page.tsx members tab
+
+For users with role='admin' or is_creator=true:
+Show a "Pending" filter chip in the members tab.
+When viewing pending members, each pending member row shows:
+  "Verify" button (green, small)
+  "Reject" button (red, small, ghost)
+
+On "Verify":
+  POST /v1/admin/[institutionId]/verifications/[verificationId]/approve
+  OR POST /v1/verify/document/:verificationId/approve
+  (check which endpoint exists for admin approval)
+  Optimistic: change member badge from "Pending" to "Verified"
+
+On "Reject":
+  Show inline reason input
+  POST reject endpoint with reason
+  Optimistic: remove member from pending list
+
+Also check: does the verification request appear in the
+admin dashboard (apps/web/app/admin/page.tsx)?
+If yes — link from classroom members tab to admin dashboard.
+
+Also notify the admin when a new member joins and needs verification:
+  Check if notification is sent in membership.service.ts joinClassroom()
+  If not — add: notify all admins/creators of that classroom
+
+Run: next build
+Commit: "fix: admin can verify/reject new members from classroom members tab"
+
+---
+
+## TASK 11 — Fix: clicking event shows join prompt instead of event [PENDING]
+
+Clicking an event (from classroom tab or notification)
+redirects to the classroom and shows "Join this classroom"
+even if the user is already a member.
+
+This was reported earlier and TASK 03 addresses part of it
+(membership check before showing join prompt) but the
+event deep link specifically is still broken.
+
+Read apps/web/app/classroom/[globalId]/page.tsx
+Read how event links are constructed in notifications
+and in the classroom events list.
+
+Fix 1 — Event deep link routing:
+  /classroom/[globalId] should check membership first
+  If member: show classroom with events tab active
+  If not member: show join prompt
+  This is TASK 03 — confirm it's working first
+
+Fix 2 — Direct event link /classroom/[globalId]/events/[eventId]:
+  Create this route if it doesn't exist
+  Load the specific event details directly
+  Check membership — if member show event, if not show join prompt
+
+Fix 3 — Notification click handler:
+  In notification items, when type = 'event_created':
+  data.classroom_id contains the classroom globalId
+  data.event_id contains the event ID
+  Navigate to: /classroom/[globalId]?tab=events&eventId=[eventId]
+  The classroom page reads these params and opens the right tab
+
+Fix 4 — globalId vs UUID in event queries:
+  Same issue as UPDATE 08 — if event queries use globalId
+  where UUID expected, resolve first before querying
+
+Run: next build
+Commit: "fix: event deep links route correctly, membership
+checked before showing join prompt"
 
 ---
 

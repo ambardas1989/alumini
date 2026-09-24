@@ -42,9 +42,31 @@ function mockTables(overrides: Record<string, ReturnType<typeof chain>>) {
   fromTables = overrides;
 }
 
+/**
+ * Default `classrooms` lookup for resolveClassroomId() — every fixture
+ * classroomId here ('class-1', ...) is already what the test means by "the
+ * classroom's own id", not a real UUID, so this just echoes back whatever
+ * `.eq('global_id', x)` was called with rather than requiring every single
+ * test to add its own `classrooms: chain(...)` override. Tests that
+ * specifically want an unresolvable global ID still override this via
+ * their own mockTables({ classrooms: ... }).
+ */
+function classroomsEchoTable() {
+  let queriedId: string | null = null;
+  const builder: any = {
+    select: jest.fn(() => builder),
+    eq: jest.fn((column: string, value: string) => {
+      if (column === 'global_id') queriedId = value;
+      return builder;
+    }),
+  };
+  builder.maybeSingle = jest.fn(() => Promise.resolve({ data: queriedId ? { id: queriedId } : null, error: null }));
+  return builder;
+}
+
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
-    from: (table: string) => fromTables[table] ?? chain({ data: null, error: null }),
+    from: (table: string) => fromTables[table] ?? (table === 'classrooms' ? classroomsEchoTable() : chain({ data: null, error: null })),
   })),
 }));
 

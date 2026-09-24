@@ -615,7 +615,14 @@ export default function ClassroomPage() {
               <div className={styles.verifyNudgeBanner}>
                 <span>
                   {tMembership('verifyNudge')}{' '}
-                  <a href={`/verify?classroomId=${globalId}`}>{tMembership('completeVerification')}</a>
+                  {/* BUG FIX — was the route's globalId param (e.g.
+                      "IN-KOL-KVFORTW-10C-2006"), not the classroom's
+                      internal UUID. api.getMembership()/getVerificationStatus()
+                      forward this straight into a `.eq('classroom_id', ...)`
+                      query on a UUID column, so a globalId string here
+                      raised "invalid input syntax for type uuid" — see
+                      classroom.id below, which is already correct. */}
+                  <a href={`/verify?classroomId=${classroom.id}`}>{tMembership('completeVerification')}</a>
                 </span>
                 <button type="button" className={styles.dismissButton} onClick={dismissVerifyBanner} aria-label={tCommon('dismiss')}>
                   ✕

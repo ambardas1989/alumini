@@ -70,6 +70,22 @@ const ROLE_RANK: Record<MemberRole, number> = {
   [MemberRole.ADMIN]:   2,
 };
 
+/**
+ * BUG FIX — "invalid input syntax for type uuid: IN-KOL-KVFORTW-10C-2006".
+ * Every route here takes `:classroomId` straight off the URL and used to
+ * pass it directly into `.eq('classroom_id', classroomId)` — fine as long
+ * as the caller always sends the classroom's internal UUID, which one
+ * frontend link didn't (it used the [globalId] route param instead of
+ * classroom.id — see classroom/[globalId]/page.tsx's own fix). `memberships
+ * .classroom_id` is a UUID column, so a global-ID-shaped string reaches
+ * Postgres and fails at the type level with exactly that error. Same
+ * detection regex as ClassroomService.getByIdOrGlobalId() — resolves once,
+ * cheaply, before any membership query, so this endpoint is robust
+ * regardless of what shape the caller sends, not just the one frontend bug
+ * that surfaced it.
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class MembershipService {
   private readonly logger = new Logger(MembershipService.name);
@@ -86,6 +102,26 @@ export class MembershipService {
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
+  }
+
+  /**
+   * Resolves a `:classroomId` URL param to the classroom's internal UUID —
+   * see the UUID_RE comment above. Returns null (not a thrown exception) for
+   * an unresolvable global ID, so callers with a "no access" contract
+   * (canAccessChannel()) can fold it into their existing false/denied
+   * result instead of surfacing a raw 404 from what used to be a boolean-
+   * returning method.
+   */
+  private async resolveClassroomId(classroomId: string): Promise<string | null> {
+    if (UUID_RE.test(classroomId)) return classroomId;
+
+    const { data: classroom } = await this.supabase
+      .from('classrooms')
+      .select('id')
+      .eq('global_id', classroomId)
+      .maybeSingle();
+
+    return classroom?.id ?? null;
   }
 
   // ── Channel access (used by other modules, e.g. corridor) ────────────────
@@ -105,6 +141,9 @@ export class MembershipService {
    */
   async canAccessChannel(userId: string, classroomId: string, channel: ChannelType): Promise<boolean> {
     this.appLogger.debug('[MEMBERSHIP:canAccess] entry', { userId, classroomId, channel });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) return false;
+    classroomId = resolvedId;
 
     const { data: membership } = await this.supabase
       .from('memberships')
@@ -148,6 +187,11 @@ export class MembershipService {
   /** The caller's own membership details for one classroom. */
   async getMembership(userId: string, classroomId: string) {
     this.appLogger.debug('[MEMBERSHIP:get] entry', { userId, classroomId });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
 
     const { data, error } = await this.supabase
       .from('memberships')
@@ -238,6 +282,11 @@ export class MembershipService {
     req?: Request,
   ) {
     this.appLogger.debug('[MEMBERSHIP:changeRole] entry', { actorId, classroomId, targetUserId: dto.targetUserId, role: dto.role });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
 
     const { data: actorMembership } = await this.supabase
       .from('memberships')
