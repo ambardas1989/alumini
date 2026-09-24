@@ -7,6 +7,7 @@ import type { Classroom, Event as ClassroomEvent, Institution, Message, Redacted
 import * as api from '@/lib/api';
 import type { ClassroomMember } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { safeFormatDate } from '@/lib/format';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useToast } from '@/components/providers/ToastProvider';
@@ -21,6 +22,7 @@ import { ClassroomHeader } from './ClassroomHeader';
 import { ChannelTabs } from './ChannelTabs';
 import { LockedChannel } from './LockedChannel';
 import { MessageBubble } from './MessageBubble';
+import messageBubbleStyles from './MessageBubble.module.css';
 import { EventMessageCard } from './EventMessageCard';
 import { MessageInput } from './MessageInput';
 import { ClassInfoSheet } from './ClassInfoSheet';
@@ -109,6 +111,7 @@ export default function ClassroomPage() {
     isVerified: false,
     verificationStatus: null,
     userRole: null,
+    joinedAt: null,
   });
   const [joining, setJoining] = useState(false);
 
@@ -168,6 +171,7 @@ export default function ClassroomPage() {
         isVerified: match?.verificationStatus === 'verified',
         verificationStatus: match?.verificationStatus ?? null,
         userRole: (match?.userRole as string | undefined) ?? null,
+        joinedAt: match?.joinedAt ?? null,
       });
     } catch (err) {
       setLoadError(getErrorMessage(err));
@@ -612,6 +616,16 @@ export default function ClassroomPage() {
           )}
 
           <div className={styles.messageList} ref={listRef} onScroll={handleScroll}>
+            {/* TASKS_08 TASK 06 — messages before the caller's own join date
+                are filtered out server-side (CorridorService.getMessages());
+                this pill explains why the history looks like it starts here. */}
+            {membership.joinedAt && (
+              <div className={messageBubbleStyles.systemRow}>
+                <span className={messageBubbleStyles.systemText}>
+                  {t('messages.joinedOn', { date: safeFormatDate(membership.joinedAt) })}
+                </span>
+              </div>
+            )}
             {messagesLoading && messages.length === 0 && (
               <div className={styles.centeredLoading}>
                 <LoadingSpinner size="md" />

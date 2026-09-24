@@ -4,6 +4,7 @@ export interface TeacherClassroom extends Classroom {
   userRole: string;
   verificationStatus: string;
   isActive: boolean;
+  joinedAt: string;
 }
 
 export interface InstitutionGroup {

@@ -201,7 +201,7 @@ export class CorridorService {
 
     const { data: membership } = await this.supabase
       .from('memberships')
-      .select('role, verification_status')
+      .select('role, verification_status, joined_at')
       .eq('user_id', userId)
       .eq('classroom_id', classroomId)
       .maybeSingle();
@@ -253,6 +253,17 @@ export class CorridorService {
       });
     }
 
+    // TASKS_08 TASK 06 — messages sent before this user's own join date are
+    // never returned, standard group-chat behaviour (WhatsApp/Slack/
+    // Telegram). Welcome/system messages posted before a member joined
+    // (e.g. classroom.created's welcome message) are filtered out along
+    // with everything else — there's no separate carve-out for them.
+    this.appLogger.debug('[CORRIDOR:getMessages] join date filter', {
+      userId,
+      classroomId,
+      joinedAt: membership.joined_at,
+    });
+
     const { from, to } = getRange(page, appConfig.MESSAGES_PAGE_SIZE);
 
     // BUG FIX (FIX 1 — "Something went wrong" on every tab): `messages` has
@@ -273,6 +284,7 @@ export class CorridorService {
       )
       .eq('classroom_id', classroomId)
       .eq('channel', channel)
+      .gte('created_at', membership.joined_at)
       .order('created_at', { ascending: false })
       .range(from, to);
 

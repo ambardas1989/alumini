@@ -344,6 +344,7 @@ export class ClassroomService {
       .select(`
         role,
         verification_status,
+        joined_at,
         classroom:classrooms (
           ${CLASSROOM_SELECT_COLUMNS},
           institution:institutions (
@@ -375,6 +376,8 @@ export class ClassroomService {
         ...m.classroom,
         userRole:           m.role,
         verificationStatus: m.verification_status,
+        // TASKS_08 TASK 06 — the classroom page's join-date pill reads this.
+        joinedAt:           m.joined_at,
         // Active window is config-driven, not hardcoded (appConfig.CLASSROOM_ACTIVE_YEAR_WINDOW)
         isActive:           m.classroom.batchYear >= currentYear - appConfig.CLASSROOM_ACTIVE_YEAR_WINDOW,
       });

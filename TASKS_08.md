@@ -324,7 +324,7 @@ supabase/migrations/025_events_channel.sql
 
 ---
 
-## TASK 06 — Feature: messages visible only from join date [PENDING]
+## TASK 06 — Feature: messages visible only from join date [DONE: getMessages() filters by membership.joined_at (.gte on created_at); frontend shows a "You joined this classroom on [date]" system pill at the top of the message list]
 
 Users should only see messages sent after they joined
 the classroom. Historical messages before their join date

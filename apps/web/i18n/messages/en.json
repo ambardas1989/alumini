@@ -470,7 +470,8 @@
       "deleteConfirm": "Delete",
       "deleteCancel": "Cancel",
       "newMessages": "{count, plural, one {# new message} other {# new messages}}",
-      "liveUpdatesPaused": "Live updates paused"
+      "liveUpdatesPaused": "Live updates paused",
+      "joinedOn": "You joined this classroom on {date}"
     },
     "events": {
       "online": "Online",

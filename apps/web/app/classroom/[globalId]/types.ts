@@ -29,4 +29,6 @@ export interface MembershipInfo {
   /** Raw status — needed alongside isVerified because 'pending_auto' gets classroom/student_alley access but isn't "verified" for display purposes (see canAccessChannel() in page.tsx). */
   verificationStatus: string | null;
   userRole: string | null;
+  /** TASKS_08 TASK 06 — drives the "You joined this classroom on [date]" pill. */
+  joinedAt: string | null;
 }

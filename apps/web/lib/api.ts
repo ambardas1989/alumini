@@ -617,7 +617,7 @@ export function adminRejectInstitutionRequest(requestId: string, reason: string)
 // ── CLASSROOM ────────────────────────────────────────────────────────────
 
 export function getMyClassrooms(): Promise<
-  Array<{ institution: Institution; classes: Array<Classroom & { userRole: string; verificationStatus: string; isActive: boolean }> }>
+  Array<{ institution: Institution; classes: Array<Classroom & { userRole: string; verificationStatus: string; isActive: boolean; joinedAt: string }> }>
 > {
   return request('/classroom/my');
 }
