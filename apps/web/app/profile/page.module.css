@@ -254,6 +254,42 @@
   margin-block-end: 24px;
 }
 
+/* TASKS_07 TASK 06 — consolidated "Sign out" tile (this device / all
+   devices) — border-top separates it from account settings above,
+   distinct from the plain card look every .accountRow above it uses. */
+.signOutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 14px 12px;
+  margin-block-start: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.signOutLabelGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-error);
+  flex-shrink: 0;
+}
+
+.signOutLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.signOutButtons {
+  display: flex;
+  gap: 6px;
+}
+
+.signOutDangerGhost {
+  color: var(--color-error) !important;
+}
+
 /* TASKS_05 TASK 08 Part E — current-method card, green border per spec (distinct from the plain .accountRow border below it). */
 .mfaCurrentCard {
   display: flex;

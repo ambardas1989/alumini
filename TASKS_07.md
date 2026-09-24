@@ -297,7 +297,7 @@ Commit: "fix: add change-password endpoint and CORS fix"
 
 ---
 
-## TASK 06 — Fix: consolidate sign out UI in profile [PENDING]
+## TASK 06 — Fix: consolidate sign out UI in profile [DONE: merged the two sign-out tiles into one row (logout icon + "Sign out" label, "This device"/"All devices" buttons), border-top separator above it]
 
 Currently two separate tiles:
   Tile 1: "Sign out"

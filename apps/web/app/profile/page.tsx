@@ -16,7 +16,6 @@ import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { PERSONA_ICONS } from '@/lib/personaMeta';
-import { brand } from '@/lib/brand';
 import { AppShell } from '@/components/layout/AppShell';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { Avatar } from '@/components/ui/Avatar';
@@ -788,18 +787,19 @@ export default function ProfilePage() {
               </Button>
             </div>
 
-            <div className={styles.accountRow}>
-              <span className={styles.accountLabel}>{t('account.signOutLabel')}</span>
-              <Button variant="danger" size="sm" onClick={() => setShowSignOutConfirm(true)}>
-                {t('account.signOutButton')}
-              </Button>
-            </div>
-
-            <div className={styles.accountRow}>
-              <span className={styles.accountLabel}>{t('account.signOutAllLabel')}</span>
-              <Button variant="ghost" size="sm" onClick={() => setShowSignOutAllConfirm(true)}>
-                {t('account.signOutAllButton')}
-              </Button>
+            <div className={styles.signOutRow}>
+              <span className={styles.signOutLabelGroup}>
+                <LogoutIcon />
+                <span className={styles.signOutLabel}>{t('account.signOutRowLabel')}</span>
+              </span>
+              <span className={styles.signOutButtons}>
+                <Button variant="ghost" size="sm" className={styles.signOutDangerGhost} onClick={() => setShowSignOutConfirm(true)}>
+                  {t('account.signOutThisDeviceButton')}
+                </Button>
+                <Button variant="ghost" size="sm" className={styles.signOutDangerGhost} onClick={() => setShowSignOutAllConfirm(true)}>
+                  {t('account.signOutAllDevicesButton')}
+                </Button>
+              </span>
             </div>
 
             <h3 className={styles.sectionSubheading}>{t('account.sessions.heading')}</h3>
@@ -885,7 +885,7 @@ export default function ProfilePage() {
       )}
 
       {showSignOutConfirm && (
-        <Modal title={t('signOutConfirmTitle', { brand: brand.name })} onClose={() => setShowSignOutConfirm(false)}>
+        <Modal title={t('signOutConfirmTitle')} onClose={() => setShowSignOutConfirm(false)}>
           <div className={styles.confirmActions}>
             <Button variant="ghost" size="md" onClick={() => setShowSignOutConfirm(false)} disabled={signingOut}>
               {tCommon('cancel')}
@@ -1022,6 +1022,17 @@ export default function ProfilePage() {
         </Modal>
       )}
     </AppShell>
+  );
+}
+
+/** Hand-rolled inline SVG, matching this app's established icon convention (no icon-font package installed anywhere in this repo). */
+function LogoutIcon() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
   );
 }
 

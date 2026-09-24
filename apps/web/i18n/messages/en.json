@@ -605,7 +605,7 @@
     "title": "Profile",
     "editButton": "Edit profile",
     "signOut": "Sign out",
-    "signOutConfirmTitle": "Sign out of {brand}?",
+    "signOutConfirmTitle": "Sign out of this device?",
     "switchPersona": "Switch persona",
     "updatedToast": "Profile updated",
     "avatarUpdatedToast": "Profile photo updated",
@@ -697,10 +697,13 @@
         "revokeLink": "Revoke",
         "signOutOtherDevicesLink": "Sign out all other devices",
         "signOutAllConfirmTitle": "Sign out all devices?",
-        "signOutAllConfirmBody": "This will sign you out from all browsers and devices. Continue?",
+        "signOutAllConfirmBody": "You'll need to sign in again on every device.",
         "signOutAllButton": "Sign out all devices"
       },
-      "signOutAllButton": "Sign out all devices"
+      "signOutAllButton": "Sign out all devices",
+      "signOutRowLabel": "Sign out",
+      "signOutThisDeviceButton": "This device",
+      "signOutAllDevicesButton": "All devices"
     }
   },
   "linkedinConnect": {
