@@ -112,7 +112,7 @@ Commit: "fix: profile avatar upload — storage bucket policies"
 
 ---
 
-## TASK 02 — Fix: institution-assets storage bucket [PENDING]
+## TASK 02 — Fix: institution-assets storage bucket [DONE: no live Supabase access from this environment, so this couldn't be verified/created here (same limitation as TASK 01 STEPS 1-3) — this is a pure Supabase-dashboard/SQL step with no code to change; please create/verify the bucket manually via the SELECT query in this task's own text]
 
 Same as TASK 01 but for institution logos and classroom covers.
 The bucket 'institution-assets' needs to exist with correct policies.
