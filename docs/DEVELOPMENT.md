@@ -37,6 +37,53 @@ Check supabase/migrations/README.md for status of each.
 
 This prevents PGRST205 "table not found" errors in production.
 
+## RLS policy rule
+
+Every new table MUST have RLS policies defined in its migration file —
+`ALTER TABLE ... ENABLE ROW LEVEL SECURITY` alone (no policies) already
+denies all non-service-role access by default, but every table in this
+codebase adds explicit policies anyway so the intent is documented, not
+just implied. Template for user-owned tables (the caller reads/writes only
+their own rows directly via the anon-key client):
+
+```sql
+ALTER TABLE public.[table_name] ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "[table]_read_own" ON public.[table_name]
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "[table]_insert_own" ON public.[table_name]
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+```
+
+For service-role-only tables (tokens, OTP codes, and anything else the
+backend alone reads/writes — the service-role client bypasses RLS
+regardless of policies, so these exist to make "no client-direct access"
+explicit rather than relying on the implicit zero-policy deny):
+
+```sql
+ALTER TABLE public.[table_name] ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "[table]_no_direct_access" ON public.[table_name]
+  FOR SELECT USING (false);
+
+CREATE POLICY "[table]_no_insert" ON public.[table_name]
+  FOR INSERT WITH CHECK (false);
+```
+
+This is the pattern every existing service-role-only table already uses
+(`mfa_sms_challenges`, `mfa_totp_secrets`, `password_reset_tokens`,
+`mfa_recovery_tokens`, `institution_codes`, `email_otp_codes`) — use it
+instead of `FORCE ROW LEVEL SECURITY` (not used anywhere in this codebase
+and unnecessary here: Supabase's `service_role` Postgres role already
+bypasses RLS, `FORCE` only affects the table owner, not that role).
+
+Do NOT add `auth.uid() = user_id`-style ownership policies to a table the
+backend writes on the user's behalf with its own validation logic layered
+on top (rate limits, hashing, attempt caps, etc.) — that would let a
+client bypass all of it by calling Supabase directly with the anon key.
+`email_otp_codes` is the concrete example: see its own migration comment.
+
 ## Log levels and monitoring
 
 Set LOG_LEVEL in .env or Render environment:

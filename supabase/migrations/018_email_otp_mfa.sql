@@ -43,4 +43,29 @@ CREATE INDEX IF NOT EXISTS email_otp_user_purpose_idx
   ON public.email_otp_codes(user_id, purpose, expires_at);
 
 ALTER TABLE public.email_otp_codes ENABLE ROW LEVEL SECURITY;
--- Service role only — no user-facing RLS needed, same pattern as mfa_sms_challenges.
+
+-- Service role only — explicit deny-all policies, matching the exact
+-- pattern every other OTP/token table in this codebase uses
+-- (mfa_sms_challenges, mfa_totp_secrets, password_reset_tokens,
+-- mfa_recovery_tokens — see 002_auth_module.sql / 009_password_reset.sql /
+-- 010_mfa_recovery.sql). AuthService.sendEmailOtp()/checkEmailOtp() always
+-- go through the service-role client, which bypasses RLS regardless —
+-- these policies exist to make the "no client-direct access" intent
+-- explicit rather than relying on the implicit deny that zero policies
+-- already produces, and to guard against ever adding a client-facing
+-- Supabase call against this table by accident later.
+--
+-- NOT adding auth.uid()-owner policies here (an earlier task briefly asked
+-- for CREATE POLICY ... WITH CHECK (auth.uid() = user_id) on this table):
+-- that would let any authenticated client INSERT/SELECT/UPDATE its own
+-- email_otp_codes rows directly via the anon-key Supabase client, bypassing
+-- AuthService's rate limiting (MFA_EMAIL_OTP_RATE_LIMIT_PER_10MIN), hashing,
+-- and attempt-capping entirely — a client could mint or read back its own
+-- OTP challenge rows. Deliberately declined as a regression, not applied.
+CREATE POLICY "email_otp_codes_no_direct_access"
+  ON public.email_otp_codes FOR SELECT
+  USING (false);
+
+CREATE POLICY "email_otp_codes_no_insert"
+  ON public.email_otp_codes FOR INSERT
+  WITH CHECK (false);

@@ -103,7 +103,7 @@ Commit: "docs: update migration status, pre-deploy checklist"
 
 ---
 
-## TASK 03 — Fix: add RLS policies to all new tables [PENDING]
+## TASK 03 — Fix: add RLS policies to all new tables [DONE: full static audit — all 23 tables across every migration already have RLS + policies; institution_requests/mfa_recovery_tokens premise was false (already policied); only email_otp_codes lacked explicit deny policies, now added; declined the literal auth.uid()-ownership policy suggestion for email_otp_codes as a real security regression; added corrected RLS rule template to DEVELOPMENT.md]
 
 Every new table created in recent migrations is missing
 RLS policies, causing 42501 errors in production.
