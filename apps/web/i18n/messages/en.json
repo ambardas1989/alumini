@@ -611,7 +611,10 @@
     "avatarUpdatedToast": "Profile photo updated",
     "avatarErrors": {
       "wrongType": "Choose a JPEG, PNG, or WEBP image",
-      "tooLarge": "Image must be under 5MB"
+      "tooLarge": "Image must be under 5MB",
+      "permissionDenied": "Permission denied. Please sign in again.",
+      "uploadFailed400": "Upload failed. Check file type and size (max 5MB)",
+      "uploadFailedGeneric": "Upload failed. Please try again."
     },
     "fullNameLabel": "Full name",
     "phoneLabel": "Phone number",

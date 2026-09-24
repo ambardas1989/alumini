@@ -209,7 +209,27 @@ export default function ProfilePage() {
       const { error: storageError } = await supabase.storage
         .from(PROFILE_AVATARS_BUCKET)
         .upload(path, avatarFile, { upsert: true });
-      if (storageError) throw storageError;
+      if (storageError) {
+        // BUG FIX — Supabase Storage errors aren't ApiError instances
+        // (they're @supabase/storage-js's own shape: {message, statusCode}
+        // as a STRING, not a number), so getErrorMessage()'s catch-all
+        // below always fell through to its generic fallback regardless of
+        // whether the bucket/policy issue was a 400, 403, or something
+        // else — exactly the raw-looking "something went wrong" this task
+        // was filed about. Mapped explicitly here instead.
+        // eslint-disable-next-line no-console
+        console.error('[AVATAR-UPLOAD]', storageError);
+        const statusCode = (storageError as { statusCode?: string }).statusCode;
+        if (statusCode === '403') {
+          setAvatarError(t('avatarErrors.permissionDenied'));
+        } else if (statusCode === '400') {
+          setAvatarError(t('avatarErrors.uploadFailed400'));
+        } else {
+          setAvatarError(t('avatarErrors.uploadFailedGeneric'));
+        }
+        setAvatarUploading(false);
+        return;
+      }
 
       const { data: publicUrlData } = supabase.storage.from(PROFILE_AVATARS_BUCKET).getPublicUrl(path);
       // Cache-bust — same path as any previous upload, so without this the
