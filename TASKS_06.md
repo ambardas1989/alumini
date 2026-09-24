@@ -171,7 +171,7 @@ Commit: "fix: RLS policies for all new tables, update migrations"
 
 ---
 
-## TASK 04 — Fix: MFA screen missing back button [PENDING]
+## TASK 04 — Fix: MFA screen missing back button [DONE: added top-left back button (hand-rolled SVG arrow, matching AuthLayout's existing icon convention — no icon font/package installed in this repo) that clears the pending MFA session and returns to /auth/login; "Having trouble? Sign in again" link already existed for verify mode]
 
 The MFA page (/auth/mfa) has no way to go back.
 If a user enters the wrong email or wants to cancel,

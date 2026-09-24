@@ -158,7 +158,8 @@
         "resent": "Code resent to your email",
         "verifySubtitle": "Enter the code we sent to your email",
         "setupSuccessToast": "Email verification is set up. You'll receive a code each time you sign in."
-      }
+      },
+      "backButton": "Back"
     },
     "googleComingSoon": "Google sign-in coming soon",
     "stats": {

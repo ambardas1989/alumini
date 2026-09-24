@@ -55,6 +55,16 @@ function maskEmail(email: string): string {
   return user.slice(0, 2) + '***@' + domain;
 }
 
+/** Hand-rolled inline SVG, matching AuthLayout's own icon convention (Tabler's visual style, no icon package/webfont dependency). */
+function ArrowLeftIcon() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M19 12H5" />
+      <path d="m12 19-7-7 7-7" />
+    </svg>
+  );
+}
+
 const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function MfaPage() {
@@ -326,6 +336,11 @@ export default function MfaPage() {
 
   return (
     <AuthLayout tagline={t('tagline')} subTagline={t('subTagline')}>
+      <button type="button" className={styles.backButton} onClick={handleTrouble}>
+        <ArrowLeftIcon />
+        {t('backButton')}
+      </button>
+
       <div className={styles.top}>
         <h1 className={styles.title}>
           {mode === 'setup' && !setupMethod ? t('picker.heading') : mode === 'setup' ? t('setupTitle') : t('verifyTitle')}
