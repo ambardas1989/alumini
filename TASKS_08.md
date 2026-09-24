@@ -66,7 +66,7 @@ Commit: "fix: classes page layout — clear sections, no duplicates"
 
 ---
 
-## TASK 02 — Fix: memberships verification_method constraint [PENDING]
+## TASK 02 — Fix: memberships verification_method constraint [DONE: added migration 023 widening the CHECK constraint to include 'early_member', README updated]
 
 Joining a classroom fails with:
 "new row violates check constraint memberships_verification_method_check"
