@@ -30,6 +30,28 @@ import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagg
 import { Request } from 'express';
 
 import { IdentityService } from './identity.service';
+
+/**
+ * BUG FIX — Render's build environment failed with "TS2503: Cannot find
+ * namespace 'Express'" on the `Express.Multer.File` annotation below,
+ * despite @types/multer being correctly installed (its declare global
+ * block for that namespace is genuinely present — confirmed by reading
+ * node_modules/@types/multer's own .d.ts). Whatever differs between this
+ * environment's install and Render's (most likely a stale build cache
+ * from before @types/multer was added, or how the monorepo workspace
+ * hoists devDependencies during Render's specific install step) isn't
+ * reproducible or fixable from here — so this sidesteps depending on that
+ * ambient global type resolving at all. A local structural type is all
+ * this method actually needs (the same shape IdentityService.uploadAvatar()
+ * already declares, deliberately not Express.Multer.File either), and
+ * @UploadedFile() itself is a runtime decorator — the type annotation is
+ * compile-time only and never affects what multer actually populates.
+ */
+interface UploadedAvatarFile {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+}
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AddPersonaDto } from './dto/add-persona.dto';
 import { SwitchPersonaDto } from './dto/switch-persona.dto';
@@ -78,7 +100,7 @@ export class IdentityController {
   // clean 413 a normal over-limit upload should see.
   @UseInterceptors(FileInterceptor('avatar', { limits: { fileSize: 8 * 1024 * 1024 } }))
   @ApiOperation({ summary: "Upload the caller's profile avatar — multipart, field name 'avatar', max 5MB, JPEG/PNG/WebP" })
-  async uploadAvatar(@CurrentUser() authToken: AuthTokenPayload, @UploadedFile() file?: Express.Multer.File) {
+  async uploadAvatar(@CurrentUser() authToken: AuthTokenPayload, @UploadedFile() file?: UploadedAvatarFile) {
     if (!file) {
       throw new BadRequestException('No file was uploaded');
     }
