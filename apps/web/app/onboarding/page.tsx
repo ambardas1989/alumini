@@ -7,6 +7,7 @@ import type { PersonaType } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useTranslations } from '@/lib/useTranslations';
+import { useRequireAuth } from '@/lib/useRequireAuth';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/Button';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -27,6 +28,7 @@ const PERSONAS: PersonaOption[] = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { ready } = useRequireAuth();
   const t = useTranslations('onboarding');
   const tBrand = useTranslations('brand.onboarding');
 
@@ -56,6 +58,8 @@ export default function OnboardingPage() {
       setSubmitting(false);
     }
   };
+
+  if (!ready) return null;
 
   return (
     <AppShell showNav={false}>

@@ -233,7 +233,7 @@ Commit: "fix: change password — modal with MFA verification step"
 
 ---
 
-## TASK 06 — Fix: logout redirect and 401 cascade [PENDING]
+## TASK 06 — Fix: logout redirect and 401 cascade [DONE: Fix 1 (redirect target) and Fix 2 (global 401 handler) both already existed correctly — premise about lib/auth.ts's signOut() was false, no such function exists there; real gap found was Fix 3 — app/onboarding/page.tsx and app/onboarding/claim/page.tsx were the only two protected pages missing the existing useRequireAuth() guard every other page already uses, now added to both]
 
 After logout the app redirects to home/classroom instead
 of login page, causing a cascade of 401 errors as the

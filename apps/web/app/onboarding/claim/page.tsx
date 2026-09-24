@@ -7,6 +7,7 @@ import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useDebounce } from '@/lib/useDebounce';
 import { useTranslations } from '@/lib/useTranslations';
+import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useToast } from '@/components/providers/ToastProvider';
 import { brand } from '@/lib/brand';
 import { AppShell } from '@/components/layout/AppShell';
@@ -23,6 +24,7 @@ const DEBOUNCE_MS = 300;
 
 export default function ClaimInstitutionPage() {
   const router = useRouter();
+  const { ready } = useRequireAuth();
   const { showToast } = useToast();
   const t = useTranslations('onboarding.claim');
   const tBrand = useTranslations('brand.onboarding');
@@ -98,6 +100,8 @@ export default function ClaimInstitutionPage() {
       setSubmitting(false);
     }
   };
+
+  if (!ready) return null;
 
   if (submitted) {
     return (
