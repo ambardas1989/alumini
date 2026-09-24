@@ -389,6 +389,69 @@ describe('ClassroomService', () => {
     });
   });
 
+  // ── searchClassrooms() (TASKS_07 TASK 07 — "Find your batch") ────────────
+
+  describe('searchClassrooms()', () => {
+    it('returns [] for a blank query without hitting the database', async () => {
+      const result = await service.searchClassrooms('user-1', '   ', 10);
+      expect(result).toEqual([]);
+    });
+
+    it('excludes classrooms the caller has already joined', async () => {
+      const matchClassroom = {
+        id: 'classroom-1',
+        globalId: 'IN-KOL-MPBIRLA-9A-2012',
+        name: '9A',
+        batchYear: 2012,
+        memberCount: 5,
+        requireVerification: true,
+        institution: { name: 'MP Birla School' },
+      };
+
+      mockTables({
+        institutions: chain({ data: [], error: null }),
+        classrooms: chain(
+          { data: [matchClassroom], error: null }, // byGlobalId query
+        ),
+        memberships: chain({ data: [{ classroom_id: 'classroom-1' }], error: null }),
+      });
+
+      const result = await service.searchClassrooms('user-1', 'MPBIRLA', 10);
+      expect(result).toEqual([]);
+    });
+
+    it('maps matching classrooms to the discovery response shape', async () => {
+      const matchClassroom = {
+        id: 'classroom-2',
+        globalId: 'IN-KOL-MPBIRLA-9B-2013',
+        name: '9B',
+        batchYear: 2013,
+        memberCount: 8,
+        requireVerification: false,
+        institution: { name: 'MP Birla School' },
+      };
+
+      mockTables({
+        institutions: chain({ data: [], error: null }),
+        classrooms: chain({ data: [matchClassroom], error: null }),
+        memberships: chain({ data: [], error: null }),
+      });
+
+      const result = await service.searchClassrooms('user-1', 'MPBIRLA', 10);
+      expect(result).toEqual([
+        {
+          id: 'classroom-2',
+          globalId: 'IN-KOL-MPBIRLA-9B-2013',
+          name: '9B',
+          institutionName: 'MP Birla School',
+          batchYear: 2013,
+          memberCount: 8,
+          verificationRequired: false,
+        },
+      ]);
+    });
+  });
+
   // ── getMembers (server-side redaction) ──────────────────────────────────
 
   describe('getMembers()', () => {

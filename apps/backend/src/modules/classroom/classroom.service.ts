@@ -374,6 +374,70 @@ export class ClassroomService {
     return Object.values(byInstitution);
   }
 
+  // ── Discovery ────────────────────────────────────────────────────────────
+
+  /**
+   * TASKS_07 TASK 07 — "Find your batch" classroom discovery. Searches
+   * every classroom on the platform (not just the caller's own), matching
+   * `q` against either the institution name or the classroom's own global
+   * ID, and excludes classrooms the caller has already joined (a search
+   * result you can't actually "Join" again isn't useful). Two queries run
+   * up front rather than one PostgREST call — institution-name matching
+   * needs institutions matched first (its own ilike), classroom global-ID
+   * matching is a plain column filter on classrooms itself, and
+   * supabase-js can't OR a filter across a base table and a joined table
+   * in one call — then merged/deduped in application code, same "aggregate
+   * in JS" pattern AdminService's analytics queries already use at this scale.
+   */
+  async searchClassrooms(userId: string, q: string, limit: number) {
+    this.appLogger.debug('[CLASSROOM:search] entry', { userId, q, limit });
+
+    const trimmed = q.trim();
+    if (!trimmed) return [];
+
+    const [{ data: matchingInstitutions }, { data: byGlobalId }, { data: myMemberships }] = await Promise.all([
+      this.supabase.from('institutions').select('id').ilike('name', `%${trimmed}%`).limit(20),
+      this.supabase
+        .from('classrooms')
+        .select(CLASSROOM_SELECT_COLUMNS + `, institution:institutions(${INSTITUTION_JOIN_COLUMNS})`)
+        .ilike('global_id', `%${trimmed}%`)
+        .limit(limit),
+      this.supabase.from('memberships').select('classroom_id').eq('user_id', userId),
+    ]);
+
+    const institutionIds = (matchingInstitutions ?? []).map((i) => i.id);
+    const { data: byInstitution } = institutionIds.length
+      ? await this.supabase
+          .from('classrooms')
+          .select(CLASSROOM_SELECT_COLUMNS + `, institution:institutions(${INSTITUTION_JOIN_COLUMNS})`)
+          .in('institution_id', institutionIds)
+          .limit(limit)
+      : { data: [] as any[] };
+
+    const alreadyMemberIds = new Set((myMemberships ?? []).map((m) => m.classroom_id));
+
+    const merged = new Map<string, any>();
+    for (const row of [...(byGlobalId ?? []), ...(byInstitution ?? [])]) {
+      if (alreadyMemberIds.has(row.id)) continue;
+      merged.set(row.id, row);
+    }
+
+    const results = Array.from(merged.values())
+      .slice(0, limit)
+      .map((c: any) => ({
+        id: c.id,
+        globalId: c.globalId,
+        name: c.name,
+        institutionName: c.institution?.name ?? null,
+        batchYear: c.batchYear,
+        memberCount: c.memberCount,
+        verificationRequired: c.requireVerification,
+      }));
+
+    this.appLogger.debug('[CLASSROOM:search] result', { count: results.length });
+    return results;
+  }
+
   // ── Lookup by internal id ────────────────────────────────────────────────
 
   /**

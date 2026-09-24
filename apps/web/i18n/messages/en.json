@@ -295,6 +295,19 @@
       "title": "You haven't joined any classrooms yet.",
       "description": "Find your batch and reconnect with your people.",
       "cta": "Find your batch"
+    },
+    "discovery": {
+      "heading": "Find your batch",
+      "searchPlaceholder": "Search by school, college or university...",
+      "emptyBeforeSearch": "Search for your school or college above to find your batch",
+      "noResults": "No classrooms found for \"{query}\"",
+      "createNewLink": "Create a new classroom →",
+      "joinButton": "Join",
+      "requestToJoinButton": "Request to join",
+      "joinedToast": "Joined! Welcome to the classroom.",
+      "requestedToast": "Request sent — an admin will verify you.",
+      "memberCount": "{count} members",
+      "searchLabel": "Search institutions"
     }
   },
   "home": {

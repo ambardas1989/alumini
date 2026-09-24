@@ -325,7 +325,7 @@ Commit: "fix: consolidate sign out into single tile with two buttons"
 
 ---
 
-## TASK 07 — Feature: Find your batch — classroom discovery [PENDING]
+## TASK 07 — Feature: Find your batch — classroom discovery [DONE: new GET /classroom/search endpoint (singular path, matching this repo's established controller-naming convention over the task's literal plural), searches by institution name or global ID, excludes classrooms the caller already joined; frontend debounced search section with join/request-to-join cards and empty/no-results states]
 
 "Find your batch" currently only filters the user's own
 classrooms. It needs to be a discovery feature — searching

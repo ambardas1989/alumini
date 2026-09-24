@@ -4,9 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Classroom, Institution, VerificationStatus } from '@alumini/types';
 import * as api from '@/lib/api';
+import type { ClassroomSearchResult } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
+import { useDebounce } from '@/lib/useDebounce';
 import { useTranslations } from '@/lib/useTranslations';
 import { useToast } from '@/components/providers/ToastProvider';
 import { AppShell } from '@/components/layout/AppShell';
@@ -52,6 +54,15 @@ export default function ClassesPage() {
   const [query, setQuery] = useState('');
   const [institutionFilter, setInstitutionFilter] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+
+  // ── Discovery — "Find your batch" (TASKS_07 TASK 07) ────────────────────
+  const [discoveryQuery, setDiscoveryQuery] = useState('');
+  const debouncedDiscoveryQuery = useDebounce(discoveryQuery, 300);
+  const [discoveryResults, setDiscoveryResults] = useState<ClassroomSearchResult[]>([]);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [discoverySearched, setDiscoverySearched] = useState(false);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
 
   // Teacher mode already has its own dedicated filing-cabinet view
   // (grouped by institution, active/alumni sections) at /teacher — this
@@ -100,6 +111,54 @@ export default function ClassesPage() {
     showToast(t('createdToast'), 'success');
     load();
     router.push(`/classroom/${globalId}`);
+  };
+
+  useEffect(() => {
+    const q = debouncedDiscoveryQuery.trim();
+    if (!q) {
+      setDiscoveryResults([]);
+      setDiscoveryError(null);
+      setDiscoverySearched(false);
+      return;
+    }
+    let cancelled = false;
+    setDiscoveryLoading(true);
+    setDiscoveryError(null);
+    api
+      .searchClassrooms(q, 10)
+      .then((results) => {
+        if (!cancelled) {
+          setDiscoveryResults(results);
+          setDiscoverySearched(true);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setDiscoveryError(getErrorMessage(err));
+      })
+      .finally(() => {
+        if (!cancelled) setDiscoveryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedDiscoveryQuery]);
+
+  const handleJoinDiscovered = async (result: ClassroomSearchResult) => {
+    setJoiningId(result.id);
+    try {
+      await api.joinClassroom(result.id);
+      setDiscoveryResults((prev) => prev.filter((r) => r.id !== result.id));
+      showToast(
+        result.verificationRequired ? t('discovery.requestedToast') : t('discovery.joinedToast'),
+        'success',
+      );
+      load();
+      router.push(`/classroom/${result.globalId}`);
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setJoiningId(null);
+    }
   };
 
   if (!ready || user?.activePersona === 'teacher') return null;
@@ -174,6 +233,62 @@ export default function ClassesPage() {
               ))}
           </div>
         )}
+
+        <div className={styles.discoverySection}>
+          <Input
+            label={t('discovery.heading')}
+            placeholder={t('discovery.searchPlaceholder')}
+            value={discoveryQuery}
+            onChange={(e) => setDiscoveryQuery(e.target.value)}
+            className={styles.searchInput}
+          />
+
+          {discoveryLoading && (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          )}
+
+          {discoveryError && !discoveryLoading && <ErrorMessage message={discoveryError} />}
+
+          {!discoveryLoading && !discoveryError && !discoverySearched && !discoveryQuery.trim() && (
+            <p className={styles.discoveryHint}>{t('discovery.emptyBeforeSearch')}</p>
+          )}
+
+          {!discoveryLoading && !discoveryError && discoverySearched && discoveryResults.length === 0 && (
+            <div className={styles.discoveryHint}>
+              <p>{t('discovery.noResults', { query: debouncedDiscoveryQuery })}</p>
+              <button type="button" className={styles.discoveryCreateLink} onClick={() => setShowCreateForm(true)}>
+                {t('discovery.createNewLink')}
+              </button>
+            </div>
+          )}
+
+          {!discoveryLoading && discoveryResults.length > 0 && (
+            <div className={styles.discoveryList}>
+              {discoveryResults.map((result) => (
+                <div key={result.id} className={styles.discoveryCard}>
+                  <div className={styles.discoveryCardInfo}>
+                    <span className={styles.discoveryInstitution}>{result.institutionName}</span>
+                    <span className={styles.discoveryClassroomName}>{result.name}</span>
+                    <span className={styles.discoveryMeta}>
+                      {result.batchYear} · {t('discovery.memberCount', { count: result.memberCount })}
+                    </span>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    loading={joiningId === result.id}
+                    onClick={() => handleJoinDiscovered(result)}
+                  >
+                    {result.verificationRequired ? t('discovery.requestToJoinButton') : t('discovery.joinButton')}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {showCreateForm && (
           <div className={styles.inlineForm}>

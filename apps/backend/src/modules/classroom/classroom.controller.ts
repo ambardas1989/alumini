@@ -79,6 +79,22 @@ export class ClassroomController {
     return this.classroomService.getClassroomsByInstitution(authToken.sub);
   }
 
+  /**
+   * TASKS_07 TASK 07 — "Find your batch" discovery search. 'search' is a
+   * literal path segment and must be declared before the dynamic
+   * :idOrGlobalId route below, same reasoning as 'my' above — otherwise
+   * a request to /classroom/search would be swallowed by getOne() with
+   * idOrGlobalId="search" instead.
+   */
+  @Get('search')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Search classrooms platform-wide by institution name or global ID, excluding ones the caller already joined' })
+  async search(@CurrentUser() authToken: AuthTokenPayload, @Query('q') q: string, @Query('limit') limit?: string) {
+    const limitNumber = limit ? Math.min(parseInt(limit, 10) || 10, 50) : 10;
+    return this.classroomService.searchClassrooms(authToken.sub, q ?? '', limitNumber);
+  }
+
   @Get(':idOrGlobalId')
   @ApiOperation({ summary: 'Classroom details by internal id or global id — public, for deep links' })
   async getOne(@Param('idOrGlobalId') idOrGlobalId: string) {

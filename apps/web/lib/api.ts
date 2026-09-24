@@ -570,6 +570,21 @@ export function getClassroom(globalId: string): Promise<Classroom & { institutio
   return request(`/classroom/${globalId}`);
 }
 
+/** TASKS_07 TASK 07 — "Find your batch" platform-wide discovery search, excludes classrooms the caller already joined. */
+export interface ClassroomSearchResult {
+  id: string;
+  globalId: string;
+  name: string;
+  institutionName: string | null;
+  batchYear: number;
+  memberCount: number;
+  verificationRequired: boolean;
+}
+
+export function searchClassrooms(q: string, limit = 10): Promise<ClassroomSearchResult[]> {
+  return request('/classroom/search', { query: { q, limit } });
+}
+
 /** classroomId is the internal id (Classroom.id), not the globalId in the URL — matches the backend's PATCH /classroom/:id (admin settings) route shape. */
 export function updateClassroomCover(classroomId: string, coverUrl: string): Promise<{ coverUrl: string }> {
   return request(`/classroom/${classroomId}/cover`, { method: 'POST', body: { coverUrl } });
