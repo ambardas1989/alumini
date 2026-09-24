@@ -99,7 +99,14 @@ export function NotificationBell() {
     }
     setOpen(false);
     const classroomId = (item.data?.classroom_id as string | undefined) ?? null;
-    if (classroomId) router.push(`/classroom/${classroomId}`);
+    if (!classroomId) return;
+    // TASKS_09 TASK 11 FIX 3 — an event notification's own eventId, when
+    // present, is forwarded so the classroom page can surface that
+    // specific event once membership is confirmed (see its own
+    // eventId-handling effect) instead of just dropping the user on the
+    // classroom's default view.
+    const eventId = (item.data?.event_id as string | undefined) ?? null;
+    router.push(eventId ? `/classroom/${classroomId}?eventId=${eventId}` : `/classroom/${classroomId}`);
   };
 
   return (

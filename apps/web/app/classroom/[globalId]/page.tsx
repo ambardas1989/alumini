@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChannelType, MessageType } from '@alumini/types';
 import type { Classroom, Event as ClassroomEvent, Institution, Message, RedactedMessage, RsvpStatus } from '@alumini/types';
 import * as api from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import type { ClassroomMember } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { safeFormatDate } from '@/lib/format';
@@ -96,6 +97,8 @@ export default function ClassroomPage() {
   const params = useParams<{ globalId: string }>();
   const globalId = params.globalId;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const deepLinkedEventId = searchParams.get('eventId');
   const { ready } = useRequireAuth();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -217,7 +220,19 @@ export default function ClassroomPage() {
       await api.joinClassroom(classroom.id);
       await loadClassroomAndMembership();
     } catch (err) {
-      showToast(getErrorMessage(err), 'error');
+      // TASKS_09 TASK 03 (confirmed as part of TASK 11's own prerequisite
+      // check) — a 409 here means the caller is ALREADY a member (see
+      // ClassroomService.joinClassroom()'s ConflictException). That's not
+      // a failure from the user's perspective — showing an error and
+      // leaving them stuck on the join prompt was the actual bug. Treat it
+      // as success: reload membership so the classroom renders normally.
+      if (err instanceof ApiError && err.statusCode === 409) {
+        // eslint-disable-next-line no-console
+        console.warn('[MEMBERSHIP:join] already member — treating as success', { classroomId: classroom.id });
+        await loadClassroomAndMembership();
+      } else {
+        showToast(getErrorMessage(err), 'error');
+      }
     } finally {
       setJoining(false);
     }
@@ -269,6 +284,18 @@ export default function ClassroomPage() {
     if (!classroom || !membership.isMember) return;
     loadEvents();
   }, [classroom, membership.isMember, loadEvents]);
+
+  // TASKS_09 TASK 11 FIX 2/3 — an event deep link (from a notification or
+  // /classroom/[globalId]/events/[eventId], which redirects here with the
+  // same query param) opens the info sheet once membership is confirmed,
+  // so the user lands on the classroom's events list instead of nowhere in
+  // particular. Membership is checked first (via the loading/join-prompt
+  // gate above this effect never runs until membership.isMember is true),
+  // so a non-member still sees the join prompt, never the sheet.
+  useEffect(() => {
+    if (!deepLinkedEventId || !classroom || !membership.isMember) return;
+    setShowInfoSheet(true);
+  }, [deepLinkedEventId, classroom, membership.isMember]);
 
   // ── Messages: load on channel switch, poll while active + verified ─────
   const canReadActive = canReadChannel(membership.userRole, membership.verificationStatus, activeChannel);
@@ -735,6 +762,7 @@ export default function ClassroomPage() {
             memberCount={classroom.memberCount}
             memberPreview={members.map((m) => ({ userId: m.userId, fullName: m.fullName ?? '', avatarUrl: m.avatarUrl }))}
             upcomingEvents={upcomingEvents}
+            highlightEventId={deepLinkedEventId}
             onViewAllMembers={() => {
               setShowInfoSheet(false);
               setMemberModalRoleFilter(undefined);

@@ -419,7 +419,7 @@ Commit: "fix: admin can verify/reject new members from classroom members tab"
 
 ---
 
-## TASK 11 — Fix: clicking event shows join prompt instead of event [PENDING]
+## TASK 11 — Fix: clicking event shows join prompt instead of event [DONE: confirmed TASK 03's loading-before-join-prompt gate was already correct; added the missing 409-on-join-treated-as-success fix; notification click handlers now forward eventId; classroom page opens the info sheet with the event highlighted on a matching deep link; added /classroom/[globalId]/events/[eventId] redirect route; globalId vs UUID already resolved by TASK 08]
 
 Clicking an event (from classroom tab or notification)
 redirects to the classroom and shows "Join this classroom"

@@ -24,6 +24,8 @@ interface ClassInfoSheetProps {
   memberCount: number;
   memberPreview: MemberAvatar[];
   upcomingEvents: ClassroomEvent[];
+  /** TASKS_09 TASK 11 FIX 2/3 — the event an incoming deep link pointed at, highlighted so it doesn't just blend into the list. */
+  highlightEventId?: string | null;
   onViewAllMembers: () => void;
   onCreateEvent: () => void;
   onShare: () => void;
@@ -40,6 +42,7 @@ export function ClassInfoSheet({
   memberCount,
   memberPreview,
   upcomingEvents,
+  highlightEventId,
   onViewAllMembers,
   onCreateEvent,
   onShare,
@@ -98,7 +101,10 @@ export function ClassInfoSheet({
         ) : (
           <ul className={styles.eventList}>
             {upcomingEvents.map((event) => (
-              <li key={event.id} className={styles.eventRow}>
+              <li
+                key={event.id}
+                className={`${styles.eventRow} ${event.id === highlightEventId ? styles.eventRowHighlighted : ''}`}
+              >
                 <span className={styles.eventTitle}>{event.title}</span>
                 <span className={styles.eventDate}>{safeFormatDate(event.eventDate)}</span>
               </li>

@@ -113,9 +113,10 @@ export default function HomePage() {
 
   const handleFeedItemTap = (item: NotificationRow) => {
     const classroomId = (item.data?.classroom_id as string | undefined) ?? null;
-    if (classroomId) {
-      router.push(`/classroom/${classroomId}`);
-    }
+    if (!classroomId) return;
+    // TASKS_09 TASK 11 FIX 3 — see NotificationBell.tsx's identical handler for why.
+    const eventId = (item.data?.event_id as string | undefined) ?? null;
+    router.push(eventId ? `/classroom/${classroomId}?eventId=${eventId}` : `/classroom/${classroomId}`);
   };
 
   // TASKS_09 TASK 01 — "new user" = zero memberships. PersonaType's actual

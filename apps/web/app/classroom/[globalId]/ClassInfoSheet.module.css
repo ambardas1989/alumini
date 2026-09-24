@@ -116,6 +116,12 @@
   background: var(--color-cream);
 }
 
+/* TASKS_09 TASK 11 — the event an incoming deep link pointed at. */
+.eventRowHighlighted {
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+}
+
 .eventTitle {
   font-size: var(--text-sm);
   font-weight: 600;
