@@ -404,6 +404,50 @@ export function getPersonas(): Promise<Persona[]> {
   return request('/identity/personas');
 }
 
+/**
+ * TASKS_07 TASK 11 — routes the avatar upload through the backend
+ * (service-role Supabase client) instead of the frontend uploading
+ * straight to Storage with the anon key. That direct path can never
+ * actually work for this app: Storage's RLS policies are keyed on
+ * auth.uid(), which only resolves for a real Supabase Auth session — this
+ * app issues its own NestJS JWTs and never establishes one, so auth.uid()
+ * is always NULL for a client-side upload, and Storage rejects it (the
+ * "Invalid Compact JWS" / 403 this task was filed against — Storage
+ * trying and failing to parse this app's JWT as its own).
+ *
+ * Deliberately a raw fetch(), not request(): request() always sets
+ * Content-Type: application/json and JSON.stringifies the body — a
+ * multipart/form-data upload needs the browser to set Content-Type itself
+ * (with the multipart boundary), and FormData isn't JSON-serializable.
+ */
+export async function uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  let response: Response;
+  try {
+    response = await fetch(buildUrl('/identity/avatar'), {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+  } catch {
+    throw new ApiError(0, null, 'Could not reach the server. Check your connection.');
+  }
+
+  const payload: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiError(response.status, extractErrorCode(payload), extractMessage(payload), payload);
+  }
+
+  return payload as { avatarUrl: string };
+}
+
 // ── LinkedIn connect (profile enrichment) — see auth.service.ts's connectLinkedin() doc comment for scope ──
 
 export interface LinkedinConnectData {

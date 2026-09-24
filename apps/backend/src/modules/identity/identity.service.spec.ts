@@ -60,9 +60,15 @@ function mockTables(overrides: Record<string, ReturnType<typeof chain>>) {
   fromTables = overrides;
 }
 
+const mockUpload = jest.fn().mockResolvedValue({ data: { path: 'profiles/user-1/avatar.jpg' }, error: null });
+const mockGetPublicUrl = jest.fn().mockReturnValue({ data: { publicUrl: 'https://storage.example/profile-avatars/profiles/user-1/avatar.jpg' } });
+
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
     from: (table: string) => fromTables[table] ?? chain({ data: null, error: null }),
+    storage: {
+      from: () => ({ upload: mockUpload, getPublicUrl: mockGetPublicUrl }),
+    },
   })),
 }));
 
@@ -141,6 +147,37 @@ describe('IdentityService', () => {
 
       const result = await service.updateProfile('user-1', { fullName: 'New Name' });
       expect(result).toEqual({ id: 'user-1', full_name: 'New Name' });
+    });
+  });
+
+  // ── uploadAvatar() (TASKS_07 TASK 11) ───────────────────────────────────
+
+  describe('uploadAvatar()', () => {
+    const file = { buffer: Buffer.from('fake-image-bytes'), mimetype: 'image/jpeg', size: 12_345 };
+
+    it('uploads via the service-role client and saves the public URL to the profile', async () => {
+      mockTables({ profiles: chain({ data: null, error: null }) });
+
+      const result = await service.uploadAvatar('user-1', file);
+
+      expect(mockUpload).toHaveBeenCalledWith(
+        'profiles/user-1/avatar.jpg',
+        file.buffer,
+        expect.objectContaining({ contentType: 'image/jpeg', upsert: true }),
+      );
+      expect(result.avatarUrl).toContain('https://storage.example/profile-avatars/profiles/user-1/avatar.jpg');
+    });
+
+    it('throws when the Storage upload fails', async () => {
+      mockUpload.mockResolvedValueOnce({ data: null, error: { message: 'bucket not found', statusCode: '404' } });
+
+      await expect(service.uploadAvatar('user-1', file)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws when saving the profile row fails', async () => {
+      mockTables({ profiles: chain({ data: null, error: { message: 'db down' } }) });
+
+      await expect(service.uploadAvatar('user-1', file)).rejects.toThrow(BadRequestException);
     });
   });
 

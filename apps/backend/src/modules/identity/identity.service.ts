@@ -206,6 +206,63 @@ export class IdentityService {
     return data;
   }
 
+  /**
+   * TASKS_07 TASK 11 — routes avatar uploads through the backend's
+   * service-role Supabase client instead of the frontend uploading
+   * directly to Storage with the anon key. Storage's RLS policies for
+   * profile-avatars are keyed on auth.uid() (see
+   * supabase/migrations/021_storage_policies.sql), which only ever
+   * resolves for a real Supabase Auth session — this app issues its own
+   * NestJS JWTs and never establishes one, so auth.uid() is always NULL
+   * for a client-side upload and every policy check on it fails (the
+   * "Invalid Compact JWS" / 403 this task was filed against — Storage
+   * trying and failing to parse this app's JWT as a Supabase Auth token).
+   * The service-role client bypasses RLS entirely, sidestepping the
+   * mismatch rather than trying to fix it.
+   */
+  async uploadAvatar(userId: string, file: { buffer: Buffer; mimetype: string; size: number }): Promise<{ avatarUrl: string }> {
+    this.appLogger.debug('[IDENTITY:avatar] upload start', { userId, size: file.size, type: file.mimetype });
+
+    const ext = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const path = `profiles/${userId}/avatar.${ext}`;
+
+    const { error: uploadError } = await this.supabase.storage
+      .from('profile-avatars')
+      .upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
+
+    if (uploadError) {
+      this.appLogger.error('[IDENTITY:avatar] upload failed', {
+        userId,
+        error: uploadError.message,
+        code: (uploadError as { statusCode?: string }).statusCode,
+      });
+      throw new BadRequestException('Failed to upload avatar. Please try again.');
+    }
+
+    const { data: publicUrlData } = this.supabase.storage.from('profile-avatars').getPublicUrl(path);
+    // Cache-bust — an upsert re-uses the exact same path as any previous
+    // upload, so without this the browser/CDN may keep showing the old
+    // photo after a re-upload (same reasoning the frontend's old direct-
+    // upload code already applied before this task).
+    const avatarUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+    const { error: dbError } = await this.supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', userId);
+
+    if (dbError) {
+      this.appLogger.error('[IDENTITY:avatar] upload failed', {
+        userId,
+        error: dbError.message,
+        code: dbError.code,
+        hint: dbError.hint,
+        details: dbError.details,
+      });
+      throw new BadRequestException('Failed to save avatar. Please try again.');
+    }
+
+    this.appLogger.info('[IDENTITY:avatar] upload success', { userId, url: avatarUrl });
+    return { avatarUrl };
+  }
+
   // ── Personas: list ───────────────────────────────────────────────────────
 
   /** Every persona on the caller's account — powers the persona switcher UI. */

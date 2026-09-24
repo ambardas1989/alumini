@@ -8,7 +8,6 @@ import * as api from '@/lib/api';
 import { getErrorMessage, parseValidationErrors } from '@/lib/errors';
 import { completeSignOut, getToken } from '@/lib/auth';
 import { safeFormatDate, formatPhoneDisplay, safeRelativeTime, sanitizePhoneInput, normalizePhoneForSubmit } from '@/lib/format';
-import { supabase, PROFILE_AVATARS_BUCKET } from '@/lib/supabase';
 import { isLinkedInConnectEnabled, buildLinkedInAuthorizeUrl } from '@/lib/linkedin';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -216,52 +215,37 @@ export default function ProfilePage() {
     setAvatarError(null);
   };
 
+  // TASKS_07 TASK 11 — routed through the backend (service-role Supabase
+  // client) instead of a direct-to-Storage upload with the anon key. That
+  // direct path could never actually work for this app: Storage's RLS
+  // policies are keyed on auth.uid(), which only resolves for a real
+  // Supabase Auth session — this app issues its own NestJS JWTs and never
+  // establishes one, so auth.uid() is always NULL for a client-side
+  // upload and every policy check on it fails ("Invalid Compact JWS" /
+  // 403 — Storage trying and failing to parse this app's JWT as its own).
   const handleAvatarSave = async () => {
     if (!avatarFile || !profile) return;
     setAvatarUploading(true);
     setAvatarError(null);
     try {
-      const ext = avatarFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-      const path = `profiles/${profile.id}/avatar.${ext}`;
-      const { error: storageError } = await supabase.storage
-        .from(PROFILE_AVATARS_BUCKET)
-        .upload(path, avatarFile, { upsert: true });
-      if (storageError) {
-        // BUG FIX — Supabase Storage errors aren't ApiError instances
-        // (they're @supabase/storage-js's own shape: {message, statusCode}
-        // as a STRING, not a number), so getErrorMessage()'s catch-all
-        // below always fell through to its generic fallback regardless of
-        // whether the bucket/policy issue was a 400, 403, or something
-        // else — exactly the raw-looking "something went wrong" this task
-        // was filed about. Mapped explicitly here instead.
-        // eslint-disable-next-line no-console
-        console.error('[AVATAR-UPLOAD]', storageError);
-        const statusCode = (storageError as { statusCode?: string }).statusCode;
-        if (statusCode === '403') {
-          setAvatarError(t('avatarErrors.permissionDenied'));
-        } else if (statusCode === '400') {
-          setAvatarError(t('avatarErrors.uploadFailed400'));
-        } else {
-          setAvatarError(t('avatarErrors.uploadFailedGeneric'));
-        }
-        setAvatarUploading(false);
-        return;
-      }
-
-      const { data: publicUrlData } = supabase.storage.from(PROFILE_AVATARS_BUCKET).getPublicUrl(path);
-      // Cache-bust — same path as any previous upload, so without this the
-      // browser/CDN may keep showing the old photo after a re-upload.
-      const publicUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
-
-      const updated = await api.updateProfile({ avatarUrl: publicUrl });
-      setProfile(updated);
-      updateUser({ avatarUrl: updated.avatarUrl ?? null });
+      const { avatarUrl } = await api.uploadAvatar(avatarFile);
+      setProfile((prev) => (prev ? { ...prev, avatarUrl } : prev));
+      updateUser({ avatarUrl });
       if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
       setAvatarFile(null);
       setAvatarPreviewUrl(null);
       showToast(t('avatarUpdatedToast'), 'success');
     } catch (err) {
-      setAvatarError(getErrorMessage(err));
+      // eslint-disable-next-line no-console
+      console.error('[AVATAR-UPLOAD]', err);
+      const statusCode = err instanceof ApiError ? err.statusCode : null;
+      if (statusCode === 413) {
+        setAvatarError(t('avatarErrors.tooLarge'));
+      } else if (statusCode === 415) {
+        setAvatarError(t('avatarErrors.wrongType'));
+      } else {
+        setAvatarError(t('avatarErrors.uploadFailedGeneric'));
+      }
     } finally {
       setAvatarUploading(false);
     }

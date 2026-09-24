@@ -9,8 +9,24 @@
  * auth module rather than re-implementing token verification.
  */
 
-import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  PayloadTooLargeException,
+  Post,
+  Req,
+  UnsupportedMediaTypeException,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
 import { IdentityService } from './identity.service';
@@ -41,6 +57,39 @@ export class IdentityController {
   @ApiOperation({ summary: "Update the caller's own profile" })
   async updateProfile(@CurrentUser() authToken: AuthTokenPayload, @Body() dto: UpdateProfileDto) {
     return this.identityService.updateProfile(authToken.sub, dto);
+  }
+
+  // ── Avatar (TASKS_07 TASK 11) ────────────────────────────────────────────
+
+  private static readonly MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
+  private static readonly ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+  /**
+   * Routed through the backend (service-role Supabase client) rather than
+   * the frontend uploading straight to Storage — see
+   * IdentityService.uploadAvatar()'s own comment for why that path can
+   * never actually work for this app's custom-JWT sessions.
+   */
+  @Post('avatar')
+  @ApiConsumes('multipart/form-data')
+  // Multer's own limit is a memory-safety backstop (rejects the upload
+  // before it's fully buffered), set above the real 5MB business rule —
+  // the explicit file.size check below is what actually produces the
+  // clean 413 a normal over-limit upload should see.
+  @UseInterceptors(FileInterceptor('avatar', { limits: { fileSize: 8 * 1024 * 1024 } }))
+  @ApiOperation({ summary: "Upload the caller's profile avatar — multipart, field name 'avatar', max 5MB, JPEG/PNG/WebP" })
+  async uploadAvatar(@CurrentUser() authToken: AuthTokenPayload, @UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file was uploaded');
+    }
+    if (!IdentityController.ALLOWED_AVATAR_TYPES.includes(file.mimetype)) {
+      throw new UnsupportedMediaTypeException('Invalid file type. Use JPEG, PNG or WebP.');
+    }
+    if (file.size > IdentityController.MAX_AVATAR_SIZE_BYTES) {
+      throw new PayloadTooLargeException('File too large. Maximum size is 5MB.');
+    }
+
+    return this.identityService.uploadAvatar(authToken.sub, file);
   }
 
   // ── Personas ─────────────────────────────────────────────────────────────

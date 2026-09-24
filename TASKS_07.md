@@ -502,7 +502,7 @@ uses full page reload"
 
 ---
 
-## TASK 11 — Fix: profile avatar upload via backend API [PENDING]
+## TASK 11 — Fix: profile avatar upload via backend API [DONE: new POST /identity/avatar (FileInterceptor + service-role Supabase client, installed @types/multer), frontend switched from direct-to-Storage upload to this endpoint; this resolves the "Invalid Compact JWS" 403 confirmed live during this batch — the same broken pattern still exists in institution logo, classroom cover, and verification document uploads (out of this task's scope, flagged not fixed)]
 
 Avatar upload fails with 502 from Supabase Storage directly.
 Root cause: frontend uploads directly to Supabase Storage
@@ -586,16 +586,22 @@ using service role — bypasses Supabase JWT mismatch"
 
 ## COMPLETION SUMMARY
 
-(Claude Code fills this in when all tasks are [DONE])
-
-Date completed:
-Tasks completed:
-Tests passing:
-Build status:
-SQL to run manually in Supabase:
-  - Storage bucket policies in TASK 01 STEP 2
-  - Storage bucket policies in TASK 01 STEP 3
+Date completed: 2026-09-24
+Tasks completed: 11/11
+Tests passing: 367 backend/utils tests, 37 utils tests — all passing as of the final commit
+Build status: `next build` clean (0 errors) after every frontend task; `tsc --noEmit` clean after every backend task
+SQL to run manually in Supabase (no live DB access from this environment — see supabase/migrations/README.md):
+  - Storage bucket creation + policies in TASK 01 STEPS 1-3 / migration 021_storage_policies.sql
+  - institution-assets bucket verification (TASK 02) — not run/checked here
+  - classrooms.city/state/country_code — migration 022_classroom_location.sql
 Notes:
+- Several tasks' literal premises didn't match the actual code on inspection — each was investigated before acting, declined/corrected in place with reasoning in the commit message:
+  - TASK 05: the change-password endpoint already existed (built in TASKS_06) — the real cause of the reported net::ERR_FAILED was CORS's allowedHeaders missing X-MFA-Code, now added to main.ts.
+  - TASK 08 FIX A: the institution search was already a real debounced dropdown, not a plain text input — only needed polish (2-char trigger, match highlighting, type badge).
+  - TASK 10: lib/auth.ts has no signOut() (the task's named target) — the actual bug was router.push() vs window.location.href inconsistency between the profile page's own sign-out handlers and AuthProvider.logout()'s already-correct pattern, causing a race with the global 401 handler. Consolidated onto one shared completeSignOut() helper.
+  - TASK 11: confirmed live during this batch (user-reported "Invalid Compact JWS" 403) — this app's custom NestJS JWTs never establish a real Supabase Auth session, so Storage's auth.uid()-keyed RLS policies can never pass for a direct client-side upload, regardless of the policies in TASK 01/03 being applied correctly. Fixed by routing avatar uploads through the backend's service-role client instead.
+- KNOWN GAP, not fixed (out of this batch's scope): the same direct-to-Storage-with-anon-key pattern TASK 11 fixed for avatars still exists in three other upload paths — institution logo (app/admin/OverviewTab.tsx), classroom cover photo (app/classroom/[globalId]/ClassroomHeader.tsx), and verification document upload (app/verify/DocumentMethod.tsx). All three would hit the identical "Invalid Compact JWS"/403 failure. Worth a follow-up task applying the same backend-routed fix.
+- TASK 04's peek-mode addition to MFA challenge verification and TASK 09's phone auto-correction both have backend unit test coverage (auth.service.spec.ts, update-profile.dto.spec.ts).
 
 ---
 
