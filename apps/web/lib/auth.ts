@@ -109,3 +109,43 @@ export function clearSession(): void {
   window.localStorage.removeItem(EXPIRY_KEY);
   window.localStorage.removeItem(USER_KEY);
 }
+
+// ── Sign-out sequencing (TASKS_07 TASK 10) ──────────────────────────────
+//
+// Every sign-out path (AuthProvider.logout(), the profile page's "This
+// device"/"All devices" buttons, useIdleTimeout's auto-expiry) used to
+// clear the session then call router.push() — a CLIENT-SIDE navigation
+// that doesn't unmount the current page/its effects immediately. Any
+// polling effect still mounted (e.g. NotificationBell's unread-count
+// interval) could fire again in that gap, either silently failing against
+// the now-missing token or — worse — still holding the stale token in a
+// closure from before clearSession() ran, getting a real 401 back from
+// the now-revoked session, and tripping lib/api.ts's global 401 handler's
+// OWN hard redirect (?message=session_expired) in a race against this
+// intentional sign-out's redirect (?message=signed_out). window.location.href
+// forces a full page reload, which immediately halts all JS on the page —
+// no further requests can fire once navigation begins. isLoggingOut() is an
+// extra guard for the brief window before that reload actually completes.
+
+let loggingOut = false;
+
+/** Read by lib/api.ts's request() to skip firing new calls once sign-out has started. */
+export function isLoggingOut(): boolean {
+  return loggingOut;
+}
+
+/**
+ * Shared tail end of every sign-out path: mark isLoggingOut (stops further
+ * API calls immediately, not just after the reload completes), clear the
+ * session, then force a full page reload to /auth/login. Callers make
+ * their own best-effort logout API call (POST /auth/logout or
+ * /auth/logout/all) BEFORE calling this — this function itself never
+ * fails, so it's always safe to call from a catch block.
+ */
+export function completeSignOut(message: 'signed_out' | 'session_expired' = 'signed_out'): void {
+  loggingOut = true;
+  clearSession();
+  if (isBrowser()) {
+    window.location.href = `/auth/login?message=${message}`;
+  }
+}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
 import type { NotificationRow } from '@/lib/api';
+import { getToken } from '@/lib/auth';
 import { safeRelativeTime } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import styles from './NotificationBell.module.css';
@@ -35,6 +36,12 @@ export function NotificationBell() {
   const lastFetchedAt = useRef(0);
 
   const refreshUnreadCount = () => {
+    // TASKS_07 TASK 10 — stops this interval's own tick from firing a
+    // request once the token's gone, rather than relying solely on
+    // lib/api.ts's isLoggingOut() guard (which only covers the brief
+    // window right around sign-out, not e.g. a token that expired while
+    // this tab sat idle in the background).
+    if (!getToken()) return;
     api
       .getUnreadNotificationCount()
       .then((r) => setUnreadCount(r.count))

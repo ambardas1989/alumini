@@ -25,7 +25,7 @@ import type {
   ChannelType,
   RsvpStatus,
 } from '@alumini/types';
-import { getToken, getRefreshToken, setRefreshToken, clearSession, type User } from './auth';
+import { getToken, getRefreshToken, setRefreshToken, isLoggingOut, completeSignOut, type User } from './auth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -101,6 +101,16 @@ function extractErrorCode(payload: unknown): string | null {
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  // TASKS_07 TASK 10 — sign-out sets this before clearing the session and
+  // forcing a full-page redirect (see lib/auth.ts's completeSignOut()).
+  // Any call still in flight or newly triggered in that brief window
+  // (e.g. a polling interval that hasn't unmounted yet) short-circuits
+  // here instead of racing the redirect with a real network request
+  // against a token that's about to be gone.
+  if (isLoggingOut()) {
+    throw new ApiError(0, null, 'Signed out');
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -135,10 +145,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (response.status === 401) {
     if (usingRealSession) {
-      clearSession();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/auth/login?message=session_expired';
-      }
+      completeSignOut('session_expired');
       throw new ApiError(401, 'AUTH_SESSION_EXPIRED', 'Your session has expired. Please log in again.');
     }
 

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { Classroom, Institution, Profile } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage, parseValidationErrors } from '@/lib/errors';
-import { clearSession, getToken } from '@/lib/auth';
+import { completeSignOut, getToken } from '@/lib/auth';
 import { safeFormatDate, formatPhoneDisplay, safeRelativeTime, sanitizePhoneInput, normalizePhoneForSubmit } from '@/lib/format';
 import { supabase, PROFILE_AVATARS_BUCKET } from '@/lib/supabase';
 import { isLinkedInConnectEnabled, buildLinkedInAuthorizeUrl } from '@/lib/linkedin';
@@ -492,10 +492,9 @@ export default function ProfilePage() {
     try {
       await api.logout();
     } catch {
-      // Best-effort — the local session is cleared either way below (same as AuthProvider.logout()).
+      // Best-effort — the session is cleared either way, via completeSignOut() below.
     }
-    clearSession();
-    router.push('/auth/login?message=signed_out');
+    completeSignOut('signed_out');
   };
 
   const handleSignOutAllDevices = async () => {
@@ -503,10 +502,9 @@ export default function ProfilePage() {
     try {
       await api.logoutAllDevices();
     } catch {
-      // Best-effort, same reasoning as handleSignOut() — the local session is cleared either way below.
+      // Best-effort, same reasoning as handleSignOut().
     }
-    clearSession();
-    router.push('/auth/login?message=signed_out');
+    completeSignOut('signed_out');
   };
 
   const handleRevokeSession = async (sessionId: string) => {

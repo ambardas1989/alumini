@@ -467,7 +467,7 @@ Commit: "fix: phone number format — proactive hint, auto-format, graceful erro
 
 ---
 
-## TASK 10 — Fix: logout frontend — token clear before redirect [PENDING]
+## TASK 10 — Fix: logout frontend — token clear before redirect [DONE: real root cause was router.push (client-side nav) vs window.location.href inconsistency between the profile page's own sign-out handlers and AuthProvider.logout()'s already-correct pattern — consolidated every sign-out path onto one shared lib/auth.ts completeSignOut() (isLoggingOut flag checked by lib/api.ts's request(), full reload), added a token guard to NotificationBell's polling interval]
 
 Backend logout works correctly (confirmed in logs).
 Frontend still fires API calls after logout because

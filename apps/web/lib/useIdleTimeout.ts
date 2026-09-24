@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as api from '@/lib/api';
-import { clearSession } from '@/lib/auth';
+import { completeSignOut } from '@/lib/auth';
 import { useAuth } from '@/components/providers/AuthProvider';
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -57,10 +57,7 @@ export function useIdleTimeout(): {
     } catch {
       // Best-effort — same reasoning as AuthProvider.logout()/profile page's handleSignOut().
     }
-    clearSession();
-    if (typeof window !== 'undefined') {
-      window.location.href = '/auth/login?message=session_expired';
-    }
+    completeSignOut('session_expired');
   }, [clearAllTimers]);
 
   const resetTimer = useCallback(() => {

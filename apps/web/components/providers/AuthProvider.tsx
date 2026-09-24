@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as api from '@/lib/api';
 import {
-  clearSession,
+  completeSignOut,
   getCurrentUser,
   isLoggedIn as checkIsLoggedIn,
   setCurrentUser,
@@ -72,13 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await api.logout();
     } catch {
-      // Best-effort — the local session is cleared either way below.
+      // Best-effort — the session is cleared either way, via completeSignOut() below.
     }
-    clearSession();
     setUser(null);
-    if (typeof window !== 'undefined') {
-      window.location.href = '/auth/login?message=signed_out';
-    }
+    completeSignOut('signed_out');
   }, []);
 
   // Silent refresh — checked every minute, only acted on once the access
@@ -94,11 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTokenExpiry(refreshed.expiresAt);
         })
         .catch(() => {
-          clearSession();
           setUser(null);
-          if (typeof window !== 'undefined') {
-            window.location.href = '/auth/login?message=session_expired';
-          }
+          completeSignOut('session_expired');
         });
     }, REFRESH_CHECK_INTERVAL_MS);
 
