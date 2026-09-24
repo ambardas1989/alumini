@@ -170,23 +170,31 @@ export default function ClassesPage() {
       </div>
 
       <PageContainer>
-        <Input
-          label={t('searchLabel')}
-          placeholder={t('searchPlaceholder')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className={styles.searchInput}
-        />
-
-        {institutionOptions.length > 1 && (
-          <div className={styles.filterRow}>
-            <FilterChips
-              options={institutionOptions}
-              value={institutionFilter}
-              onChange={setInstitutionFilter}
-              allLabel={tCommon('all')}
+        {/* TASKS_08 TASK 01 — the search input (and institution filter)
+            only make sense once there's something to search/filter; an
+            empty classroom list rendered a pointless "Search your
+            classrooms..." box above the empty state. */}
+        {(loading || classrooms.length > 0) && (
+          <>
+            <Input
+              label={t('searchLabel')}
+              placeholder={t('searchPlaceholder')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className={styles.searchInput}
             />
-          </div>
+
+            {institutionOptions.length > 1 && (
+              <div className={styles.filterRow}>
+                <FilterChips
+                  options={institutionOptions}
+                  value={institutionFilter}
+                  onChange={setInstitutionFilter}
+                  allLabel={tCommon('all')}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {error && <ErrorMessage message={error} onRetry={load} />}
@@ -202,13 +210,12 @@ export default function ClassesPage() {
             )}
 
             {!loading && filtered.length === 0 && classrooms.length === 0 && (
-              <EmptyState
-                icon="🎓"
-                title={t('empty.title')}
-                description={t('empty.description')}
-                ctaLabel={t('empty.cta')}
-                onCta={() => setShowCreateForm(true)}
-              />
+              // No separate "Find your batch" CTA here — the discovery
+              // section right below serves that purpose; a second button
+              // with the same label doing something different (opening the
+              // create form, not the search below) was the duplicate this
+              // task was filed about.
+              <EmptyState icon="🎓" title={t('empty.title')} description={t('empty.description')} />
             )}
 
             {!loading && filtered.length === 0 && classrooms.length > 0 && (
@@ -234,9 +241,14 @@ export default function ClassesPage() {
           </div>
         )}
 
+        <div className={styles.discoveryDivider} role="separator">
+          <span className={styles.discoveryDividerLabel}>{t('discovery.dividerLabel')}</span>
+        </div>
+
         <div className={styles.discoverySection}>
+          <h2 className={styles.discoveryHeading}>{t('discovery.heading')}</h2>
           <Input
-            label={t('discovery.heading')}
+            label={t('discovery.searchLabel')}
             placeholder={t('discovery.searchPlaceholder')}
             value={discoveryQuery}
             onChange={(e) => setDiscoveryQuery(e.target.value)}

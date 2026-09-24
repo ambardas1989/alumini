@@ -84,11 +84,41 @@
   font-weight: 600;
 }
 
+/* TASKS_08 TASK 01 — "DISCOVER" section divider, replacing the plain
+   border-top the discovery section used to carry itself (see below). */
+.discoveryDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-block-start: 24px;
+}
+
+.discoveryDivider::before,
+.discoveryDivider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.discoveryDividerLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
 /* TASKS_07 TASK 07 — "Find your batch" platform-wide discovery section. */
 .discoverySection {
-  margin-block-start: 24px;
-  padding-block-start: 20px;
-  border-top: 1px solid var(--color-border);
+  margin-block-start: 16px;
+}
+
+.discoveryHeading {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-block-end: 10px;
 }
 
 .discoveryHint {

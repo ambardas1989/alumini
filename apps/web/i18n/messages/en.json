@@ -307,7 +307,8 @@
       "joinedToast": "Joined! Welcome to the classroom.",
       "requestedToast": "Request sent — an admin will verify you.",
       "memberCount": "{count} members",
-      "searchLabel": "Search institutions"
+      "searchLabel": "Search institutions",
+      "dividerLabel": "DISCOVER"
     }
   },
   "home": {
