@@ -58,7 +58,12 @@ function classroomsEchoTable() {
   const builder: any = {
     select: jest.fn(() => builder),
     eq: jest.fn((column: string, value: string) => {
-      if (column === 'global_id') queriedId = value;
+      // .toLowerCase() — the service uppercases before querying global_id
+      // (real classroom global IDs are stored uppercase); a real resolved
+      // UUID is always lowercase, so echoing back the queried value
+      // unchanged would leak that uppercasing into every fixture 'class-1'
+      // downstream. Lowercasing here matches production shape.
+      if (column === 'global_id') queriedId = value.toLowerCase();
       return builder;
     }),
   };

@@ -53,9 +53,35 @@ function mockTables(overrides: Record<string, ReturnType<typeof chain>>) {
   fromTables = overrides;
 }
 
+/**
+ * Default `classrooms` lookup for resolveClassroomId() — every fixture
+ * classroomId here ('class-1', ...) is already what the test means by "the
+ * classroom's own id", not a real UUID, so this just echoes back whatever
+ * `.eq('global_id', x)` was called with rather than requiring every single
+ * test to add its own `classrooms: chain(...)` override. Tests that
+ * specifically want an unresolvable global ID still override this via
+ * their own mockTables({ classrooms: ... }).
+ * .toLowerCase() — the service uppercases before querying global_id (real
+ * classroom global IDs are stored uppercase); a real resolved UUID is
+ * always lowercase, so echoing back the queried value unchanged would leak
+ * that uppercasing into every fixture 'class-1' downstream.
+ */
+function classroomsEchoTable() {
+  let queriedId: string | null = null;
+  const builder: any = {
+    select: jest.fn(() => builder),
+    eq: jest.fn((column: string, value: string) => {
+      if (column === 'global_id') queriedId = value.toLowerCase();
+      return builder;
+    }),
+  };
+  builder.maybeSingle = jest.fn(() => Promise.resolve({ data: queriedId ? { id: queriedId } : null, error: null }));
+  return builder;
+}
+
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => ({
-    from: (table: string) => fromTables[table] ?? chain({ data: null, error: null }),
+    from: (table: string) => fromTables[table] ?? (table === 'classrooms' ? classroomsEchoTable() : chain({ data: null, error: null })),
     rpc: (...args: any[]) => mockRpc(...args),
   })),
 }));
@@ -98,7 +124,13 @@ describe('VerificationService', () => {
   describe('initiateEmailVerification()', () => {
     it('throws BadRequestException when the institution has no email_domain', async () => {
       mockTables({
-        classrooms: chain({ data: { institution: { email_domain: null } }, error: null }),
+        // First result is resolveClassroomId()'s own lookup, second is the
+        // institution-domain business-logic lookup — see classroomsEchoTable()'s
+        // own comment for why a test-supplied `classrooms` override needs both.
+        classrooms: chain(
+          { data: { id: 'class-1' }, error: null },
+          { data: { institution: { email_domain: null } }, error: null },
+        ),
       });
 
       await expect(
@@ -108,7 +140,10 @@ describe('VerificationService', () => {
 
     it("throws BadRequestException when the email domain doesn't match", async () => {
       mockTables({
-        classrooms: chain({ data: { institution: { email_domain: 'school.edu' } }, error: null }),
+        classrooms: chain(
+          { data: { id: 'class-1' }, error: null },
+          { data: { institution: { email_domain: 'school.edu' } }, error: null },
+        ),
       });
 
       await expect(
@@ -118,7 +153,10 @@ describe('VerificationService', () => {
 
     it('stores a hashed OTP and emits the plaintext code for delivery', async () => {
       mockTables({
-        classrooms: chain({ data: { institution: { email_domain: 'school.edu' } }, error: null }),
+        classrooms: chain(
+          { data: { id: 'class-1' }, error: null },
+          { data: { institution: { email_domain: 'school.edu' } }, error: null },
+        ),
         verification_email_otps: chain(
           { data: null, error: null }, // invalidate old OTPs
           { data: null, error: null }, // insert new OTP
@@ -578,10 +616,12 @@ describe('VerificationService', () => {
           data: { linkedin_verified: true, linkedin_education: [{ schoolName: 'Some Other School', endYear: 2020 }] },
           error: null,
         }),
-        classrooms: chain({
-          data: { batch_year: 2012, institution: { name: 'MP Birla School', slug: 'MPBIRLA' } },
-          error: null,
-        }),
+        // First result is resolveClassroomId()'s own lookup, second is the
+        // real classroom/institution business-logic lookup.
+        classrooms: chain(
+          { data: { id: 'class-1' }, error: null },
+          { data: { batch_year: 2012, institution: { name: 'MP Birla School', slug: 'MPBIRLA' } }, error: null },
+        ),
       });
 
       await expect(service.verifyViaLinkedin('user-1', 'class-1')).rejects.toThrow(BadRequestException);
@@ -593,10 +633,10 @@ describe('VerificationService', () => {
           data: { linkedin_verified: true, linkedin_education: [{ schoolName: 'MP Birla School', endYear: 2012 }] },
           error: null,
         }),
-        classrooms: chain({
-          data: { batch_year: 2012, institution: { name: 'MP Birla School', slug: 'MPBIRLA' } },
-          error: null,
-        }),
+        classrooms: chain(
+          { data: { id: 'class-1' }, error: null },
+          { data: { batch_year: 2012, institution: { name: 'MP Birla School', slug: 'MPBIRLA' } }, error: null },
+        ),
         memberships: chain({ data: null, error: null }),
       });
 

@@ -637,25 +637,42 @@ export default function ClassroomPage() {
         )
       ) : (
         <div className={styles.channelBody}>
-          {(membership.verificationStatus === 'pending' || membership.verificationStatus === 'pending_auto') &&
-            !verifyBannerDismissed && (
-              <div className={styles.verifyNudgeBanner}>
-                <span>
-                  {tMembership('verifyNudge')}{' '}
-                  {/* BUG FIX — was the route's globalId param (e.g.
-                      "IN-KOL-KVFORTW-10C-2006"), not the classroom's
-                      internal UUID. api.getMembership()/getVerificationStatus()
-                      forward this straight into a `.eq('classroom_id', ...)`
-                      query on a UUID column, so a globalId string here
-                      raised "invalid input syntax for type uuid" — see
-                      classroom.id below, which is already correct. */}
-                  <a href={`/verify?classroomId=${classroom.id}`}>{tMembership('completeVerification')}</a>
-                </span>
-                <button type="button" className={styles.dismissButton} onClick={dismissVerifyBanner} aria-label={tCommon('dismiss')}>
-                  ✕
-                </button>
-              </div>
-            )}
+          {/* Status-specific banners — pending_auto/pending/rejected each get
+              their own copy rather than one generic "not verified yet"
+              message; verified members see no banner at all. */}
+          {membership.verificationStatus === 'pending_auto' && !verifyBannerDismissed && (
+            <div className={styles.verifyNudgeBanner}>
+              <span>
+                {tMembership('pendingAutoBanner')}{' '}
+                {/* BUG FIX — was the route's globalId param (e.g.
+                    "IN-KOL-KVFORTW-10C-2006"), not the classroom's
+                    internal UUID. api.getMembership()/getVerificationStatus()
+                    forward this straight into a `.eq('classroom_id', ...)`
+                    query on a UUID column, so a globalId string here
+                    raised "invalid input syntax for type uuid" — see
+                    classroom.id below, which is already correct. */}
+                <a href={`/verify?classroomId=${classroom.id}`}>{tMembership('completeVerification')}</a>
+              </span>
+              <button type="button" className={styles.dismissButton} onClick={dismissVerifyBanner} aria-label={tCommon('dismiss')}>
+                ✕
+              </button>
+            </div>
+          )}
+
+          {membership.verificationStatus === 'pending' && !verifyBannerDismissed && (
+            <div className={styles.verifyNudgeBanner}>
+              <span>{tMembership('pendingBanner')}</span>
+              <button type="button" className={styles.dismissButton} onClick={dismissVerifyBanner} aria-label={tCommon('dismiss')}>
+                ✕
+              </button>
+            </div>
+          )}
+
+          {membership.verificationStatus === 'rejected' && (
+            <div className={styles.rejectedBanner}>
+              <span>{tMembership('rejectedBanner')}</span>
+            </div>
+          )}
 
           {showRedactedBanner && (
             <div className={styles.verifyBanner}>

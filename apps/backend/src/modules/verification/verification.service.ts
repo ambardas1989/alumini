@@ -83,6 +83,32 @@ export class VerificationService {
     );
   }
 
+  /**
+   * BUG FIX — "invalid input syntax for type uuid: IN-KOL-KVFORTW-10C-2006".
+   * Every public method below takes `classroomId` from a request DTO/URL
+   * param, which the frontend can hand over as the classroom's global ID
+   * rather than its internal UUID — resolving it before it reaches a
+   * `.eq('classroom_id', ...)` / `.eq('id', ...)` query keeps this module
+   * robust regardless of which shape the caller sends. Same helper shape
+   * as MembershipService/CorridorService/EventsService's own
+   * resolveClassroomId() — kept as its own copy per service rather than a
+   * shared import, matching this codebase's established "each module owns
+   * its own membership/classroom-lookup helpers" convention (see
+   * MembershipService's module comment on cross-module table access).
+   */
+  private async resolveClassroomId(classroomId: string): Promise<string | null> {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(classroomId)) return classroomId;
+
+    const { data } = await this.supabase
+      .from('classrooms')
+      .select('id')
+      .eq('global_id', classroomId.toUpperCase())
+      .maybeSingle();
+
+    return data?.id ?? null;
+  }
+
   // ── Method 1: Institutional Email ─────────────────────────────────────────
 
   /**
@@ -101,6 +127,11 @@ export class VerificationService {
     req?: Request,
   ): Promise<void> {
     this.appLogger.debug('[VERIFY:email] entry', { userId, classroomId });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
 
     // Check that the institution domain matches this classroom's institution
     const { data: classroom } = await this.supabase
@@ -205,6 +236,12 @@ export class VerificationService {
     otp: string,
     req?: Request,
   ): Promise<{ verified: boolean }> {
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
+
     const { data: otpRow } = await this.supabase
       .from('verification_email_otps')
       .select('id, code_hash, attempts, expires_at')
@@ -304,6 +341,11 @@ export class VerificationService {
     req?: Request,
   ): Promise<{ vouchPoints: number; required: number; isVerified: boolean }> {
     this.appLogger.debug('[VERIFY:vouch] entry', { voucherId, voucheeId, classroomId });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
 
     // Cannot vouch for yourself
     if (voucherId === voucheeId) {
@@ -461,6 +503,12 @@ export class VerificationService {
     req?: Request,
   ): Promise<{ message: string; expiresAt: Date }> {
     this.appLogger.debug('[VERIFY:doc] entry', { userId, classroomId });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
+
     const expiresAt = daysFromNow(appConfig.DOCUMENT_EXPIRY_DAYS);
 
     // Get membership ID
@@ -518,6 +566,12 @@ export class VerificationService {
    * controller-side doc comment for why).
    */
   async listPendingDocumentVerifications(adminId: string, classroomId: string) {
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
+
     await this.assertClassroomAdmin(adminId, classroomId);
 
     const { data: verifications, error } = await this.supabase
@@ -708,6 +762,11 @@ export class VerificationService {
     req?: Request,
   ): Promise<{ verified: boolean }> {
     this.appLogger.debug('[VERIFY:linkedin] entry', { userId, classroomId });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
 
     const { data: profile } = await this.supabase
       .from('profiles')
@@ -793,6 +852,11 @@ export class VerificationService {
     req?: Request,
   ): Promise<{ verified: boolean }> {
     this.appLogger.debug('[VERIFY:code] entry', { userId, classroomId, codePrefix: code?.slice(0, 4) });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
 
     // Validate code format before hitting DB
     if (!isValidInstitutionCode(code)) {

@@ -118,7 +118,7 @@ export class MembershipService {
     const { data: classroom } = await this.supabase
       .from('classrooms')
       .select('id')
-      .eq('global_id', classroomId)
+      .eq('global_id', classroomId.toUpperCase())
       .maybeSingle();
 
     return classroom?.id ?? null;

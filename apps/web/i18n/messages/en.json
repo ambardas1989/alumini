@@ -617,8 +617,10 @@
     }
   },
   "membership": {
-    "verifyNudge": "⏳ You're not verified yet —",
-    "completeVerification": "Complete verification →"
+    "pendingAutoBanner": "⚡ You joined early — complete verification to post.",
+    "pendingBanner": "⏳ Your verification is pending.",
+    "rejectedBanner": "✗ Your verification was rejected. Contact the classroom admin.",
+    "completeVerification": "Verify now →"
   },
   "verification": {
     "title": "Verify your membership",

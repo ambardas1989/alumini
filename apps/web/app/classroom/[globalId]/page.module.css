@@ -124,6 +124,21 @@
   padding: 2px;
 }
 
+/* A rejected verification is an error state, not a dismissible nudge —
+   stays visible until the admin re-reviews (no dismiss button). */
+.rejectedBanner {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  background: var(--color-error-light);
+  border-inline-start: 3px solid var(--color-error);
+}
+
+.rejectedBanner span {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  font-weight: 600;
+}
+
 .messageList {
   flex: 1;
   min-height: 0;
