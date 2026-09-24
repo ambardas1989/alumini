@@ -333,6 +333,79 @@
     "suggested": {
       "joinButton": "Join",
       "mutualAlumni": "{count, plural, one {# mutual alumni} other {# mutual alumni}}"
+    },
+    "landing": {
+      "headerWelcome": "Welcome, {name}",
+      "student": {
+        "subtitle": "Let's find your batch",
+        "searchPlaceholder": "Search your school or college...",
+        "joinButton": "Join",
+        "actions": {
+          "join": {
+            "title": "Join a batch",
+            "description": "Find and join your classrooms"
+          },
+          "create": {
+            "title": "Create a classroom",
+            "description": "Start a new classroom for your batch"
+          }
+        },
+        "howItWorks": {
+          "step1": "Find school",
+          "step2": "Join batch",
+          "step3": "Reconnect"
+        }
+      },
+      "teacher": {
+        "subtitle": "Find your classes or create new ones",
+        "searchPlaceholder": "Search your school or college...",
+        "joinButton": "Join as teacher",
+        "actions": {
+          "join": {
+            "title": "Join a class",
+            "description": "Find and join your classes"
+          },
+          "create": {
+            "title": "Create a classroom",
+            "description": "Start a new classroom"
+          }
+        },
+        "howItWorks": {
+          "step1": "Find school",
+          "step2": "Join or create classroom",
+          "step3": "Connect with students"
+        }
+      },
+      "admin": {
+        "subtitle": "Set up your institution on AlumTribe",
+        "searchPlaceholder": "Search for your institution...",
+        "claimButton": "Claim admin access",
+        "requestLink": "Request your institution",
+        "infoCard": "Your institution needs approval before you can manage classrooms.",
+        "actions": {
+          "find": {
+            "title": "Find institution",
+            "description": "Search for your institution to claim it"
+          },
+          "request": {
+            "title": "Request institution",
+            "description": "Not listed yet? Ask us to add it"
+          }
+        },
+        "requestForm": {
+          "nameLabel": "Institution name",
+          "typeLabel": "Type",
+          "countryLabel": "Country",
+          "submitButton": "Submit request",
+          "successMessage": "Request submitted — we will review it shortly."
+        },
+        "claimSubmittedToast": "Claim submitted for review"
+      },
+      "howItWorksHeading": "How it works",
+      "noResults": "No classrooms found",
+      "createThisClassroom": "+ Create this classroom",
+      "joinedToast": "Joined!",
+      "joinedRequestedToast": "Request to join sent"
     }
   },
   "classroomCreate": {

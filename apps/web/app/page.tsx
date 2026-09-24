@@ -15,9 +15,9 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { UserMenu } from '@/components/UserMenu';
 import { NotificationBell } from '@/components/NotificationBell';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
-import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
+import { NewUserLanding, type LandingVariant } from './NewUserLanding';
 import styles from './page.module.css';
 
 const NUDGE_DISMISSED_KEY = 'alumtribe_verify_nudge_dismissed';
@@ -71,6 +71,9 @@ export default function HomePage() {
   const [classrooms, setClassrooms] = useState<FlatClassroom[]>([]);
   const [feed, setFeed] = useState<NotificationRow[]>([]);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  // TASKS_09 TASK 01 — only needed to tell an admin-persona new user apart
+  // from a platform admin with no school_admin persona yet.
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -81,12 +84,14 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const [myClassrooms, notifications] = await Promise.all([
+      const [myClassrooms, notifications, profile] = await Promise.all([
         api.getMyClassrooms(),
         api.getNotifications(20),
+        api.getProfile(),
       ]);
       setClassrooms(flatten(myClassrooms));
       setFeed(notifications);
+      setIsPlatformAdmin(profile.isPlatformAdmin);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -112,6 +117,20 @@ export default function HomePage() {
       router.push(`/classroom/${classroomId}`);
     }
   };
+
+  // TASKS_09 TASK 01 — "new user" = zero memberships. PersonaType's actual
+  // values are 'alumni'/'teacher'/'school_admin' (see @alumini/types), not
+  // the task text's literal 'student'/'admin' — school_admin and a platform
+  // admin with no persona yet both land on the admin variant; everything
+  // else (including the 'alumni' default) is the student variant.
+  const isNewUser = !loading && !error && classrooms.length === 0 && feed.length === 0;
+  const landingVariant: LandingVariant =
+    user?.activePersona === 'teacher'
+      ? 'teacher'
+      : user?.activePersona === 'school_admin' || isPlatformAdmin
+        ? 'admin'
+        : 'student';
+  const firstName = (user?.fullName ?? '').split(' ')[0] || user?.fullName || '';
 
   if (!ready) return null;
 
@@ -165,14 +184,13 @@ export default function HomePage() {
                 feed happened to be empty. The feed (a real, working
                 notifications feature from earlier work) stays as its own
                 section below rather than being deleted outright. */}
-            {!loading && feed.length === 0 && classrooms.length === 0 && (
-              <EmptyState
-                icon="🎓"
-                title={t('empty.title')}
-                description={t('empty.description')}
-                ctaLabel={t('empty.cta')}
-                onCta={() => router.push('/classes')}
-              />
+            {/* TASKS_09 TASK 01 — the plain empty state is replaced by a
+                persona-aware landing screen for a genuinely new user (zero
+                memberships). Joining/claiming calls load() (via onJoined),
+                which flips classrooms.length > 0 and this block stops
+                rendering — no reload needed. */}
+            {isNewUser && (
+              <NewUserLanding variant={landingVariant} firstName={firstName} onJoined={load} />
             )}
 
             {!loading && classrooms.length > 0 && (
