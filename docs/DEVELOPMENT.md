@@ -28,6 +28,15 @@ manually in Supabase SQL Editor.
 They are NOT auto-applied.
 Check supabase/migrations/README.md for status of each.
 
+## Before deploying a new feature
+
+1. Check if any new migration files were added
+2. Run them in Supabase SQL Editor IN ORDER
+3. Verify the table exists before testing the feature
+4. Update supabase/migrations/README.md status
+
+This prevents PGRST205 "table not found" errors in production.
+
 ## Log levels and monitoring
 
 Set LOG_LEVEL in .env or Render environment:

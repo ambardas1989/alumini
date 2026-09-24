@@ -63,7 +63,7 @@ Commit: "fix: graceful duplicate email error on signup with sign in link"
 
 ---
 
-## TASK 02 — Fix: run all pending Supabase migrations [PENDING]
+## TASK 02 — Fix: run all pending Supabase migrations [DONE: no live Supabase DB access from this environment (confirmed with user) — updated README.md honestly (⚠️ Check rows require manual verification, not fabricated ✅), documented idempotency of each pending migration, corrected a task-list typo (mfa_recovery_codes → the real table is mfa_recovery_tokens, already applied), added the pre-deploy checklist to DEVELOPMENT.md]
 
 Several features are failing because migration files exist
 in the repo but were never run in Supabase.
