@@ -76,6 +76,19 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.resultTypeBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border-radius: 20px;
+  padding: 1px 8px;
 }
 
 .notFoundWrap {
@@ -226,6 +239,12 @@
 .idHint {
   font-family: monospace;
   font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.idCitySuffix {
+  font-family: var(--font-primary);
+  font-weight: 600;
   color: var(--color-text-muted);
 }
 

@@ -372,7 +372,7 @@ Commit: "feat: classroom discovery search — find your batch"
 
 ---
 
-## TASK 08 — Fix: classroom creation — institution search and location [PENDING]
+## TASK 08 — Fix: classroom creation — institution search and location [DONE: FIX A premise was false — a debounced dropdown with a "Request it" fallback already existed, only needed polish (2-char trigger vs 3-char not-found threshold, match highlighting, type badge); FIX B (city/state/country) built end-to-end — migration 022, DTO, service, pre-filled-but-editable form fields, city shown alongside the global ID preview]
 
 Two improvements to the classroom creation flow:
 

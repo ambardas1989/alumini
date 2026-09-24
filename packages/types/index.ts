@@ -265,6 +265,10 @@ export interface Classroom {
   createdAt: string;
   /** Public Storage URL — see supabase/migrations/016_institution_logos.sql */
   coverUrl?: string;
+  /** See supabase/migrations/022_classroom_location.sql — editable independent of the institution's own cityCode (an institution can have branches in more than one city). */
+  city?: string;
+  state?: string;
+  countryCode?: string;
 }
 
 export interface Membership {

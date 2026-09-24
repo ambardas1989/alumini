@@ -43,7 +43,7 @@ import { Request } from 'express';
  * instead of the plain `*`/`.select()` this file used before.
  */
 const CLASSROOM_SELECT_COLUMNS =
-  'id, globalId:global_id, institutionId:institution_id, name, batchYear:batch_year, grade, section, program, hasStaffRoom:has_staff_room, hasStudentAlley:has_student_alley, requireVerification:require_verification, createdBy:created_by, memberCount:member_count, createdAt:created_at, coverUrl:cover_url';
+  'id, globalId:global_id, institutionId:institution_id, name, batchYear:batch_year, grade, section, program, hasStaffRoom:has_staff_room, hasStudentAlley:has_student_alley, requireVerification:require_verification, createdBy:created_by, memberCount:member_count, createdAt:created_at, coverUrl:cover_url, city, state, countryCode:country_code';
 
 /** Same reasoning as CLASSROOM_SELECT_COLUMNS, for the institution row joined into getByGlobalId()/getById(). */
 const INSTITUTION_JOIN_COLUMNS = 'id, name, slug, type, cityCode:city_code, countryCode:country_code, logoUrl:logo_url';
@@ -191,6 +191,9 @@ export class ClassroomService {
         has_student_alley:    dto.hasStudentAlley ?? true,
         require_verification: dto.requireVerification ?? true,
         created_by:           creatorId,
+        city:                 dto.city ?? null,
+        state:                dto.state ?? null,
+        country_code:         dto.countryCode ?? institution.country_code ?? 'IN',
       })
       .select(CLASSROOM_SELECT_COLUMNS)
       .single();

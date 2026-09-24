@@ -59,4 +59,26 @@ export class CreateClassroomDto {
   @IsOptional()
   @IsBoolean()
   requireVerification?: boolean;
+
+  // TASKS_07 TASK 08 FIX B — location fields. Editable independent of the
+  // selected institution's own city_code: an institution can have branches/
+  // campuses in more than one city, so the classroom's own location isn't
+  // always the institution's default.
+  @ApiPropertyOptional({ description: 'City this classroom is based in — pre-filled from the institution, editable' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 120)
+  city?: string;
+
+  @ApiPropertyOptional({ description: 'State/province this classroom is based in' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 120)
+  state?: string;
+
+  @ApiPropertyOptional({ default: 'IN', description: 'ISO 3166-1 alpha-2 country code' })
+  @IsOptional()
+  @IsString()
+  @Length(2, 2)
+  countryCode?: string;
 }

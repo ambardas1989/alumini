@@ -600,6 +600,9 @@ export interface CreateClassroomData {
   hasStaffRoom?: boolean;
   hasStudentAlley?: boolean;
   requireVerification?: boolean;
+  city?: string;
+  state?: string;
+  countryCode?: string;
 }
 
 /**

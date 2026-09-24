@@ -394,7 +394,12 @@
       "message": "{count, plural, one {# member is} other {# members are}} already here.",
       "joinButton": "Join this classroom",
       "cancelButton": "Cancel"
-    }
+    },
+    "cityLabel": "City",
+    "cityPlaceholder": "e.g. Kolkata",
+    "stateLabel": "State",
+    "statePlaceholder": "e.g. West Bengal (optional)",
+    "countryLabel": "Country"
   },
   "classroom": {
     "card": {

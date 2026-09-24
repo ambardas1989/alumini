@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Institution } from '@alumini/types';
 import { generateClassroomId } from '@alumini/utils';
 import * as api from '@/lib/api';
@@ -23,7 +23,12 @@ import styles from './ClassroomCreateForm.module.css';
 
 type InstitutionType = 'school' | 'college' | 'university';
 
-const MIN_QUERY_LENGTH = 3;
+const MIN_QUERY_LENGTH = 2;
+// TASKS_07 TASK 08 FIX A — search itself triggers at 2+ chars, but the
+// "Can't find your institution?" fallback only appears once there's been
+// a real chance for a match at 3+ chars — showing it right after the 2nd
+// keystroke would flash it before the user's finished typing a short name.
+const NOT_FOUND_HINT_MIN_LENGTH = 3;
 const DEBOUNCE_MS = 300;
 const MAX_RESULTS = 8;
 const MIN_BATCH_YEAR = 1950;
@@ -40,6 +45,21 @@ const PROGRAM_SUGGESTIONS = ['MBA', 'B.Tech', 'MBBS', 'B.Com', 'BA', 'B.Sc', 'LL
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** TASKS_07 TASK 08 FIX A — bolds the substring of `text` that matches `query` (case-insensitive, first occurrence only). Falls back to the plain text when there's no match to highlight. */
+function highlightMatch(text: string, query: string): ReactNode {
+  const trimmed = query.trim();
+  if (!trimmed) return text;
+  const index = text.toLowerCase().indexOf(trimmed.toLowerCase());
+  if (index === -1) return text;
+  return (
+    <>
+      {text.slice(0, index)}
+      <strong>{text.slice(index, index + trimmed.length)}</strong>
+      {text.slice(index + trimmed.length)}
+    </>
+  );
 }
 
 /**
@@ -93,6 +113,15 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
   const [hasStaffRoom, setHasStaffRoom] = useState(true);
   const [hasStudentAlley, setHasStudentAlley] = useState(true);
   const [requireVerification, setRequireVerification] = useState(true);
+
+  // ── Location (TASKS_07 TASK 08 FIX B) ────────────────────────────────────
+  // Pre-filled from the selected institution when it's chosen, but always
+  // editable afterward — an institution can have branches/campuses in more
+  // than one city, so its own city_code/countryCode is only a starting
+  // guess, not the source of truth for this specific classroom.
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [countryCode, setCountryCode] = useState('IN');
 
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -194,6 +223,10 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
     setSelectedInstitution(institution);
     setResults([]);
     setHighlighted(-1);
+    // Pre-fill, don't overwrite anything the user already typed if they go
+    // back and re-select a different institution.
+    setCity((prev) => prev || institution.cityCode || '');
+    setCountryCode(institution.countryCode || 'IN');
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -360,6 +393,9 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
         hasStaffRoom,
         hasStudentAlley,
         requireVerification,
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
+        countryCode,
       });
       showToast(t('successToast'), 'success');
       onDone(classroom.globalId);
@@ -439,10 +475,11 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
                     className={`${styles.resultRow} ${highlighted === index ? styles.resultRowHighlighted : ''}`}
                     onClick={() => handleSelectInstitution(institution)}
                   >
-                    <span className={styles.resultName}>{institution.name}</span>
+                    <span className={styles.resultName}>{highlightMatch(institution.name, debouncedQuery)}</span>
                     <span className={styles.resultMeta}>
                       {institution.cityCode ? `${institution.cityCode}, ` : ''}
                       {institution.countryCode}
+                      <span className={styles.resultTypeBadge}>{institution.type}</span>
                     </span>
                   </button>
                 </li>
@@ -450,7 +487,7 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
             </ul>
           )}
 
-          {!searching && results.length === 0 && debouncedQuery.trim().length >= MIN_QUERY_LENGTH && !showRequestForm && (
+          {!searching && results.length === 0 && debouncedQuery.trim().length >= NOT_FOUND_HINT_MIN_LENGTH && !showRequestForm && (
             <div className={styles.notFoundWrap}>
               <p className={styles.notFoundText}>{t('notFound')}</p>
               <button type="button" className={styles.notFound} onClick={handleNotFound}>
@@ -608,6 +645,32 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
         </div>
       )}
 
+      {selectedInstitution && (
+        <div className={styles.fieldRow}>
+          <Input label={t('cityLabel')} placeholder={t('cityPlaceholder')} value={city} onChange={(e) => setCity(e.target.value)} />
+          <Input label={t('stateLabel')} placeholder={t('statePlaceholder')} value={state} onChange={(e) => setState(e.target.value)} />
+        </div>
+      )}
+
+      {selectedInstitution && (
+        <Select label={t('countryLabel')} value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
+          <optgroup label={t('requestForm.commonCountries')}>
+            {COMMON_COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </optgroup>
+          <optgroup label={t('requestForm.otherCountries')}>
+            {OTHER_COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.name}
+              </option>
+            ))}
+          </optgroup>
+        </Select>
+      )}
+
       {type === 'school' ? (
         <div className={styles.fieldRow}>
           <Select label={t('gradeLabel')} value={grade} onChange={(e) => setGrade(e.target.value)}>
@@ -671,7 +734,10 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
         <div className={styles.idPreview}>
           <p className={styles.idLabel}>{t('globalIdLabel')}</p>
           {globalIdPreview ? (
-            <p className={styles.idValue}>{globalIdPreview}</p>
+            <p className={styles.idValue}>
+              {globalIdPreview}
+              {city.trim() && <span className={styles.idCitySuffix}> · {city.trim()}</span>}
+            </p>
           ) : (
             <p className={styles.idHint}>
               {t(type === 'school' ? 'globalIdHintSchool' : 'globalIdHintCollege')}
