@@ -754,11 +754,11 @@ Also create 'classroom-media' bucket in Supabase Storage:
 
 (Claude Code fills this in when all tasks are [DONE])
 
-Date completed: In progress — not all tasks done yet (see below).
-Tasks completed: TASK 01–06 [DONE]. TASK 07–08 still [PENDING]. TASK 09 [DEFERRED] per explicit request — attachments/events/polls "+" button feature not needed right now, skipped for this batch.
-Tests passing: npm run test passing after every completed task (37 frontend/utils tests + full backend Jest suite, 16 suites).
+Date completed: 2026-09-24
+Tasks completed: TASK 01–08 [DONE]. TASK 09 [DEFERRED] per explicit request — attachments/events/polls "+" button feature not needed right now, skipped for this batch.
+Tests passing: npm run test passing after every task (37 frontend/utils tests + full backend Jest suite, 16 suites, 400+ backend tests).
 Build status: next build and backend nest build passing after every frontend-touching task.
-Notes: Still no `git push` — per the batch's own instruction, push is withheld until every non-deferred task is [DONE]. Resuming with TASK 07 next.
+Notes: Every task 01–08 is committed locally but NOT pushed — holding for explicit confirmation before pushing, since TASK 09 (deferred, not done) means the batch's own "push only once every task is [DONE]" condition is now ambiguous with a deferred task in the mix.
 
 ---
 
