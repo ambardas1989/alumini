@@ -43,7 +43,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'update', 'delete', 'eq', 'is', 'gt', 'in', 'order', 'range', 'limit', 'ilike'].forEach(
+  ['select', 'insert', 'update', 'delete', 'eq', 'is', 'gt', 'gte', 'in', 'order', 'range', 'limit', 'ilike'].forEach(
     (method) => {
       builder[method] = jest.fn(() => builder);
     },
@@ -276,6 +276,41 @@ describe('ClassroomService', () => {
       mockTables({ classrooms: chain({ data: null, error: { message: 'Not found' } }) });
 
       await expect(service.getByGlobalId('XX-NOTREAL-999')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // TASKS_09 TASK 18 — public share-link preview.
+  describe('getPreview()', () => {
+    it('returns safe public fields plus verifiedCount and upcoming classroom-channel events', async () => {
+      mockTables({
+        classrooms: chain({ data: { ...mockClassroom, requireVerification: true, city: 'Kolkata', institution: mockJoinedInstitution }, error: null }),
+        memberships: chain({ data: null, error: null, count: 7 }),
+        events: chain({
+          data: [{ id: 'e1', title: 'Reunion', event_date: '2027-01-01T10:00:00Z', location: 'Cafe', is_online: false }],
+          error: null,
+        }),
+      });
+
+      const result = await service.getPreview('IN-KOL-MPBIRLA-9A-2012');
+
+      expect(result).toEqual({
+        id: mockClassroom.id,
+        name: mockClassroom.name,
+        institutionName: 'MP Birla',
+        city: 'Kolkata',
+        batchYear: mockClassroom.batchYear,
+        memberCount: mockClassroom.memberCount,
+        verifiedCount: 7,
+        createdAt: undefined,
+        requiresVerification: true,
+        upcomingEvents: [{ id: 'e1', title: 'Reunion', eventDate: '2027-01-01T10:00:00Z', location: 'Cafe', isOnline: false }],
+      });
+    });
+
+    it('throws NotFoundException when the classroom does not exist', async () => {
+      mockTables({ classrooms: chain({ data: null, error: { message: 'Not found' } }) });
+
+      await expect(service.getPreview('XX-NOTREAL-999')).rejects.toThrow(NotFoundException);
     });
   });
 

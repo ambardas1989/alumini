@@ -5,12 +5,10 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChannelType, MessageType } from '@alumini/types';
 import type { Classroom, Event as ClassroomEvent, Institution, Message, RedactedMessage } from '@alumini/types';
 import * as api from '@/lib/api';
-import { ApiError } from '@/lib/api';
 import type { ClassroomMember } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { safeFormatDate } from '@/lib/format';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useToast } from '@/components/providers/ToastProvider';
 import { useTranslations } from '@/lib/useTranslations';
 import { AppShell } from '@/components/layout/AppShell';
@@ -28,6 +26,7 @@ import { EventMessageCard } from './EventMessageCard';
 import { EventDetailSheet } from './EventDetailSheet';
 import { MessageInput } from './MessageInput';
 import { ClassInfoSheet } from './ClassInfoSheet';
+import { ClassroomPreview } from './ClassroomPreview';
 import { EventCreateModal } from './EventCreateModal';
 import { MemberListModal } from './MemberListModal';
 import type { MembershipInfo, UiMessage } from './types';
@@ -105,8 +104,13 @@ export default function ClassroomPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const deepLinkedEventId = searchParams.get('eventId');
-  const { ready } = useRequireAuth();
-  const { user } = useAuth();
+  // TASKS_09 TASK 18 — this page is now public for non-members (share-link
+  // landing), so it no longer force-redirects to /auth/login the way
+  // useRequireAuth() does. AuthProvider already withholds rendering until
+  // it's finished reading localStorage (see its own comment), so
+  // isLoggedIn is accurate from this component's very first render — no
+  // separate "ready" wait is needed here either.
+  const { user, isLoggedIn } = useAuth();
   const { showToast } = useToast();
   const t = useTranslations('classroom');
   const tCommon = useTranslations('common');
@@ -115,6 +119,7 @@ export default function ClassroomPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [classroom, setClassroom] = useState<ClassroomDetail | null>(null);
+  const [preview, setPreview] = useState<api.ClassroomPreview | null>(null);
   const [membership, setMembership] = useState<MembershipInfo>({
     isMember: false,
     isVerified: false,
@@ -122,7 +127,6 @@ export default function ClassroomPage() {
     userRole: null,
     joinedAt: null,
   });
-  const [joining, setJoining] = useState(false);
 
   const [activeChannel, setActiveChannel] = useState<ChannelType>(ChannelType.CLASSROOM);
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -171,34 +175,54 @@ export default function ClassroomPage() {
   // verificationStatus/userRole for every classroom the caller belongs to,
   // so membership is derived by matching this classroom's globalId there
   // instead: present in that list = member, absent = not a member.
+  //
+  // TASKS_09 TASK 18 — a logged-out visitor (or a logged-in non-member)
+  // now gets the public preview instead of a 401/redirect: getClassroom()
+  // was already an unauthenticated endpoint (@Get(':idOrGlobalId') has no
+  // guard), but getMyClassrooms() requires a session, so that call is only
+  // made when isLoggedIn. Membership only ever ends up true when logged
+  // in AND a match is found; every other combination (logged out, or
+  // logged in but not a member) falls through to fetching the dedicated
+  // public preview payload (verifiedCount/upcomingEvents aren't on the
+  // plain classroom response) and rendering ClassroomPreview instead.
   const loadClassroomAndMembership = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [classroomData, myClassrooms] = await Promise.all([
-        api.getClassroom(globalId),
-        api.getMyClassrooms(),
-      ]);
-      setClassroom(classroomData);
-      const match = myClassrooms.flatMap((g) => g.classes).find((c) => c.globalId === globalId);
-      setMembership({
-        isMember: !!match,
-        isVerified: match?.verificationStatus === 'verified',
-        verificationStatus: match?.verificationStatus ?? null,
-        userRole: (match?.userRole as string | undefined) ?? null,
-        joinedAt: match?.joinedAt ?? null,
-      });
+      if (isLoggedIn) {
+        const [classroomData, myClassrooms] = await Promise.all([
+          api.getClassroom(globalId),
+          api.getMyClassrooms(),
+        ]);
+        const match = myClassrooms.flatMap((g) => g.classes).find((c) => c.globalId === globalId);
+        if (match) {
+          setClassroom(classroomData);
+          setPreview(null);
+          setMembership({
+            isMember: true,
+            isVerified: match.verificationStatus === 'verified',
+            verificationStatus: match.verificationStatus,
+            userRole: (match.userRole as string | undefined) ?? null,
+            joinedAt: match.joinedAt ?? null,
+          });
+          return;
+        }
+      }
+
+      const previewData = await api.getClassroomPreview(globalId);
+      setClassroom(null);
+      setPreview(previewData);
+      setMembership({ isMember: false, isVerified: false, verificationStatus: null, userRole: null, joinedAt: null });
     } catch (err) {
       setLoadError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [globalId]);
+  }, [globalId, isLoggedIn]);
 
   useEffect(() => {
-    if (!ready) return;
     loadClassroomAndMembership();
-  }, [ready, loadClassroomAndMembership]);
+  }, [loadClassroomAndMembership]);
 
   // TASKS_03.md TASK 09 — exact key format the spec requires.
   const verifyBannerKey = `dismissed_verify_banner_${globalId}`;
@@ -218,31 +242,6 @@ export default function ClassroomPage() {
       window.localStorage.setItem(verifyBannerKey, '1');
     } catch {
       // Best-effort — worst case it reappears next visit.
-    }
-  };
-
-  const handleJoin = async () => {
-    if (!classroom) return;
-    setJoining(true);
-    try {
-      await api.joinClassroom(classroom.id);
-      await loadClassroomAndMembership();
-    } catch (err) {
-      // TASKS_09 TASK 03 (confirmed as part of TASK 11's own prerequisite
-      // check) — a 409 here means the caller is ALREADY a member (see
-      // ClassroomService.joinClassroom()'s ConflictException). That's not
-      // a failure from the user's perspective — showing an error and
-      // leaving them stuck on the join prompt was the actual bug. Treat it
-      // as success: reload membership so the classroom renders normally.
-      if (err instanceof ApiError && err.statusCode === 409) {
-        // eslint-disable-next-line no-console
-        console.warn('[MEMBERSHIP:join] already member — treating as success', { classroomId: classroom.id });
-        await loadClassroomAndMembership();
-      } else {
-        showToast(getErrorMessage(err), 'error');
-      }
-    } finally {
-      setJoining(false);
     }
   };
 
@@ -547,8 +546,6 @@ export default function ClassroomPage() {
     [events],
   );
 
-  if (!ready) return null;
-
   if (loading) {
     return (
       <AppShell showNav={false}>
@@ -559,29 +556,28 @@ export default function ClassroomPage() {
     );
   }
 
-  if (loadError || !classroom) {
+  if (loadError) {
     return (
       <AppShell showNav={false}>
-        <ErrorMessage message={loadError ?? tCommon('error')} fullPage onRetry={loadClassroomAndMembership} />
+        <ErrorMessage message={loadError} fullPage onRetry={loadClassroomAndMembership} />
       </AppShell>
     );
   }
 
+  // TASKS_09 TASK 18 — public preview for a non-member (logged out, or
+  // logged in but hasn't joined). onJoined just reloads this same
+  // load — a successful join flips membership.isMember true on the next
+  // fetch, so this component falls through to the full view below.
   if (!membership.isMember) {
+    if (!preview) return null;
     return (
       <AppShell showNav={false}>
-        <div className={styles.nonMemberWrap}>
-          <p className={styles.nonMemberName}>{classroom.name}</p>
-          <p className={styles.nonMemberMeta}>
-            {classroom.institution.name} · {t('card.memberCount', { count: classroom.memberCount })}
-          </p>
-          <Button variant="primary" size="lg" fullWidth loading={joining} onClick={handleJoin}>
-            {t('nonMember.joinButton')}
-          </Button>
-        </div>
+        <ClassroomPreview globalId={globalId} preview={preview} isLoggedIn={isLoggedIn} onJoined={loadClassroomAndMembership} />
       </AppShell>
     );
   }
+
+  if (!classroom) return null;
 
   // pending_auto counts as full access for messaging (see canAccessChannel()'s own comment) —
   // only a plain 'pending'/'rejected'/no membership sees the redacted, read-only view.

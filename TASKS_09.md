@@ -675,7 +675,8 @@ fix events globalId bug, event tile format"
 
 ---
 
-## TASK 18 — Feature: share classroom link — full implementation [PENDING]
+## TASK 18 — Feature: share classroom link — full implementation [DONE]
+Note: New public GET /classroom/:globalId/preview (no guard) returns id/name/institutionName/city/batchYear/memberCount/verifiedCount/createdAt/requiresVerification/upcomingEvents (classroom-channel only, top 5) — no messages/member list. Reworked apps/web's classroom page: dropped useRequireAuth()'s forced login redirect in favor of useAuth().isLoggedIn (AuthProvider already withholds children until resolved, so no extra "ready" wait needed); non-members (logged out or logged in) now fetch the preview and render a new ClassroomPreview component (bold centered name/institution, city+batch year, "N verified members · Est. {year}", blurred fake message bubbles with a "Join to see conversations" overlay, read-only upcoming-event tiles, and a Join button that routes to signup when logged out or calls POST join — with the existing 409-as-already-member handling and a redirect to /verify when the classroom requires it — when logged in); members still get the full existing experience unchanged. Share button's toast copy updated to "Classroom link copied to clipboard!" per spec; it already copies https://origin/classroom/[globalId] via navigator.clipboard. Builds + full test suite (16 backend suites/386 tests + utils) pass.
 
 The share classroom link exists but the landing experience
 for someone clicking it is not fully built.

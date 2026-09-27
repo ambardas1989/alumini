@@ -127,6 +127,17 @@ export class ClassroomController {
     return this.classroomService.getByIdOrGlobalId(idOrGlobalId);
   }
 
+  /**
+   * TASKS_09 TASK 18 — public share-link preview. No JwtAuthGuard: a
+   * non-member (logged in or not) landing on a shared classroom link
+   * needs this before they've authenticated at all.
+   */
+  @Get(':globalId/preview')
+  @ApiOperation({ summary: 'Public classroom preview for the share link — no auth, safe public fields only' })
+  async preview(@Param('globalId') globalId: string) {
+    return this.classroomService.getPreview(globalId);
+  }
+
   @Get(':id/members')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

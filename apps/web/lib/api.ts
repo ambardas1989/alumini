@@ -626,6 +626,24 @@ export function getClassroom(globalId: string): Promise<Classroom & { institutio
   return request(`/classroom/${globalId}`);
 }
 
+/** TASKS_09 TASK 18 — public share-link preview, no auth required. */
+export interface ClassroomPreview {
+  id: string;
+  name: string;
+  institutionName: string | null;
+  city: string | null;
+  batchYear: number;
+  memberCount: number;
+  verifiedCount: number;
+  createdAt: string;
+  requiresVerification: boolean;
+  upcomingEvents: Array<{ id: string; title: string; eventDate: string; location?: string; isOnline: boolean }>;
+}
+
+export function getClassroomPreview(globalId: string): Promise<ClassroomPreview> {
+  return request(`/classroom/${globalId}/preview`);
+}
+
 /** TASKS_07 TASK 07 — "Find your batch" platform-wide discovery search, excludes classrooms the caller already joined. */
 export interface ClassroomSearchResult {
   id: string;

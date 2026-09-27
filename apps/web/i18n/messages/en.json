@@ -485,7 +485,6 @@
   },
   "classroom": {
     "card": {
-      "memberCount": "{count, plural, =0 {Be the first to join} one {# member} other {# members}}",
       "verifyToEnter": "⏳ verify to enter"
     },
     "header": {
@@ -531,8 +530,15 @@
       "student_alley": "🎒 This is the students' space. We'll leave them to it."
     },
     "nonMember": {
-      "joinButton": "Join this classroom",
       "verifyNow": "Verify now →"
+    },
+    "preview": {
+      "verifiedMembers": "{count, plural, one {# verified member} other {# verified members}}",
+      "estYear": "Est. {year}",
+      "joinToSeeConversations": "Join to see conversations",
+      "upcomingEvents": "Upcoming events",
+      "joinButton": "Join this classroom",
+      "signInPrompt": "Already have an account? Sign in"
     },
     "messages": {
       "empty": "Say hello!",
@@ -583,7 +589,7 @@
       "noUpcomingEvents": "No upcoming events",
       "createEvent": "+ Create event",
       "shareLink": "Share classroom link",
-      "linkCopied": "Link copied",
+      "linkCopied": "Classroom link copied to clipboard!",
       "leaveClassroom": "Leave classroom",
       "leaveConfirmTitle": "Leave {name}?",
       "leaveConfirmMessage": "You will lose access to all messages.",

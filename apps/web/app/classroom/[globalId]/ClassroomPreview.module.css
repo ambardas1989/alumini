@@ -1,0 +1,124 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  padding: 24px 20px;
+  gap: 20px;
+  max-width: 420px;
+  margin-inline: auto;
+}
+
+.header {
+  text-align: center;
+}
+
+.name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+}
+
+.institution {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-block-start: 2px;
+}
+
+.meta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-block-start: 6px;
+}
+
+.stats {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-block-start: 4px;
+}
+
+.blurSection {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.blurredBubbles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  filter: blur(5px);
+  background: var(--color-bg);
+}
+
+.fakeBubble {
+  height: 30px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.blurOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.blurOverlay p {
+  color: #fff;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  text-align: center;
+  padding-inline: 16px;
+}
+
+.eventsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.eventTile {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.eventTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.eventMeta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-block-start: 3px;
+}
+
+.ctaSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-block-start: 4px;
+}
+
+.signInLink {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+}

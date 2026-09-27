@@ -314,6 +314,55 @@ export class ClassroomService {
   }
 
   /**
+   * TASKS_09 TASK 18 — public classroom preview (share-link landing page,
+   * no auth). getByGlobalId() above is already public metadata, but this
+   * adds the two fields a preview needs that it doesn't carry: an
+   * aggregate verifiedCount, and a small safe slice of the classroom
+   * channel's own upcoming events (title/date/location/online only — no
+   * RSVP names, no staff_room/student_alley events, which would leak
+   * their existence to a non-member).
+   */
+  async getPreview(globalId: string) {
+    const classroom = await this.getByGlobalId(globalId);
+    const institution = (classroom as any).institution as { name?: string; cityCode?: string } | undefined;
+
+    const [{ count: verifiedCount }, { data: events }] = await Promise.all([
+      this.supabase
+        .from('memberships')
+        .select('id', { count: 'exact', head: true })
+        .eq('classroom_id', classroom.id)
+        .eq('verification_status', 'verified'),
+      this.supabase
+        .from('events')
+        .select('id, title, event_date, location, is_online')
+        .eq('classroom_id', classroom.id)
+        .eq('channel', 'classroom')
+        .gte('event_date', new Date().toISOString())
+        .order('event_date', { ascending: true })
+        .limit(5),
+    ]);
+
+    return {
+      id:                   classroom.id,
+      name:                 classroom.name,
+      institutionName:      institution?.name ?? null,
+      city:                 (classroom as any).city ?? institution?.cityCode ?? null,
+      batchYear:            classroom.batchYear,
+      memberCount:          classroom.memberCount,
+      verifiedCount:        verifiedCount ?? 0,
+      createdAt:            classroom.createdAt,
+      requiresVerification: (classroom as any).requireVerification,
+      upcomingEvents: (events ?? []).map((e) => ({
+        id:        e.id,
+        title:     e.title,
+        eventDate: e.event_date,
+        location:  e.location,
+        isOnline:  e.is_online,
+      })),
+    };
+  }
+
+  /**
    * Get all classrooms for a user, organised by institution.
    * This powers the Teacher filing cabinet view.
    *
