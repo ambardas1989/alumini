@@ -121,6 +121,32 @@ export class ClassroomController {
     return this.classroomService.getSuggestedClassrooms(authToken.sub, limitNumber);
   }
 
+  /**
+   * TASKS_09 TASK 19 — Connect tab's "Find your batch" structured search.
+   * Literal segment, declared before ':idOrGlobalId' for the same reason
+   * 'search'/'suggested'/'my' are above.
+   */
+  @Get('search-filtered')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Search classrooms by institution/country/city/year/section, excluding ones the caller already joined' })
+  async searchFiltered(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Query('institutionId') institutionId?: string,
+    @Query('country') country?: string,
+    @Query('city') city?: string,
+    @Query('year') year?: string,
+    @Query('section') section?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const limitNumber = limit ? Math.min(parseInt(limit, 10) || 10, 50) : 10;
+    return this.classroomService.searchClassroomsByFilters(
+      authToken.sub,
+      { institutionId, country, city, year: year ? parseInt(year, 10) : undefined, section },
+      limitNumber,
+    );
+  }
+
   @Get(':idOrGlobalId')
   @ApiOperation({ summary: 'Classroom details by internal id or global id — public, for deep links' })
   async getOne(@Param('idOrGlobalId') idOrGlobalId: string) {

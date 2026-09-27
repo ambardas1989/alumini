@@ -739,7 +739,8 @@ join flow for non-members, copy to clipboard"
 
 ---
 
-## TASK 19 — Feature: Connect tab — find and create classroom [PENDING]
+## TASK 19 — Feature: Connect tab — find and create classroom [DONE]
+Note: Bottom nav "Create" tab renamed "Connect" (BottomNav.tsx — the task pointed at AppShell.tsx, but the tab list actually lives in BottomNav.tsx), now routing to new /connect page with a plug-style icon; /classroom/create still exists standalone. New backend GET /classroom/search-filtered (auth required) + ClassroomService.searchClassroomsByFilters(institutionId/country/city/year/section, excludes already-joined, "aggregate in JS" pattern matching searchClassrooms()'s own precedent) — kept as its own method/route rather than folded into the existing q-based searchClassrooms() to avoid entangling two different query shapes. New /connect page: one-open-at-a-time accordion (CSS grid-template-rows transition), "Find your batch" section (institution search reusing api.searchInstitutions, country/city/year/section filters, Search button disabled until an institution is picked, results with Join), "Create a classroom" section reusing the existing ClassroomCreateForm component as-is. Builds + full test suite (16 backend suites/389 tests + utils) pass.
 
 Rename the "Create" tab in bottom nav to "Connect".
 The Connect tab has two collapsible sections — only one

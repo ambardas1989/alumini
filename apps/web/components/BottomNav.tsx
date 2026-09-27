@@ -8,7 +8,7 @@ import styles from './BottomNav.module.css';
 
 interface Tab {
   href: string;
-  labelKey: 'home' | 'create' | 'messages' | 'profile';
+  labelKey: 'home' | 'connect' | 'messages' | 'profile';
   icon: ReactNode;
 }
 
@@ -41,11 +41,18 @@ const TABS: Tab[] = [
     // dedicated browse tab here was redundant. /classes itself still
     // exists and is still linked from elsewhere (e.g. profile's "find my
     // batch" empty-state CTA) — only its bottom-nav tab is gone.
-    href: '/classroom/create',
-    labelKey: 'create',
+    //
+    // TASKS_09 TASK 19 — renamed "Create" → "Connect", now routing to
+    // /connect (find-your-batch + create-classroom accordion) instead of
+    // straight to /classroom/create, which still exists as its own page
+    // for any existing direct link to it.
+    href: '/connect',
+    labelKey: 'connect',
     icon: (
       <svg {...ICON_PROPS}>
-        <path d="M12 5v14M5 12h14" />
+        <circle cx="6" cy="6" r="3" />
+        <circle cx="18" cy="18" r="3" />
+        <path d="m8.5 8.5 7 7" />
       </svg>
     ),
   },

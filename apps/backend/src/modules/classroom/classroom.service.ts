@@ -460,6 +460,75 @@ export class ClassroomService {
    * in one call — then merged/deduped in application code, same "aggregate
    * in JS" pattern AdminService's analytics queries already use at this scale.
    */
+  /**
+   * TASKS_09 TASK 19 — "Find your batch" structured search (Connect tab):
+   * institutionId/country/city/year/section, any subset, instead of the
+   * single free-text `q` searchClassrooms() above takes. Kept as a
+   * separate method rather than folded into searchClassrooms() itself —
+   * that one's byGlobalId/institution-name-ilike merge strategy doesn't
+   * generalize to "AND together whichever of these 5 fields were given",
+   * and overloading one method with two unrelated query shapes read worse
+   * than two focused ones sharing the same result-shaping tail.
+   */
+  async searchClassroomsByFilters(
+    userId: string,
+    filters: { institutionId?: string; country?: string; city?: string; year?: number; section?: string },
+    limit: number,
+  ) {
+    const { institutionId, country, city, year, section } = filters;
+    this.appLogger.debug('[CLASSROOM:searchFiltered] entry', { userId, filters, limit });
+
+    if (!institutionId && !country && !city && !year && !section) return [];
+
+    let institutionIds: string[] | null = null;
+    if (institutionId) {
+      institutionIds = [institutionId];
+    } else if (country) {
+      const { data: institutions } = await this.supabase
+        .from('institutions')
+        .select('id')
+        .eq('country_code', country.toUpperCase());
+      institutionIds = (institutions ?? []).map((i) => i.id);
+      if (institutionIds.length === 0) return [];
+    }
+
+    let query = this.supabase
+      .from('classrooms')
+      .select(CLASSROOM_SELECT_COLUMNS + `, institution:institutions(${INSTITUTION_JOIN_COLUMNS})`);
+    if (institutionIds) query = query.in('institution_id', institutionIds);
+    if (city) query = query.ilike('city', `%${city}%`);
+    if (year) query = query.eq('batch_year', year);
+    if (section) query = query.or(`section.ilike.%${section}%,program.ilike.%${section}%`);
+
+    const { data, error } = await query.limit(limit * 3);
+
+    if (error) {
+      this.appLogger.error('[CLASSROOM:searchFiltered] failed', { error: error.message, code: error.code });
+      throw new BadRequestException('Failed to search classrooms');
+    }
+
+    const { data: myMemberships } = await this.supabase.from('memberships').select('classroom_id').eq('user_id', userId);
+    const alreadyMemberIds = new Set((myMemberships ?? []).map((m) => m.classroom_id));
+
+    const results = (data ?? [])
+      .filter((c: any) => !alreadyMemberIds.has(c.id))
+      .slice(0, limit)
+      .map((c: any) => ({
+        id:                    c.id,
+        globalId:              c.globalId,
+        name:                  c.name,
+        institutionName:       c.institution?.name ?? null,
+        batchYear:             c.batchYear,
+        section:               c.section ?? c.program ?? null,
+        memberCount:           c.memberCount,
+        verificationRequired:  c.requireVerification,
+        city:                  c.city ?? c.institution?.cityCode ?? null,
+      }));
+
+    this.appLogger.debug('[CLASSROOM:searchFiltered] result', { count: results.length });
+    return results;
+  }
+
   async searchClassrooms(userId: string, q: string, limit: number) {
     this.appLogger.debug('[CLASSROOM:search] entry', { userId, q, limit });
 

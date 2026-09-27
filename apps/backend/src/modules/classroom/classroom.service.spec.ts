@@ -43,7 +43,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'update', 'delete', 'eq', 'is', 'gt', 'gte', 'in', 'order', 'range', 'limit', 'ilike'].forEach(
+  ['select', 'insert', 'update', 'delete', 'eq', 'is', 'gt', 'gte', 'in', 'order', 'range', 'limit', 'ilike', 'or'].forEach(
     (method) => {
       builder[method] = jest.fn(() => builder);
     },
@@ -484,6 +484,56 @@ describe('ClassroomService', () => {
           verificationRequired: false,
         },
       ]);
+    });
+  });
+
+  // TASKS_09 TASK 19 — Connect tab's structured search.
+  describe('searchClassroomsByFilters()', () => {
+    it('returns [] when no filter fields are given', async () => {
+      const result = await service.searchClassroomsByFilters('user-1', {}, 10);
+      expect(result).toEqual([]);
+    });
+
+    it('filters by institutionId, excludes already-joined, and maps the response shape', async () => {
+      const matchClassroom = {
+        id: 'classroom-3',
+        globalId: 'IN-KOL-MPBIRLA-9C-2014',
+        name: '9C',
+        batchYear: 2014,
+        section: 'C',
+        memberCount: 3,
+        requireVerification: true,
+        city: 'Kolkata',
+        institution: { name: 'MP Birla School', cityCode: 'KOL' },
+      };
+
+      mockTables({
+        classrooms: chain({ data: [matchClassroom], error: null }),
+        memberships: chain({ data: [{ classroom_id: 'classroom-other' }], error: null }),
+      });
+
+      const result = await service.searchClassroomsByFilters('user-1', { institutionId: 'inst-1' }, 10);
+
+      expect(result).toEqual([
+        {
+          id: 'classroom-3',
+          globalId: 'IN-KOL-MPBIRLA-9C-2014',
+          name: '9C',
+          institutionName: 'MP Birla School',
+          batchYear: 2014,
+          section: 'C',
+          memberCount: 3,
+          verificationRequired: true,
+          city: 'Kolkata',
+        },
+      ]);
+    });
+
+    it('returns [] when the country has no matching institutions', async () => {
+      mockTables({ institutions: chain({ data: [], error: null }) });
+
+      const result = await service.searchClassroomsByFilters('user-1', { country: 'US' }, 10);
+      expect(result).toEqual([]);
     });
   });
 

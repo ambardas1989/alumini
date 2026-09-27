@@ -33,7 +33,7 @@
   "nav": {
     "primaryLabel": "Primary",
     "home": "Home",
-    "create": "Create",
+    "connect": "Connect",
     "messages": "Messages",
     "profile": "Profile"
   },
@@ -414,6 +414,33 @@
       "createThisClassroom": "+ Create this classroom",
       "joinedToast": "Joined!",
       "joinedRequestedToast": "Request to join sent"
+    }
+  },
+  "connect": {
+    "title": "Connect",
+    "find": {
+      "heading": "Find your batch",
+      "institutionLabel": "Institution",
+      "institutionPlaceholder": "Search by school, college, or university name",
+      "countryLabel": "Country",
+      "commonCountries": "Common",
+      "otherCountries": "Other",
+      "cityLabel": "City",
+      "cityPlaceholder": "e.g. Kolkata",
+      "yearLabel": "Batch year",
+      "yearAny": "Any year",
+      "sectionLabel": "Section / Program",
+      "sectionPlaceholder": "e.g. 9A or MBA",
+      "searchButton": "Search",
+      "noResults": "No classrooms found. Try different filters or create a new one below.",
+      "memberCount": "{count, plural, one {# member} other {# members}}",
+      "verificationRequired": "verification required",
+      "joinButton": "Join",
+      "joinedToast": "Joined! Verify to start posting"
+    },
+    "create": {
+      "heading": "Create a classroom",
+      "successToast": "Classroom created!"
     }
   },
   "classroomCreate": {
