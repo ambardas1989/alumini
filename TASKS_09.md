@@ -363,7 +363,7 @@ Commit: "fix: pending members can see future events"
 
 
 
-## TASK 12 — Fix: pending filter counts and member verification UI [PENDING]
+## TASK 12 — Fix: pending filter counts and member verification UI [DONE: FIX A — Pending filter/count now includes pending_auto, not just 'pending'. FIX B — added a generic MFA-guarded admin verify/reject (new PATCH /membership/:classroomId/members/:userId/verify|reject) for pending/pending_auto members with no submitted document; TASK 10's document-review flow stays for members who did submit one]
 
 Two issues in the classroom members panel:
 

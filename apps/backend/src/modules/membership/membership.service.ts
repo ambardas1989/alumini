@@ -53,6 +53,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
@@ -94,6 +95,7 @@ export class MembershipService {
 
   constructor(
     private readonly audit: AuditService,
+    private readonly eventEmitter: EventEmitter2,
     appLogger: AppLogger,
   ) {
     this.appLogger = appLogger.setContext('MEMBERSHIP');
@@ -295,20 +297,7 @@ export class MembershipService {
     }
     classroomId = resolvedId;
 
-    const { data: actorMembership } = await this.supabase
-      .from('memberships')
-      .select('role, verification_status, is_creator')
-      .eq('user_id', actorId)
-      .eq('classroom_id', classroomId)
-      .maybeSingle();
-
-    if (
-      !actorMembership ||
-      (actorMembership.role !== MemberRole.ADMIN && !actorMembership.is_creator) ||
-      actorMembership.verification_status !== 'verified'
-    ) {
-      throw new ForbiddenException('Only a verified admin of this classroom can change member roles');
-    }
+    await this.assertClassroomAdmin(actorId, classroomId, 'Only a verified admin of this classroom can change member roles');
 
     const { data: targetMembership } = await this.supabase
       .from('memberships')
@@ -380,5 +369,133 @@ export class MembershipService {
 
     this.appLogger.info('[MEMBERSHIP:changeRole] success', { actorId, classroomId, targetUserId: dto.targetUserId, fromRole, toRole });
     return updated;
+  }
+
+  /** Shared "verified classroom admin or creator" gate — see changeRole()'s original inline version this was extracted from. */
+  private async assertClassroomAdmin(actorId: string, classroomId: string, message: string): Promise<void> {
+    const { data: actorMembership } = await this.supabase
+      .from('memberships')
+      .select('role, verification_status, is_creator')
+      .eq('user_id', actorId)
+      .eq('classroom_id', classroomId)
+      .maybeSingle();
+
+    if (
+      !actorMembership ||
+      (actorMembership.role !== MemberRole.ADMIN && !actorMembership.is_creator) ||
+      actorMembership.verification_status !== 'verified'
+    ) {
+      throw new ForbiddenException(message);
+    }
+  }
+
+  // ── Admin verify/reject (TASKS_09 TASK 12) ───────────────────────────────
+
+  /**
+   * Admin directly verifies a pending/pending_auto member — a broader
+   * capability than VerificationService.adminApproveDocument(), which only
+   * covers members who actually submitted a document. This covers ANY
+   * pending member regardless of which method (if any) they've started,
+   * matching TASK 12's own literal fallback: "call PATCH with body
+   * { verification_status: 'verified', verification_method: 'admin' }".
+   * MFA-guarded (enforced in the controller) — SPEC.md §11.2 requires MFA
+   * re-challenge for verification approve/reject, and this grants the same
+   * privilege (verified status) the document flow does.
+   */
+  async adminVerifyMember(adminId: string, classroomId: string, targetUserId: string, req?: Request) {
+    this.appLogger.debug('[MEMBERSHIP:adminVerify] entry', { adminId, classroomId, targetUserId });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
+
+    await this.assertClassroomAdmin(adminId, classroomId, 'Only a verified admin of this classroom can verify members');
+
+    const { data: target } = await this.supabase
+      .from('memberships')
+      .select('id, verification_status')
+      .eq('user_id', targetUserId)
+      .eq('classroom_id', classroomId)
+      .maybeSingle();
+
+    if (!target) {
+      throw new NotFoundException('This user is not a member of this classroom');
+    }
+    if (target.verification_status === 'verified') {
+      // Idempotent — nothing to do, nothing to audit.
+      return { verificationStatus: 'verified' as const };
+    }
+
+    const { error } = await this.supabase
+      .from('memberships')
+      .update({ verification_status: 'verified', verification_method: 'admin', verified_at: new Date().toISOString() })
+      .eq('id', target.id);
+
+    if (error) {
+      this.appLogger.error('[MEMBERSHIP:adminVerify] failed', { classroomId, targetUserId, error: error.message, code: error.code });
+      throw new BadRequestException('Failed to verify this member. Please try again.');
+    }
+
+    this.eventEmitter.emit('verification.approved', { userId: targetUserId, classroomId, method: 'admin' });
+
+    await this.audit.log({
+      eventType:  AuditEventType.ADMIN_VERIFICATION_APPROVED,
+      actorId:    adminId,
+      targetId:   targetUserId,
+      targetType: 'membership',
+      metadata:   { classroom_id: classroomId, method: 'admin' },
+      req,
+    });
+
+    this.appLogger.info('[MEMBERSHIP:adminVerify] success', { adminId, classroomId, targetUserId });
+    return { verificationStatus: 'verified' as const };
+  }
+
+  /** Reject counterpart of adminVerifyMember() — see its own doc comment. */
+  async adminRejectMember(adminId: string, classroomId: string, targetUserId: string, reason: string, req?: Request) {
+    this.appLogger.debug('[MEMBERSHIP:adminReject] entry', { adminId, classroomId, targetUserId });
+    const resolvedId = await this.resolveClassroomId(classroomId);
+    if (!resolvedId) {
+      throw new NotFoundException('Classroom not found');
+    }
+    classroomId = resolvedId;
+
+    await this.assertClassroomAdmin(adminId, classroomId, 'Only a verified admin of this classroom can reject members');
+
+    const { data: target } = await this.supabase
+      .from('memberships')
+      .select('id')
+      .eq('user_id', targetUserId)
+      .eq('classroom_id', classroomId)
+      .maybeSingle();
+
+    if (!target) {
+      throw new NotFoundException('This user is not a member of this classroom');
+    }
+
+    const { error } = await this.supabase
+      .from('memberships')
+      .update({ verification_status: 'rejected' })
+      .eq('id', target.id);
+
+    if (error) {
+      this.appLogger.error('[MEMBERSHIP:adminReject] failed', { classroomId, targetUserId, error: error.message, code: error.code });
+      throw new BadRequestException('Failed to reject this member. Please try again.');
+    }
+
+    this.eventEmitter.emit('verification.document.rejected', { userId: targetUserId, classroomId, reason });
+
+    await this.audit.log({
+      eventType:  AuditEventType.ADMIN_VERIFICATION_REJECTED,
+      actorId:    adminId,
+      targetId:   targetUserId,
+      targetType: 'membership',
+      metadata:   { classroom_id: classroomId, reason },
+      req,
+    });
+
+    this.appLogger.info('[MEMBERSHIP:adminReject] success', { adminId, classroomId, targetUserId });
+    return { verificationStatus: 'rejected' as const };
   }
 }

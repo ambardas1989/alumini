@@ -30,7 +30,14 @@ interface MemberListModalProps {
   onClose: () => void;
 }
 
-type MfaAction = { kind: 'approve'; verificationId: string; userId: string } | { kind: 'reject'; verificationId: string; userId: string; reason: string };
+type MfaAction =
+  | { kind: 'approve'; verificationId: string; userId: string }
+  | { kind: 'reject'; verificationId: string; userId: string; reason: string }
+  // TASKS_09 TASK 12 FIX B — generic admin verify/reject for a pending/
+  // pending_auto member with no submitted document (approve/reject above
+  // stay for the document-review flow specifically).
+  | { kind: 'verifyMember'; userId: string }
+  | { kind: 'rejectMember'; userId: string; reason: string };
 
 type Filter = 'all' | 'verified' | 'pending';
 
@@ -83,11 +90,19 @@ export function MemberListModal({
         await api.approveDocumentVerification(mfaAction.verificationId);
         showToast(t('admin.approvedToast'), 'success');
         onMemberVerified?.(mfaAction.userId);
-      } else {
+        setPendingVerifications((prev) => prev.filter((v) => v.userId !== mfaAction.userId));
+      } else if (mfaAction.kind === 'reject') {
         await api.rejectDocumentVerification(mfaAction.verificationId, mfaAction.reason);
         showToast(t('admin.rejectedToast'), 'success');
+        setPendingVerifications((prev) => prev.filter((v) => v.userId !== mfaAction.userId));
+      } else if (mfaAction.kind === 'verifyMember') {
+        await api.verifyMember(classroomId, mfaAction.userId);
+        showToast(t('admin.approvedToast'), 'success');
+        onMemberVerified?.(mfaAction.userId);
+      } else {
+        await api.rejectMember(classroomId, mfaAction.userId, mfaAction.reason);
+        showToast(t('admin.rejectedToast'), 'success');
       }
-      setPendingVerifications((prev) => prev.filter((v) => v.userId !== mfaAction.userId));
     } catch (err) {
       showToast(getErrorMessage(err), 'error');
     } finally {
@@ -101,17 +116,23 @@ export function MemberListModal({
     [allMembers, roleFilter],
   );
 
+  // TASKS_09 TASK 12 FIX A — the Pending filter/count used to only match
+  // 'pending', missing 'pending_auto' (early joiners) entirely — they'd
+  // show 0 pending even with early-joiner members waiting on admin review.
+  const isPendingStatus = (status: string) => status === 'pending' || status === 'pending_auto';
+
   const counts = useMemo(
     () => ({
       all: members.length,
       verified: members.filter((m) => m.verificationStatus === 'verified').length,
-      pending: members.filter((m) => m.verificationStatus === 'pending').length,
+      pending: members.filter((m) => isPendingStatus(m.verificationStatus)).length,
     }),
     [members],
   );
 
   const filtered = useMemo(() => {
     if (filter === 'all') return members;
+    if (filter === 'pending') return members.filter((m) => isPendingStatus(m.verificationStatus));
     return members.filter((m) => m.verificationStatus === filter);
   }, [members, filter]);
 
@@ -154,10 +175,16 @@ export function MemberListModal({
 
           const roleLabel = member.userId === creatorId ? tStatus('creator') : tStatus(member.role);
 
+          const isPendingAny = isPendingStatus(member.verificationStatus);
           const pendingVerification =
-            viewerIsAdminOrCreator && member.verificationStatus === 'pending'
+            viewerIsAdminOrCreator && isPendingAny
               ? pendingVerifications.find((v) => v.userId === member.userId)
               : undefined;
+          // TASKS_09 TASK 12 FIX B — a pending/pending_auto member with no
+          // matching submitted document still gets admin Verify/Reject,
+          // via the generic membership-level action instead of the
+          // document-review one above.
+          const showGenericVerify = viewerIsAdminOrCreator && isPendingAny && !pendingVerification;
           const isBusy = busyUserId === member.userId;
 
           return (
@@ -223,8 +250,33 @@ export function MemberListModal({
                     </Button>
                   </>
                 )}
+                {showGenericVerify && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={styles.rejectButton}
+                      disabled={isBusy}
+                      onClick={() => {
+                        setRejectingUserId((prev) => (prev === member.userId ? null : member.userId));
+                        setRejectReason('');
+                      }}
+                    >
+                      {t('admin.reject')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={styles.approveButton}
+                      loading={isBusy}
+                      onClick={() => setMfaAction({ kind: 'verifyMember', userId: member.userId })}
+                    >
+                      {t('admin.verify')}
+                    </Button>
+                  </>
+                )}
               </div>
-              {pendingVerification && rejectingUserId === member.userId && (
+              {(pendingVerification || showGenericVerify) && rejectingUserId === member.userId && (
                 <div className={styles.rejectRow}>
                   <Input
                     label={t('admin.reasonLabel')}
@@ -236,12 +288,11 @@ export function MemberListModal({
                     size="sm"
                     disabled={!rejectReason.trim()}
                     onClick={() => {
-                      setMfaAction({
-                        kind: 'reject',
-                        verificationId: pendingVerification.verificationId,
-                        userId: member.userId,
-                        reason: rejectReason.trim(),
-                      });
+                      setMfaAction(
+                        pendingVerification
+                          ? { kind: 'reject', verificationId: pendingVerification.verificationId, userId: member.userId, reason: rejectReason.trim() }
+                          : { kind: 'rejectMember', userId: member.userId, reason: rejectReason.trim() },
+                      );
                       setRejectingUserId(null);
                     }}
                   >

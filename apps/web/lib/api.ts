@@ -822,6 +822,19 @@ export function rejectDocumentVerification(verificationId: string, reason: strin
   return request(`/verify/document/${verificationId}/reject`, { method: 'POST', body: { reason } });
 }
 
+/**
+ * TASKS_09 TASK 12 FIX B — admin directly verifies/rejects ANY pending or
+ * pending_auto member, not just ones with a submitted document (that's
+ * approve/rejectDocumentVerification's narrower job above). Both MFA-guarded.
+ */
+export function verifyMember(classroomId: string, userId: string): Promise<{ verificationStatus: string }> {
+  return request(`/membership/${classroomId}/members/${userId}/verify`, { method: 'PATCH', body: {} });
+}
+
+export function rejectMember(classroomId: string, userId: string, reason: string): Promise<{ verificationStatus: string }> {
+  return request(`/membership/${classroomId}/members/${userId}/reject`, { method: 'PATCH', body: { reason } });
+}
+
 // ── EVENTS ───────────────────────────────────────────────────────────────
 
 export function getEvents(classroomId: string): Promise<{ upcoming: ClassroomEvent[]; past: ClassroomEvent[] }> {

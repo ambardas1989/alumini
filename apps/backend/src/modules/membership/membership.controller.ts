@@ -18,7 +18,9 @@ import { Request } from 'express';
 
 import { MembershipService } from './membership.service';
 import { ChangeRoleDto } from './dto/change-role.dto';
+import { RejectMemberDto } from './dto/reject-member.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { MfaChallengeGuard } from '../auth/guards/mfa-challenge.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthTokenPayload } from '../auth/auth.types';
 
@@ -63,5 +65,37 @@ export class MembershipController {
     @Req() req: Request,
   ) {
     return this.membershipService.changeRole(authToken.sub, classroomId, dto, req);
+  }
+
+  /**
+   * TASKS_09 TASK 12 FIX B — admin directly verifies ANY pending/
+   * pending_auto member, not just ones who submitted a document (that's
+   * VerificationService.adminApproveDocument()'s narrower job). MFA
+   * required — SPEC.md §11.2 gates verification approve/reject on it, and
+   * this grants the same privilege.
+   */
+  @Patch(':classroomId/members/:userId/verify')
+  @UseGuards(MfaChallengeGuard)
+  @ApiOperation({ summary: 'Admin directly verifies a pending/pending_auto member — verified classroom admin only, MFA required' })
+  async verifyMember(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('classroomId') classroomId: string,
+    @Param('userId') userId: string,
+    @Req() req: Request,
+  ) {
+    return this.membershipService.adminVerifyMember(authToken.sub, classroomId, userId, req);
+  }
+
+  @Patch(':classroomId/members/:userId/reject')
+  @UseGuards(MfaChallengeGuard)
+  @ApiOperation({ summary: 'Admin rejects a pending/pending_auto member — verified classroom admin only, MFA required' })
+  async rejectMember(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('classroomId') classroomId: string,
+    @Param('userId') userId: string,
+    @Body() dto: RejectMemberDto,
+    @Req() req: Request,
+  ) {
+    return this.membershipService.adminRejectMember(authToken.sub, classroomId, userId, dto.reason, req);
   }
 }

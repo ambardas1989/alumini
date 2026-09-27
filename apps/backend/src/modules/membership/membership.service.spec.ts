@@ -14,6 +14,7 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MembershipService } from './membership.service';
 import { AuditService } from '../audit/audit.service';
@@ -82,6 +83,7 @@ const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn()
 describe('MembershipService', () => {
   let service: MembershipService;
   const mockAuditLog = jest.fn().mockResolvedValue(undefined);
+  const mockEventEmit = jest.fn();
 
   beforeEach(async () => {
     process.env.SUPABASE_URL = 'https://test.supabase.co';
@@ -94,6 +96,7 @@ describe('MembershipService', () => {
       providers: [
         MembershipService,
         { provide: AuditService, useValue: { log: mockAuditLog } },
+        { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
         { provide: AppLogger, useValue: mockAppLogger },
       ],
     }).compile();
@@ -343,6 +346,102 @@ describe('MembershipService', () => {
       expect(result).toEqual({ id: 'm2', role: MemberRole.TEACHER });
       expect(mockAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: AuditEventType.CLASSROOM_ADMIN_PROMOTED }),
+      );
+    });
+  });
+
+  // ── adminVerifyMember() / adminRejectMember() (TASKS_09 TASK 12) ─────────
+
+  describe('adminVerifyMember()', () => {
+    it('throws ForbiddenException when the actor is not an admin', async () => {
+      mockTables({ memberships: chain({ data: { role: MemberRole.STUDENT, verification_status: 'verified' }, error: null }) });
+
+      await expect(service.adminVerifyMember('actor-1', 'class-1', 'u2')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws NotFoundException when the target is not a member', async () => {
+      mockTables({
+        memberships: chain(
+          { data: { role: MemberRole.ADMIN, verification_status: 'verified' }, error: null },
+          { data: null, error: null },
+        ),
+      });
+
+      await expect(service.adminVerifyMember('actor-1', 'class-1', 'u2')).rejects.toThrow(NotFoundException);
+    });
+
+    it('is a no-op (and does not audit) when the target is already verified', async () => {
+      mockTables({
+        memberships: chain(
+          { data: { role: MemberRole.ADMIN, verification_status: 'verified' }, error: null },
+          { data: { id: 'm2', verification_status: 'verified' }, error: null },
+        ),
+      });
+
+      const result = await service.adminVerifyMember('actor-1', 'class-1', 'u2');
+
+      expect(result).toEqual({ verificationStatus: 'verified' });
+      expect(mockAuditLog).not.toHaveBeenCalled();
+    });
+
+    it('verifies a pending_auto member, emits verification.approved, and audits ADMIN_VERIFICATION_APPROVED', async () => {
+      mockTables({
+        memberships: chain(
+          { data: { role: MemberRole.ADMIN, verification_status: 'verified' }, error: null },
+          { data: { id: 'm2', verification_status: 'pending_auto' }, error: null },
+          { data: null, error: null }, // update
+        ),
+      });
+
+      const result = await service.adminVerifyMember('actor-1', 'class-1', 'u2');
+
+      expect(result).toEqual({ verificationStatus: 'verified' });
+      expect(mockEventEmit).toHaveBeenCalledWith(
+        'verification.approved',
+        expect.objectContaining({ userId: 'u2', classroomId: 'class-1', method: 'admin' }),
+      );
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: AuditEventType.ADMIN_VERIFICATION_APPROVED }),
+      );
+    });
+  });
+
+  describe('adminRejectMember()', () => {
+    it('throws ForbiddenException when the actor is not an admin', async () => {
+      mockTables({ memberships: chain({ data: { role: MemberRole.STUDENT, verification_status: 'verified' }, error: null }) });
+
+      await expect(service.adminRejectMember('actor-1', 'class-1', 'u2', 'reason')).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws NotFoundException when the target is not a member', async () => {
+      mockTables({
+        memberships: chain(
+          { data: { role: MemberRole.ADMIN, verification_status: 'verified' }, error: null },
+          { data: null, error: null },
+        ),
+      });
+
+      await expect(service.adminRejectMember('actor-1', 'class-1', 'u2', 'reason')).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects a pending member, emits verification.document.rejected, and audits ADMIN_VERIFICATION_REJECTED', async () => {
+      mockTables({
+        memberships: chain(
+          { data: { role: MemberRole.ADMIN, verification_status: 'verified' }, error: null },
+          { data: { id: 'm2' }, error: null },
+          { data: null, error: null }, // update
+        ),
+      });
+
+      const result = await service.adminRejectMember('actor-1', 'class-1', 'u2', 'Could not confirm');
+
+      expect(result).toEqual({ verificationStatus: 'rejected' });
+      expect(mockEventEmit).toHaveBeenCalledWith(
+        'verification.document.rejected',
+        expect.objectContaining({ userId: 'u2', classroomId: 'class-1', reason: 'Could not confirm' }),
+      );
+      expect(mockAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: AuditEventType.ADMIN_VERIFICATION_REJECTED }),
       );
     });
   });
