@@ -582,8 +582,13 @@ export default function ProfilePage() {
       <PageContainer>
         <div className={styles.header}>
           {!editing && (
-            <button type="button" className={styles.editButton} onClick={startEditing}>
-              {t('editButton')}
+            // TASKS_09 TASK 05 — icon button instead of a text label,
+            // matching the mockup; hand-rolled SVG, same convention as
+            // AuthLayout.tsx's own icons (no icon-font package installed).
+            <button type="button" className={styles.editButton} onClick={startEditing} aria-label={t('editButton')} title={t('editButton')}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z" />
+              </svg>
             </button>
           )}
 

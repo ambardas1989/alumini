@@ -23,11 +23,16 @@
   position: absolute;
   inset-inline-end: 0;
   top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
+}
+
+.editButton:hover {
+  color: var(--color-text-primary);
 }
 
 .name {

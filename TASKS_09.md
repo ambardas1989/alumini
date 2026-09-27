@@ -219,7 +219,7 @@ Commit: "feat: new conversation button, message button on member cards"
 
 ---
 
-## TASK 05 — Fix: edit profile button — pencil icon [PENDING]
+## TASK 05 — Fix: edit profile button — pencil icon [DONE: replaced text label with a hand-rolled pencil SVG icon, ghost/no-border, top-right of the header card (already positioned there); hover darkens via existing color token]
 
 The "Edit profile" button shows as text. Replace with a
 pencil icon matching the mockup.
