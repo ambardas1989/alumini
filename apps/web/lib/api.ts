@@ -1090,6 +1090,18 @@ export function getDmConversations(): Promise<DmConversation[]> {
   return request('/dm/conversations');
 }
 
+/** TASKS_09 TASK 04 — "New conversation" search overlay. */
+export interface DmRecipientSearchResult {
+  userId: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  sharedClassroomName: string | null;
+}
+
+export function searchDmRecipients(q: string): Promise<DmRecipientSearchResult[]> {
+  return request('/dm/search-recipients', { query: { q } });
+}
+
 export function getDmMessages(userId: string, page = 0): Promise<DmMessage[]> {
   return request(`/dm/conversations/${userId}`, { query: { page } });
 }

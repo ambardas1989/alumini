@@ -189,7 +189,7 @@ Commit: "fix: classroom join prompt not shown to existing members"
 
 ---
 
-## TASK 04 — Fix: conversations tab — initiate new DM [PENDING]
+## TASK 04 — Fix: conversations tab — initiate new DM [DONE: added GET /dm/search-recipients (verified members of the caller's own verified classrooms, name match) + NewConversationOverlay.tsx compose flow, wired to a new "+" button in the messages top bar. "Message" button on classroom member cards already existed from earlier session work (MemberListModal.tsx).]
 
 Messages tab has no way to start a new conversation.
 

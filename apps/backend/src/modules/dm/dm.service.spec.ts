@@ -24,7 +24,7 @@ function chain(...results: Array<{ data: any; error: any }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'update', 'eq', 'order', 'range', 'or', 'in'].forEach((method) => {
+  ['select', 'insert', 'update', 'eq', 'neq', 'order', 'range', 'or', 'in'].forEach((method) => {
     builder[method] = jest.fn(() => builder);
   });
   builder.single = jest.fn(() => Promise.resolve(next()));
@@ -126,6 +126,45 @@ describe('DmService', () => {
       mockTables({ direct_messages: chain({ data: [], error: null }) });
       const result = await service.getConversations('me');
       expect(result).toEqual([]);
+    });
+  });
+
+  // ── searchRecipients() (TASKS_09 TASK 04) ────────────────────────────────
+
+  describe('searchRecipients()', () => {
+    it('returns [] for a query shorter than 2 characters', async () => {
+      const result = await service.searchRecipients('me', 'a');
+      expect(result).toEqual([]);
+    });
+
+    it('returns [] when the caller has no verified memberships', async () => {
+      mockTables({ memberships: chain({ data: [], error: null }) });
+      const result = await service.searchRecipients('me', 'ra');
+      expect(result).toEqual([]);
+    });
+
+    it('matches by name, excludes the caller, and dedupes across shared classrooms', async () => {
+      mockTables({
+        memberships: chain(
+          {
+            data: [{ classroom_id: 'class-1', classroom: { name: 'Grade 9A' } }],
+            error: null,
+          },
+          {
+            data: [
+              { user_id: 'other-1', classroom_id: 'class-1', profile: { full_name: 'Rahul Agarwal', avatar_url: 'x' } },
+              { user_id: 'other-2', classroom_id: 'class-1', profile: { full_name: 'Priya Sharma', avatar_url: null } },
+            ],
+            error: null,
+          },
+        ),
+      });
+
+      const result = await service.searchRecipients('me', 'rah');
+
+      expect(result).toEqual([
+        { userId: 'other-1', fullName: 'Rahul Agarwal', avatarUrl: 'x', sharedClassroomName: 'Grade 9A' },
+      ]);
     });
   });
 

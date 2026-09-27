@@ -280,6 +280,13 @@
       "back": "Back",
       "inputPlaceholder": "Type a message...",
       "send": "Send"
+    },
+    "newConversation": {
+      "title": "New message",
+      "searchLabel": "Search your classmates...",
+      "searchPlaceholder": "Search your classmates...",
+      "noResults": "You can only message verified members of your classrooms.",
+      "alsoIn": "Also in {classroom}"
     }
   },
   "classes": {

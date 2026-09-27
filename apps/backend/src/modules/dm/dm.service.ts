@@ -124,6 +124,75 @@ export class DmService {
   }
 
   /**
+   * TASKS_09 TASK 04 — "New conversation" search: verified members of the
+   * caller's own verified classrooms, matched by name. Aggregated in
+   * application code rather than a filtered join — PostgREST's embed
+   * filters (`.ilike('profile.full_name', ...)`) aren't reliably
+   * supported by this codebase's supabase-js version, and classroom
+   * membership counts are modest enough at this scale (same "aggregate in
+   * JS" reasoning EventsService.listEvents()'s own RSVP aggregation
+   * already documents).
+   */
+  async searchRecipients(userId: string, q: string): Promise<
+    Array<{ userId: string; fullName: string | null; avatarUrl: string | null; sharedClassroomName: string | null }>
+  > {
+    this.appLogger.debug('[DM:search] entry', { userId, q });
+
+    const trimmed = q.trim();
+    if (trimmed.length < 2) return [];
+
+    const { data: mine } = await this.supabase
+      .from('memberships')
+      .select('classroom_id, classroom:classrooms(name)')
+      .eq('user_id', userId)
+      .eq('verification_status', 'verified');
+
+    const myClassroomIds = Array.from(new Set((mine ?? []).map((m) => m.classroom_id)));
+    if (myClassroomIds.length === 0) return [];
+
+    const classroomNameById = new Map((mine ?? []).map((m: any) => [m.classroom_id, m.classroom?.name ?? null]));
+
+    const { data: candidates, error } = await this.supabase
+      .from('memberships')
+      .select('user_id, classroom_id, profile:profiles(full_name, avatar_url)')
+      .in('classroom_id', myClassroomIds)
+      .eq('verification_status', 'verified')
+      .neq('user_id', userId);
+
+    if (error) {
+      this.appLogger.error('[DM:search] failed', { userId, error: error.message, code: error.code });
+      throw new BadRequestException('Failed to search classmates');
+    }
+
+    const lowerQ = trimmed.toLowerCase();
+    const byUser = new Map<string, { userId: string; fullName: string; avatarUrl: string | null; classroomId: string }>();
+
+    for (const row of candidates ?? []) {
+      const fullName = (row.profile as any)?.full_name ?? '';
+      if (!fullName.toLowerCase().includes(lowerQ)) continue;
+      if (byUser.has(row.user_id)) continue;
+      byUser.set(row.user_id, {
+        userId: row.user_id,
+        fullName,
+        avatarUrl: (row.profile as any)?.avatar_url ?? null,
+        classroomId: row.classroom_id,
+      });
+    }
+
+    const results = Array.from(byUser.values())
+      .slice(0, 10)
+      .map((r) => ({
+        userId: r.userId,
+        fullName: r.fullName,
+        avatarUrl: r.avatarUrl,
+        sharedClassroomName: classroomNameById.get(r.classroomId) ?? null,
+      }));
+
+    this.appLogger.debug('[DM:search] result', { count: results.length });
+    return results;
+  }
+
+  /**
    * Paginated thread between userId and otherUserId, oldest first. Page 0
    * is the most recent DM_PAGE_SIZE messages (queried descending, matching
    * "scroll to bottom on load"), reversed before returning so the array

@@ -20,6 +20,13 @@ export class DmController {
     return this.dmService.getConversations(authToken.sub);
   }
 
+  /** TASKS_09 TASK 04 — "New conversation" search overlay. */
+  @Get('search-recipients')
+  @ApiOperation({ summary: 'Search verified members of the caller\'s own classrooms by name, for starting a new DM' })
+  async searchRecipients(@CurrentUser() authToken: AuthTokenPayload, @Query('q') q: string) {
+    return this.dmService.searchRecipients(authToken.sub, q ?? '');
+  }
+
   @Get('conversations/:userId')
   @ApiOperation({ summary: 'Paginated thread with one other user' })
   async getMessages(
