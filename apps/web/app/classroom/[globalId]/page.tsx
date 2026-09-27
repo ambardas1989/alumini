@@ -85,11 +85,16 @@ function canReadChannel(role: string | null, verificationStatus: string | null, 
   return false;
 }
 
+// TASKS_09 TASK 07 — BUG FIX: pending_auto used to count as "full access"
+// for posting in classroom/student_alley, matching the backend bug this
+// fix pairs with (MembershipService.canAccessChannel()) — only 'verified'
+// may post, in any channel; pending_auto is read-only until they actually
+// verify (SPEC.md §7.4's "Joined, unverified: Chat (redacted), No post").
 function canPostChannel(role: string | null, verificationStatus: string | null, channel: ChannelType): boolean {
-  const hasFullAccess = verificationStatus === 'verified' || verificationStatus === 'pending_auto';
-  if (channel === ChannelType.CLASSROOM) return hasFullAccess;
-  if (channel === ChannelType.STAFF_ROOM) return verificationStatus === 'verified' && (role === 'teacher' || role === 'admin');
-  if (channel === ChannelType.STUDENT_ALLEY) return hasFullAccess && role === 'student';
+  const isVerified = verificationStatus === 'verified';
+  if (channel === ChannelType.CLASSROOM) return isVerified;
+  if (channel === ChannelType.STAFF_ROOM) return isVerified && (role === 'teacher' || role === 'admin');
+  if (channel === ChannelType.STUDENT_ALLEY) return isVerified && role === 'student';
   return false;
 }
 

@@ -108,6 +108,19 @@ export class ClassroomController {
     return this.classroomService.searchClassrooms(authToken.sub, q ?? '', limitNumber);
   }
 
+  /**
+   * TASKS_09 TASK 02 — home feed's "Suggested for you". Literal segment,
+   * same route-ordering reasoning as 'search'/'my' above.
+   */
+  @Get('suggested')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Other classrooms at the caller's own institution(s) they haven't joined yet" })
+  async suggested(@CurrentUser() authToken: AuthTokenPayload, @Query('limit') limit?: string) {
+    const limitNumber = limit ? Math.min(parseInt(limit, 10) || 3, 10) : 3;
+    return this.classroomService.getSuggestedClassrooms(authToken.sub, limitNumber);
+  }
+
   @Get(':idOrGlobalId')
   @ApiOperation({ summary: 'Classroom details by internal id or global id — public, for deep links' })
   async getOne(@Param('idOrGlobalId') idOrGlobalId: string) {

@@ -485,6 +485,53 @@ export class NotificationService {
   // message" per this task) — a notification here would be redundant.
 
   /**
+   * TASKS_09 TASK 02 — home feed's 'new_member' item. Fires on JOIN (any
+   * verification status), not on verification — this is the simple
+   * version the task describes; TASK 26 later refines the trigger to
+   * "on verification" with cross-role visibility rules, at which point
+   * this listener's condition should be revisited rather than duplicated.
+   *
+   * Notifies existing VERIFIED members only (a pending member's own feed
+   * doesn't need "someone else joined" noise, and non-members obviously
+   * shouldn't see it) — same reasoning as handleEventCreated() above.
+   * The new member themselves is excluded.
+   */
+  @OnEvent('classroom.joined')
+  async handleClassroomJoined(payload: { classroomId: string; userId: string; role: string }): Promise<void> {
+    const [{ data: newMember }, { data: classroom }, { data: existingMembers, error }] = await Promise.all([
+      this.supabase.from('profiles').select('full_name').eq('id', payload.userId).maybeSingle(),
+      this.supabase.from('classrooms').select('name').eq('id', payload.classroomId).maybeSingle(),
+      this.supabase
+        .from('memberships')
+        .select('user_id')
+        .eq('classroom_id', payload.classroomId)
+        .eq('verification_status', 'verified')
+        .neq('user_id', payload.userId),
+    ]);
+
+    if (error) {
+      this.logger.error('Failed to look up members to notify of new joiner', { error, classroomId: payload.classroomId });
+      return;
+    }
+
+    const memberName = newMember?.full_name ?? 'A new member';
+    const classroomName = classroom?.name ?? 'your classroom';
+    const title = `${memberName} joined ${classroomName}`;
+    const body = `${this.capitalize(payload.role)} · pending verification`;
+
+    for (const member of existingMembers ?? []) {
+      await this.sendInApp(member.user_id, 'new_member', title, body, {
+        user_id: payload.userId,
+        classroom_id: payload.classroomId,
+      });
+    }
+  }
+
+  private capitalize(s: string): string {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  /**
    * SPEC.md §10.1: notify every verified member when an event is created.
    *
    * TASKS_08 TASK 05 — only members who can actually see the event's

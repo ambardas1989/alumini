@@ -160,19 +160,26 @@ export class MembershipService {
 
     if (!membership) return false;
 
+    // TASKS_09 TASK 07 — BUG FIX: this used to also allow 'pending_auto'
+    // to post (the "early member" carve-out was meant to unblock reading,
+    // not writing — see the module comment's own "Joined, unverified:
+    // Chat (redacted), No post" rule, SPEC.md §7.4). sendMessage() is this
+    // method's only real caller (see module comment), so pending_auto
+    // members could post in the classroom/student_alley channels despite
+    // being unverified. Posting now requires actual verification,
+    // regardless of channel — only 'verified' members may write.
     const isVerified = membership.verification_status === 'verified';
-    const isEarlyMember = membership.verification_status === 'pending_auto';
 
     let result: boolean;
     switch (channel) {
       case ChannelType.CLASSROOM:
-        result = isVerified || isEarlyMember; // any full/early member, any role
+        result = isVerified;
         break;
       case ChannelType.STAFF_ROOM:
         result = isVerified && (membership.role === MemberRole.TEACHER || membership.role === MemberRole.ADMIN);
         break;
       case ChannelType.STUDENT_ALLEY:
-        result = (isVerified || isEarlyMember) && membership.role === MemberRole.STUDENT;
+        result = isVerified && membership.role === MemberRole.STUDENT;
         break;
       default:
         result = false;

@@ -332,7 +332,8 @@
     },
     "suggested": {
       "joinButton": "Join",
-      "mutualAlumni": "{count, plural, one {# mutual alumni} other {# mutual alumni}}"
+      "mutualAlumni": "{count, plural, one {# mutual alumni} other {# mutual alumni}}",
+      "joinedToast": "Joined!"
     },
     "landing": {
       "headerWelcome": "Welcome, {name}",
@@ -519,7 +520,7 @@
       }
     },
     "postRestricted": {
-      "classroom": "",
+      "classroom": "🔒 Verify your membership to start posting.",
       "staff_room": "⏳ Complete verification to post here.",
       "student_alley": "🎒 This is the students' space. We'll leave them to it."
     },

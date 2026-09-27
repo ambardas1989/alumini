@@ -641,6 +641,11 @@ export function searchClassrooms(q: string, limit = 10): Promise<ClassroomSearch
   return request('/classroom/search', { query: { q, limit } });
 }
 
+/** TASKS_09 TASK 02 — home feed's "Suggested for you". */
+export function getSuggestedClassrooms(limit = 3): Promise<ClassroomSearchResult[]> {
+  return request('/classroom/suggested', { query: { limit } });
+}
+
 /** classroomId is the internal id (Classroom.id), not the globalId in the URL — matches the backend's PATCH /classroom/:id (admin settings) route shape. */
 export function uploadClassroomCover(classroomId: string, file: File): Promise<{ coverUrl: string }> {
   return uploadFile(`/classroom/${classroomId}/cover`, 'cover', file);

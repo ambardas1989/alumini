@@ -460,6 +460,60 @@ export class ClassroomService {
     return results;
   }
 
+  /**
+   * TASKS_09 TASK 02 — home feed's "Suggested for you" section. Unlike
+   * searchClassrooms() (a query-driven lookup), this needs no input: other
+   * classrooms at institution(s) the caller already belongs to, that they
+   * haven't joined yet, ordered by member_count desc (the most active ones
+   * first — a reasonable proxy for "likely to actually have activity" at
+   * this scale, same reasoning flatten()'s own approximation elsewhere
+   * uses). Returns [] for a caller with no memberships yet — the new-user
+   * landing screen (TASKS_09 TASK 01) covers that case, not this one.
+   */
+  async getSuggestedClassrooms(userId: string, limit: number) {
+    this.appLogger.debug('[CLASSROOM:suggested] entry', { userId, limit });
+
+    const { data: myMemberships } = await this.supabase
+      .from('memberships')
+      .select('classroom_id, classroom:classrooms(institution_id)')
+      .eq('user_id', userId);
+
+    const institutionIds = Array.from(
+      new Set((myMemberships ?? []).map((m: any) => m.classroom?.institution_id).filter(Boolean)),
+    );
+    const alreadyMemberIds = new Set((myMemberships ?? []).map((m) => m.classroom_id));
+
+    if (institutionIds.length === 0) return [];
+
+    const { data: candidates, error } = await this.supabase
+      .from('classrooms')
+      .select(CLASSROOM_SELECT_COLUMNS + `, institution:institutions(${INSTITUTION_JOIN_COLUMNS})`)
+      .in('institution_id', institutionIds)
+      .order('member_count', { ascending: false })
+      .limit(limit + alreadyMemberIds.size);
+
+    if (error) {
+      this.logger.error('Failed to load suggested classrooms', { error, userId });
+      return [];
+    }
+
+    const results = (candidates ?? [])
+      .filter((c: any) => !alreadyMemberIds.has(c.id))
+      .slice(0, limit)
+      .map((c: any) => ({
+        id: c.id,
+        globalId: c.globalId,
+        name: c.name,
+        institutionName: c.institution?.name ?? null,
+        batchYear: c.batchYear,
+        memberCount: c.memberCount,
+        verificationRequired: c.requireVerification,
+      }));
+
+    this.appLogger.debug('[CLASSROOM:suggested] result', { count: results.length });
+    return results;
+  }
+
   // ── Lookup by internal id ────────────────────────────────────────────────
 
   /**

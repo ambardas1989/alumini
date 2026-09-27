@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Classroom, Institution, VerificationStatus } from '@alumini/types';
 import * as api from '@/lib/api';
-import type { NotificationRow } from '@/lib/api';
+import type { NotificationRow, ClassroomSearchResult } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { useToast } from '@/components/providers/ToastProvider';
+import { Button } from '@/components/ui/Button';
 import { safeRelativeTime } from '@/lib/format';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
@@ -56,6 +58,16 @@ function dateGroupOf(iso: string): DateGroup {
 function feedAccent(type: string): { icon: string; accent?: 'success' } {
   if (type.startsWith('verification')) return { icon: '✓', accent: 'success' };
   if (type === 'event.created') return { icon: '📅' };
+  // TASKS_09 TASK 02 — 'new_member' is emitted by NotificationService's
+  // handleClassroomJoined(). 'new_message'/'vouch_request' are still not
+  // emitted anywhere (see that handler's own doc comment on why — firing
+  // one notification per chat message would flood the feed, and
+  // 'vouch_request' has no natural single trigger event in the current
+  // vouch flow); handled here defensively so nothing breaks if either is
+  // ever added later, without fabricating data today.
+  if (type === 'new_member') return { icon: '👋' };
+  if (type === 'new_message') return { icon: '💬' };
+  if (type === 'vouch_request') return { icon: '🤝' };
   return { icon: '🔔' };
 }
 
@@ -74,6 +86,11 @@ export default function HomePage() {
   // TASKS_09 TASK 01 — only needed to tell an admin-persona new user apart
   // from a platform admin with no school_admin persona yet.
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  // TASKS_09 TASK 02 — "Suggested for you", only for a member with < 3
+  // classrooms (a zero-classroom user lands on NewUserLanding instead).
+  const [suggested, setSuggested] = useState<ClassroomSearchResult[]>([]);
+  const [joiningSuggestedId, setJoiningSuggestedId] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -103,6 +120,38 @@ export default function HomePage() {
     if (!ready) return;
     load();
   }, [ready, load]);
+
+  useEffect(() => {
+    if (loading || classrooms.length === 0 || classrooms.length >= 3) {
+      setSuggested([]);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getSuggestedClassrooms(3)
+      .then((data) => {
+        if (!cancelled) setSuggested(data);
+      })
+      .catch(() => undefined); // Non-fatal — the section just doesn't render.
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, classrooms.length]);
+
+  const handleJoinSuggested = async (result: ClassroomSearchResult) => {
+    setJoiningSuggestedId(result.id);
+    try {
+      await api.joinClassroom(result.id);
+      setSuggested((prev) => prev.filter((r) => r.id !== result.id));
+      showToast(t('suggested.joinedToast'), 'success');
+      load();
+      router.push(`/classroom/${result.globalId}`);
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setJoiningSuggestedId(null);
+    }
+  };
 
   const dismissNudge = () => {
     window.sessionStorage.setItem(NUDGE_DISMISSED_KEY, '1');
@@ -216,11 +265,32 @@ export default function HomePage() {
               </>
             )}
 
-            {/* "Suggested classrooms" — no GET /classrooms/suggested
-                endpoint exists (documented future work per an earlier
-                task's own fallback instruction), so this section stays
-                unrendered rather than showing fabricated data, even
-                though classrooms.length < 3 would otherwise trigger it. */}
+            {/* TASKS_09 TASK 02 — "Suggested for you", other classrooms at
+                an institution the caller already belongs to. */}
+            {!loading && suggested.length > 0 && (
+              <>
+                <p className="section-heading">{t('suggestedForYou')}</p>
+                {suggested.map((result) => (
+                  <div key={result.id} className={`card card-sm ${styles.suggestedCard}`}>
+                    <div className={styles.suggestedInfo}>
+                      <span className={styles.suggestedName}>{result.name}</span>
+                      <span className={styles.suggestedMeta}>
+                        {result.institutionName ? `${result.institutionName} · ` : ''}
+                        {result.batchYear} · {result.memberCount}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      loading={joiningSuggestedId === result.id}
+                      onClick={() => handleJoinSuggested(result)}
+                    >
+                      {t('suggested.joinButton')}
+                    </Button>
+                  </div>
+                ))}
+              </>
+            )}
 
             {!loading &&
               feed.length > 0 &&

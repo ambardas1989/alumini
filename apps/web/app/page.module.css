@@ -128,6 +128,37 @@
   -webkit-box-orient: vertical;
 }
 
+/* TASKS_09 TASK 02 — "Suggested for you". */
+.suggestedCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-block-end: 8px;
+}
+
+.suggestedInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.suggestedName {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestedMeta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .feedTime {
   flex-shrink: 0;
   font-size: 10px;

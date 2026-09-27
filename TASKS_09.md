@@ -110,7 +110,7 @@ Commit: "feat: new user landing screen — student, teacher, admin variants"
 
 ---
 
-## TASK 02 — Feature: home feed for returning users [PENDING]
+## TASK 02 — Feature: home feed for returning users [DONE: date groups/verification nudge/empty-feed-with-classrooms were already implemented; added new_member notification (NotificationService.handleClassroomJoined on classroom.joined) + feed rendering for it, and a real "Suggested for you" section (new GET /classroom/suggested endpoint, other classrooms at the caller's own institution(s)). Deliberately did NOT add new_message (would fire one notification per chat message — spam) or vouch_request (no natural single trigger event exists) — frontend renders both defensively if they're ever added, without fabricating backend data today.]
 
 Polish the activity feed for users who have joined classrooms.
 
@@ -157,7 +157,7 @@ verification nudge, suggested classrooms"
 
 ---
 
-## TASK 03 — Fix: classroom shows join prompt for existing members [PENDING]
+## TASK 03 — Fix: classroom shows join prompt for existing members [DONE: verified against current code — all four fixes already in place from earlier session work. Fix 1/2: loading spinner shows until BOTH classroom and membership resolve (Promise.all), join prompt only renders after loading completes and isMember is confirmed false. Fix 3: handleJoin() already treats a 409 as success (console.warn '[MEMBERSHIP:join] already member — treating as success', reloads membership, shows the classroom). Fix 4: deep links route through the same component/gate, so the fix applies uniformly. No code changes needed.]
 
 Navigating to a classroom from notification or event shows
 "Join classroom" even if the user is already a member.
@@ -240,7 +240,7 @@ Commit: "fix: edit profile — pencil icon button"
 
 ---
 
-## TASK 06 — Fix: MFA challenge endpoint missing or CORS [PENDING]
+## TASK 06 — Fix: MFA challenge endpoint missing or CORS [DONE: verified — POST /auth/mfa/challenge already exists (auth.controller.ts, JwtAuthGuard-protected, dual-purpose "completes login or re-authorises a sensitive action"), and main.ts's CORS config already includes OPTIONS in methods, Authorization/X-MFA-Code in allowedHeaders, and credentials:true. Both from earlier session work (TASKS_07 TASK 05). No code changes needed.]
 
 TOTP verification fails with CORS error:
 POST /v1/auth/mfa/challenge → no Access-Control-Allow-Origin header
@@ -282,7 +282,7 @@ Commit: "fix: add mfa/challenge endpoint for TOTP verification"
 
 ---
 
-## TASK 07 — Fix: unverified members can send messages [PENDING]
+## TASK 07 — Fix: unverified members can send messages [DONE: MembershipService.canAccessChannel() (sendMessage()'s sole gate) and the frontend's canPostChannel() both used to let pending_auto post in classroom/student_alley — both now require strictly 'verified' to post, in every channel; message input hides for pending_auto with the existing "You joined early — complete verification to post" banner, plus a filled-in fallback note]
 
 Unverified students can post messages in classroom and
 student alley. Only verified members should be able to post.
@@ -1120,6 +1120,753 @@ Also add to fileUpdates.md:
   ADD COLUMN IF NOT EXISTS job_title text,
   ADD COLUMN IF NOT EXISTS company text,
   ADD COLUMN IF NOT EXISTS location_city text;
+
+---
+
+## TASK 23 — Feature: birthday display and notifications [PENDING]
+
+Collect batchmates' birthdays and surface them in the home
+feed and as notifications. Year is never shown or stored
+for display — month and day only. Visible to all verified
+members of shared classrooms.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BACKEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create supabase/migrations/028_birthday_field.sql:
+
+  ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS birthday_month integer
+  CHECK (birthday_month BETWEEN 1 AND 12),
+  ADD COLUMN IF NOT EXISTS birthday_day integer
+  CHECK (birthday_day BETWEEN 1 AND 31);
+
+Store month and day separately — never store birth year.
+This is a deliberate privacy decision, not an oversight.
+Add a comment to the migration explaining this.
+
+Add GET /v1/users/birthdays-today
+Auth: required
+Logic:
+  Find all users who share a classroom with the current user
+  AND are verified members
+  AND birthday_month = current month
+  AND birthday_day = current day
+Returns:
+  [{ id, full_name, avatar_url, sharedClassroom: { name, globalId } }]
+
+Log:
+  debug: '[USERS:birthdays] checked' { userId, count }
+  error: '[USERS:birthdays] failed' { error: full }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROFILE — collect birthday
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/web/app/profile/page.tsx
+Add birthday field to the edit profile form:
+
+  Label: "Birthday"
+  Two dropdowns side by side:
+    Month: January to December
+    Day: 1 to 31
+  No year field — do not ask for or store year
+  Small muted text below: "Only month and day shown to batchmates"
+  Optional — user can skip
+
+Save via existing PATCH /v1/identity/profile:
+  Add birthday_month and birthday_day to UpdateProfileDto
+  Add to identity.service.ts updateProfile()
+
+Display on profile page (own profile only):
+  Show "🎂 [Month] [Day]" in the profile header area
+  e.g. "🎂 October 8"
+  If not set: show nothing (no placeholder)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOME FEED — birthday cards
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/web/app/(home)/page.tsx
+
+On home feed load: call GET /v1/users/birthdays-today
+If any results: show birthday cards at the TOP of the feed
+above all other activity items.
+
+Birthday card layout:
+  White card, border-radius 12px, 1px border
+  Left: avatar circle (40px, initials fallback, colored)
+  Center:
+    "🎂 [Full name]'s birthday today!" (bold 13px)
+    "[Shared classroom name]" (muted 11px)
+  Right: "Wish them" button (ghost, small, brand primary border)
+    On click: navigate to /messages?userId=[id]
+    Pre-fill DM input with: "Happy birthday [first name]! 🎂"
+
+If multiple birthdays today: show one card per person, stacked.
+Cards dismiss individually on "Wish them" click (optimistic).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NOTIFICATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/backend/src/modules/notification/notification.service.ts
+
+Add a scheduled job that runs daily at 8:00 AM IST (UTC+5:30):
+  Query all users who have batchmates with birthdays today
+  For each: create an in-app notification:
+    type: 'birthday'
+    title: "🎂 [Name]'s birthday today"
+    body: "Wish [first name] from [classroom] a happy birthday"
+    data: { userId: birthdayPersonId, classroomGlobalId }
+
+Use NestJS @Cron decorator:
+  @Cron('0 30 2 * * *') — 2:30 AM UTC = 8:00 AM IST
+
+Tap on notification → opens DM with that person.
+
+Log:
+  info: '[NOTIFY:birthday] sent' { recipientId, birthdayUserId }
+  error: '[NOTIFY:birthday] failed' { error: full }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AFTER COMPLETION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run: npm run test and next build
+Commit: "feat: birthday collection, home feed cards,
+daily notifications at 8am IST"
+
+---
+
+## TASK 24 — Feature: announcements in classroom chat [PENDING]
+
+Extend the "+" attachment menu in classroom chat to include
+an Announcement option. Announcements are a styled message
+type — subtle purple accent, single line of text, no title
+field. They appear in chat AND on the home feed of eligible
+members. Unverified members see a blurred version with a
+verify nudge.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VISIBILITY RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Who can POST announcements:
+  Verified members and admins only.
+  Unverified members do not see the Announcement option
+  in the + menu.
+
+Where announcements appear based on channel:
+
+  Student Alley announcement:
+    - Appears in Student Alley chat
+    - Appears on home feed of all students (verified +
+      unverified) in that classroom
+
+  Staff Room announcement:
+    - Appears in Staff Room chat
+    - Appears on home feed of all teachers and admins
+      in that classroom
+
+  Classroom tab announcement:
+    - Appears in Classroom chat
+    - Appears on home feed of ALL members (students,
+      teachers, admins) in that classroom
+
+Unverified members:
+  - See the announcement card in chat and feed
+  - Content is blurred (CSS filter: blur(4px))
+  - A small inline nudge replaces the content area:
+    "Verify your membership to read this"
+  - They still receive the push notification (see below)
+    but notification body does not reveal content
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+No new table needed. Extend existing messages table:
+
+  ALTER TABLE public.messages
+  ADD COLUMN IF NOT EXISTS message_type text
+  NOT NULL DEFAULT 'message'
+  CHECK (message_type IN ('message', 'announcement',
+  'poll', 'system'));
+
+  Note: check if message_type already exists from
+  TASKS_08 poll/message type work. If so, just add
+  'announcement' to the existing constraint:
+
+  ALTER TABLE public.messages
+  DROP CONSTRAINT IF EXISTS messages_message_type_check;
+
+  ALTER TABLE public.messages
+  ADD CONSTRAINT messages_message_type_check
+  CHECK (message_type IN ('message', 'announcement',
+  'poll', 'system'));
+
+Add to fileUpdates.md after completion if migration
+was applied manually.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BACKEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/backend/src/modules/corridor/corridor.service.ts
+or wherever messages are created.
+
+In the send message endpoint:
+  Accept message_type: 'announcement' in the request body.
+  Validate: sender must have verification_status =
+  'verified' OR role = 'admin'. If not, return 403.
+
+  On save: set message_type = 'announcement' in the
+  messages insert.
+
+  After save: create a feed_item for each eligible
+  member per visibility rules above. Inline is fine
+  for now, no need for a background job.
+
+  After save: send push notification to ALL members
+  of the relevant channel (verified + unverified):
+    title: "[Sender first name] made an announcement"
+    body: "Open AlumTribe to read it"
+    data: { classroomId, corridor, messageId }
+  Do not reveal announcement content in the notification.
+
+Log:
+  info: '[CORRIDOR:announcement] sent' { senderId,
+  classroomId, corridor, messageId }
+  error: '[CORRIDOR:announcement] failed' { error: full }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRONTEND — + menu extension
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read the chat input component in the relevant classroom
+page. Find the existing + button and its menu (photo,
+file attachment options).
+
+Add a new menu item at the bottom:
+  Icon: ti-speakerphone (Tabler outline)
+  Label: "Announcement"
+  Color: var(--text-pro) for icon and label
+  Background on hover: var(--bg-pro)
+
+Only show this menu item if the current user is verified
+or admin. Hide it entirely for unverified members.
+
+On click: close the + menu and switch the chat input
+into announcement mode:
+  - Add a small purple label above the input:
+    "Announcement" in var(--text-pro), 11px
+  - Add a thin left border on the input in var(--fill-pro)
+  - Placeholder text: "Write an announcement..."
+  - A small dismiss x to cancel back to regular message mode
+  - Send button works the same way
+
+On send: pass message_type: 'announcement' to the
+send message API call.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRONTEND — announcement bubble in chat
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When rendering messages in chat, check message_type.
+If 'announcement', render differently from regular bubble:
+
+Verified member view:
+  - Same bubble shape as regular message
+  - Left border: 3px solid var(--fill-pro)
+  - Small label above bubble: "[Sender name] · Announcement"
+    where "Announcement" is var(--text-pro), 10px
+  - Bubble background: var(--surface-2)
+  - Border: 0.5px solid var(--border-pro)
+  - Text: single line, 13px, var(--text-primary)
+
+Unverified member view:
+  - Same card structure as above
+  - Content text: filter: blur(4px),
+    user-select: none, pointer-events: none
+  - Below blurred text: small inline strip
+    background: var(--bg-warning)
+    border-radius: var(--radius)
+    padding: 5px 8px
+    Icon: ti-lock, 12px, var(--text-warning)
+    Text: "Verify your membership to read this"
+    font-size: 11px, var(--text-warning)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRONTEND — announcement card on home feed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/web/app/(home)/page.tsx
+
+Fetch announcements as part of the home feed. Include
+message_type = 'announcement' items from the user's
+classrooms in the feed endpoint or as a separate call.
+
+Feed card layout (verified member):
+  White card, border-radius 12px, 0.5px border
+  Left border: 3px solid var(--fill-pro)
+  Top row: avatar (28px initials) + sender name
+    (13px, 500 weight) + classroom name (11px muted)
+    + "Announcement" badge (var(--bg-pro) background,
+    var(--text-pro) text, 10px, border-radius var(--radius),
+    padding 2px 8px)
+  Body: announcement text, 13px, var(--text-secondary)
+  Bottom: timestamp, 10px, var(--text-muted)
+
+Feed card layout (unverified member):
+  Same card structure
+  Body text: filter: blur(4px), user-select: none
+  Below: same verify nudge strip as chat view
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AFTER COMPLETION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run: npm run test and next build
+If any migration was applied manually add it to
+fileUpdates.md.
+Commit: "feat: announcements in classroom chat with
+feed cards and push notifications"
+
+---
+
+## TASK 25 — Feature: visiting a city post type [PENDING]
+
+A structured post type under the "+" menu in classroom
+chat. User picks a city and date range. Posts as a
+distinct card in chat and feed. Corridor privacy applies
+exactly as with announcements — the channel the user
+posts in controls who sees it.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VISIBILITY RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Same rules as TASK 24 announcements:
+
+  Student Alley post → students only (chat + feed)
+  Staff Room post → teachers and admins only (chat + feed)
+  Classroom tab post → all members (chat + feed)
+
+Who can post: verified members and admins only.
+Unverified members do not see the option in + menu.
+
+Unverified members who receive the feed card:
+  See the card structure but city/date text is blurred.
+  Same verify nudge strip as announcements.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+No new table. Extend messages table message_type
+constraint (check if already done in TASK 24):
+
+  ALTER TABLE public.messages
+  DROP CONSTRAINT IF EXISTS messages_message_type_check;
+
+  ALTER TABLE public.messages
+  ADD CONSTRAINT messages_message_type_check
+  CHECK (message_type IN ('message', 'announcement',
+  'visiting_city', 'poll', 'system'));
+
+Store city and date range in existing content field as JSON:
+  content: '{"city":"Mumbai","from":"2024-12-21","to":"2024-12-23"}'
+
+Also store a human-readable version for fallback:
+  Add metadata jsonb column if not already present:
+  ALTER TABLE public.messages
+  ADD COLUMN IF NOT EXISTS metadata jsonb;
+
+  Store: { city, from_date, to_date, responders: [] }
+  responders: array of user_ids who tapped "I'm there too"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BACKEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In the send message endpoint:
+  Accept message_type: 'visiting_city' with body:
+    { city: string, from_date: string, to_date: string }
+  Validate: verified or admin only. Return 403 if not.
+  Validate: from_date <= to_date, both are valid dates,
+  from_date is not more than 30 days in the past.
+  Save with message_type = 'visiting_city' and
+  metadata = { city, from_date, to_date, responders: [] }
+
+Add POST /v1/messages/:messageId/im-there
+  Auth: required
+  Adds current user's id to metadata.responders array
+  if not already present (idempotent).
+  Returns updated responders count.
+  Notify the original poster:
+    type: 'visiting_city_response'
+    title: "[Name] is also in [city]!"
+    body: "Tap to message them"
+    data: { messageId, responderId }
+
+Log:
+  info: '[CORRIDOR:visiting_city] posted'
+  { senderId, classroomId, corridor, city }
+  info: '[CORRIDOR:visiting_city] response'
+  { responderId, posterId, city }
+  error: '[CORRIDOR:visiting_city] failed' { error: full }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRONTEND — + menu extension
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add to the + menu below Announcement:
+  Icon: ti-map-pin (Tabler outline)
+  Label: "Visiting a city"
+  Shown only to verified members and admins.
+
+On click: open a small inline form above the chat input:
+  Field 1: City name (text input, placeholder "Which city?")
+  Field 2: From date (date picker, default today)
+  Field 3: To date (date picker, default today + 2 days)
+  Post button: "Share" (brand primary)
+  Cancel: x to dismiss back to normal input
+
+Validation: all three fields required before Send
+enables.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRONTEND — visiting city card in chat
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When message_type = 'visiting_city', render a card:
+
+Verified member view:
+  White card, border-radius 12px, 0.5px border
+  Left border: 3px solid var(--fill-accent)
+  Top: sender avatar (28px) + "[Name] is visiting" label
+    (10px, var(--text-muted)) + "Visiting a city" badge
+    (var(--bg-accent), var(--text-accent), 10px)
+  Body:
+    ti-map-pin icon (16px, var(--text-accent))
+    "[City]" (bold 15px, var(--text-primary))
+    "[From date] - [To date]" (12px, var(--text-muted))
+      Format: "Dec 21 - Dec 23"
+  Response row:
+    "I'm there too!" button (ghost, accent border, small)
+      On tap: calls POST /v1/messages/:id/im-there
+      After tap: button turns filled accent, text "You're going"
+      Cannot un-tap (idempotent, no undo needed)
+    "[N] batchmates are there" (12px muted) if responders > 0
+
+Unverified member view:
+  Same card structure
+  City and date text: filter: blur(4px), user-select: none
+  Same verify nudge strip as announcements
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRONTEND — visiting city card on home feed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Same card layout as chat but with classroom name shown
+in the top row for context.
+"I'm there too!" button works the same way.
+Verified members only see full content.
+Unverified: blurred with verify nudge.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AFTER COMPLETION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run: npm run test and next build
+Add migration to fileUpdates.md if applied manually.
+Commit: "feat: visiting a city post type with I'm there
+response, chat card, home feed card"
+
+---
+
+## TASK 26 — Feature: new member joined — feed card and notification [PENDING]
+
+When a new member joins and is verified in a classroom,
+all existing members of that classroom get a feed card
+and push notification. Visible cross-role — a student
+joining is visible to teachers and admins, a teacher
+joining is visible to students.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TRIGGER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Trigger: when a membership verification_status changes
+to 'verified' (either auto-verified or admin-approved).
+Not on join — on verification. Unverified joins are silent.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BACKEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/backend/src/modules/membership/membership.service.ts
+or verification.service.ts — wherever verification_status
+is set to 'verified'.
+
+After setting verified status, trigger:
+  1. In-app notifications for all OTHER verified members
+     of the same classroom:
+       type: 'new_member'
+       title: "[Name] joined [Classroom]"
+       body: "[Role] · verified"
+       data: { userId: newMemberId, classroomGlobalId }
+
+  2. Push notification (same content as in-app)
+
+  3. Create a feed_item for all members of the classroom
+     (verified + unverified — unverified can see new member
+     cards in full, there is no sensitive content here):
+       type: 'new_member'
+       actor_id: newMemberId
+       classroom_id: classroomId
+       metadata: { role, verification_method }
+
+Do NOT notify the new member themselves.
+
+Log:
+  info: '[MEMBERSHIP:verified] notified classroom'
+  { newMemberId, classroomId, recipientCount }
+  error: '[MEMBERSHIP:verified] notify failed' { error: full }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRONTEND — home feed card
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/web/app/(home)/page.tsx
+
+New member feed card layout:
+  White card, border-radius 12px, 0.5px border
+  Left: avatar circle (40px, initials fallback)
+  Center:
+    "[Name] joined [Classroom]" (bold 13px)
+    "[Role] · verified via [method]" (muted 11px)
+    e.g. "Student · verified via peer vouch"
+  Right: "Say hello" button (ghost, small, brand border)
+    On click: navigate to /messages?userId=[newMemberId]
+  Bottom: timestamp (10px muted)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AFTER COMPLETION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run: npm run test and next build
+Commit: "feat: new member joined — feed card and
+push notification on verification"
+
+---
+
+## TASK 27 — Feature: work anniversary feed card and notification [PENDING]
+
+When a batchmate's work anniversary falls today, surface
+a feed card and send a notification to verified members
+of shared classrooms. Only triggers if work_start_date
+is set on their profile.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Check if work_start_date exists on profiles table.
+If not, add it:
+
+  Create supabase/migrations/029_work_anniversary.sql:
+
+  ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS work_start_date date,
+  ADD COLUMN IF NOT EXISTS work_company text;
+
+  Note: work_company may already exist as 'company'
+  from TASK 22. Check before adding. Use whichever
+  column exists — do not duplicate.
+
+Add to fileUpdates.md if applied manually.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROFILE — collect work start date
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/web/app/profile/page.tsx
+In the edit profile form, add:
+
+  Label: "Work anniversary"
+  Field: "Started at [company] on" + date picker
+    Month + Year only (not day — too precise)
+    Store as first day of that month:
+    e.g. user picks "March 2019" → store 2019-03-01
+  Optional — user can skip
+
+Save via existing PATCH /v1/identity/profile.
+Add work_start_date to UpdateProfileDto.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BACKEND — scheduled job
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/backend/src/modules/notification/notification.service.ts
+
+Add scheduled job alongside the birthday job:
+  @Cron('0 30 2 * * *') — same 2:30 AM UTC = 8:00 AM IST run
+
+  Query all profiles where:
+    work_start_date IS NOT NULL
+    AND EXTRACT(MONTH FROM work_start_date) = current month
+    AND EXTRACT(DAY FROM work_start_date) = current day
+    AND work_start_date < today (at least 1 year ago)
+
+  For each person found:
+    Calculate years: current year - EXTRACT(YEAR FROM work_start_date)
+    Find all verified members of shared classrooms
+    For each: create in-app notification:
+      type: 'work_anniversary'
+      title: "🎉 [Name]'s [N]-year work anniversary"
+      body: "[N] years at [company] — wish them well"
+      data: { userId: personId, years: N }
+    Send push notification (same content)
+
+  Only notify verified members of shared classrooms.
+  Do not notify the person about their own anniversary.
+
+Log:
+  info: '[NOTIFY:work_anniversary] sent'
+  { personId, years, recipientCount }
+  error: '[NOTIFY:work_anniversary] failed' { error: full }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRONTEND — home feed card
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/web/app/(home)/page.tsx
+
+Work anniversary feed card layout:
+  White card, border-radius 12px, 0.5px border
+  Left border: 3px solid var(--fill-success)
+  Left: avatar circle (40px, initials fallback)
+  Center:
+    "🎉 [Name]'s [N]-year work anniversary" (bold 13px)
+    "[N] years at [company]" (muted 11px)
+    Only show company if work_company is set on profile
+    If not set: "[N]-year work anniversary" only
+  Right: "Congrats" button (ghost, small, success border)
+    On click: navigate to /messages?userId=[personId]
+    Pre-fill DM: "Congratulations on [N] years! 🎉"
+  Bottom: timestamp (10px muted)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AFTER COMPLETION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run: npm run test and next build
+Add migration to fileUpdates.md if applied manually.
+Commit: "feat: work anniversary feed card and daily
+notification at 8am IST"
+
+---
+
+## TASK 28 — Feature: batchmates in your city discovery card [PENDING]
+
+When a user sets or updates their city on their profile,
+show a one-time feed card: "X batchmates from your
+classrooms are also in [city]." Drives connection
+requests without any privacy intrusion — only triggers
+when the user themselves has set a public city.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIVACY RULES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Only users who have set location_city on their own
+  profile can see this card.
+- The card only shows batchmates who have ALSO set
+  location_city on their profile (opt-in both ways).
+- Only verified members of shared classrooms are shown.
+- Nobody gets notified that someone else moved to
+  their city — discovery is one-directional and
+  initiated by the person updating their own profile.
+- No channel privacy applies here — this is profile-level
+  data, not channel content. Classroom membership is
+  the privacy boundary.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BACKEND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/backend/src/modules/identity/identity.service.ts
+In updateProfile(), after saving location_city:
+
+  If location_city changed and is not null:
+    Query verified members of all the user's classrooms
+    WHERE their location_city ILIKE the new city
+    (case-insensitive match, trim whitespace)
+    AND user_id != current user
+    AND location_city IS NOT NULL
+
+    If count > 0:
+      Create a single feed_item for current user:
+        type: 'batchmates_in_city'
+        metadata: {
+          city: location_city,
+          count: N,
+          sampleUsers: first 3 user ids (for avatars)
+        }
+
+Add GET /v1/users/batchmates-in-city
+Auth: required
+Returns batchmates in same city as current user:
+  Query same as above
+  Returns: [{ id, full_name, avatar_url,
+  sharedClassroom: { name, globalId } }]
+  Max 20 results, ordered by most recently verified
+
+Log:
+  debug: '[USERS:city_discovery] triggered'
+  { userId, city, count }
+  error: '[USERS:city_discovery] failed' { error: full }
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FRONTEND — home feed card
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Read apps/web/app/(home)/page.tsx
+
+Batchmates in city feed card layout:
+  White card, border-radius 12px, 0.5px border
+  Left border: 3px solid var(--fill-pro)
+  Top row:
+    ti-map-pin icon (16px, var(--text-pro))
+    "[N] batchmates in [city]" (bold 13px)
+  Body:
+    Row of overlapping avatars (3 shown, 28px each,
+    -8px margin to overlap):
+      Avatar circle with initials or photo
+      If N > 3: "+[N-3] more" label beside avatars
+    Muted 11px below avatars:
+      "From your classrooms · also in [city]"
+  Right: "See who" button (ghost, small, pro border)
+    On click: opens a bottom sheet or inline expanded
+    list showing all batchmates in that city
+    Each row: avatar + name + shared classroom name
+    + "Message" ghost button
+
+Card is dismissible (x button top right).
+Once dismissed: store dismissal in localStorage with
+key 'dismissed_city_discovery_[city]' so it does not
+reappear for the same city.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AFTER COMPLETION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Run: npm run test and next build
+Commit: "feat: batchmates in your city discovery card
+triggered on profile city update"
 
 ---
 

@@ -152,14 +152,20 @@ describe('MembershipService', () => {
       expect(await service.canAccessChannel('u1', 'class-1', ChannelType.STUDENT_ALLEY)).toBe(false);
     });
 
-    it('lets a pending_auto (early-joiner) student into classroom and student_alley, not staff_room', async () => {
+    // TASKS_09 TASK 07 — BUG FIX regression test: pending_auto used to be
+    // allowed to POST (this method's sole real caller is sendMessage())
+    // in the classroom/student_alley channels; only 'verified' may post
+    // now, in every channel, matching SPEC.md §7.4's "Joined, unverified:
+    // No post" rule that the early-member carve-out was never meant to
+    // override.
+    it('does NOT let a pending_auto (early-joiner) student post in any channel — posting requires verified', async () => {
       const membership = { role: MemberRole.STUDENT, verification_status: 'pending_auto' };
 
       mockTables({ memberships: chain({ data: membership, error: null }) });
-      expect(await service.canAccessChannel('u1', 'class-1', ChannelType.CLASSROOM)).toBe(true);
+      expect(await service.canAccessChannel('u1', 'class-1', ChannelType.CLASSROOM)).toBe(false);
 
       mockTables({ memberships: chain({ data: membership, error: null }) });
-      expect(await service.canAccessChannel('u1', 'class-1', ChannelType.STUDENT_ALLEY)).toBe(true);
+      expect(await service.canAccessChannel('u1', 'class-1', ChannelType.STUDENT_ALLEY)).toBe(false);
 
       mockTables({ memberships: chain({ data: membership, error: null }) });
       expect(await service.canAccessChannel('u1', 'class-1', ChannelType.STAFF_ROOM)).toBe(false);
