@@ -855,12 +855,38 @@ export function createEvent(classroomId: string, data: CreateEventData): Promise
   return request(`/events/${classroomId}`, { method: 'POST', body: data });
 }
 
-export function rsvpEvent(classroomId: string, eventId: string, status: RsvpStatus): Promise<unknown> {
+export interface RsvpSummary {
+  going: number;
+  notGoing: number;
+  maybe: number;
+  myRsvp: RsvpStatus | null;
+}
+
+export function rsvpEvent(classroomId: string, eventId: string, status: RsvpStatus): Promise<RsvpSummary> {
   return request(`/events/${classroomId}/${eventId}/rsvp`, { method: 'POST', body: { status } });
 }
 
 export function removeRsvp(classroomId: string, eventId: string): Promise<void> {
   return request(`/events/${classroomId}/${eventId}/rsvp`, { method: 'DELETE' });
+}
+
+/** TASKS_09 TASK 16 — event detail bottom sheet: counts + the caller's own RSVP status, plus the creator's profile. */
+export interface EventDetail {
+  id: string;
+  classroomId: string;
+  createdBy: { id: string; fullName: string | null; avatarUrl: string | null };
+  title: string;
+  eventDate: string;
+  location?: string;
+  description?: string;
+  isOnline: boolean;
+  createdAt: string;
+  channel: string;
+  rsvps: RsvpSummary;
+}
+
+export function getEventDetail(classroomId: string, eventId: string): Promise<EventDetail> {
+  return request(`/events/${classroomId}/${eventId}`);
 }
 
 // ── SEARCH ───────────────────────────────────────────────────────────────

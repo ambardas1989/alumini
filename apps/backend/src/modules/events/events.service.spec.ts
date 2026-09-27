@@ -6,9 +6,11 @@
  *   (audited + event.created emitted)
  * - listEvents(): empty case, upcoming/past split with per-event RSVP
  *   counts and the caller's own status
- * - getEventDetail(): not-found guard, full RSVP list grouped by status
- * - upsertRsvp()/removeRsvp(): access + event-existence guards, success,
- *   no-existing-RSVP guard on remove
+ * - getEventDetail(): not-found guard, RSVP counts + caller's own status
+ *   + creator profile
+ * - upsertRsvp()/removeRsvp(): access + event-existence guards, success
+ *   (upsertRsvp returns updated counts + new status), no-existing-RSVP
+ *   guard on remove
  * - deleteEvent(): admin-only gate, not-found guard, success (audited +
  *   event.deleted emitted)
  */
@@ -246,14 +248,23 @@ describe('EventsService', () => {
       );
     });
 
-    it('groups the RSVP list by status with names', async () => {
+    it('returns RSVP counts and the caller own status, plus the creator profile', async () => {
       mockTables({
         memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
-        events: chain({ data: { id: 'e1', classroom_id: 'class-1', title: 'Reunion' }, error: null }),
+        events: chain({
+          data: {
+            id: 'e1',
+            classroom_id: 'class-1',
+            title: 'Reunion',
+            created_by: 'u1',
+            creator: { id: 'u1', full_name: 'Priya Sharma', avatar_url: 'x' },
+          },
+          error: null,
+        }),
         rsvps: chain({
           data: [
-            { user_id: 'u1', status: RsvpStatus.GOING, profile: { id: 'u1', full_name: 'Priya Sharma', avatar_url: 'x' } },
-            { user_id: 'u2', status: RsvpStatus.MAYBE, profile: { id: 'u2', full_name: 'Raj Kumar', avatar_url: null } },
+            { user_id: 'u1', status: RsvpStatus.GOING },
+            { user_id: 'u2', status: RsvpStatus.MAYBE },
           ],
           error: null,
         }),
@@ -261,9 +272,8 @@ describe('EventsService', () => {
 
       const result = await service.getEventDetail('user-1', 'class-1', 'e1');
 
-      expect(result.rsvps.going).toEqual([{ userId: 'u1', fullName: 'Priya Sharma', avatarUrl: 'x' }]);
-      expect(result.rsvps.maybe).toEqual([{ userId: 'u2', fullName: 'Raj Kumar', avatarUrl: null }]);
-      expect(result.rsvps.notGoing).toEqual([]);
+      expect(result.createdBy).toEqual({ id: 'u1', fullName: 'Priya Sharma', avatarUrl: 'x' });
+      expect(result.rsvps).toEqual({ going: 1, notGoing: 0, maybe: 1, myRsvp: null });
     });
   });
 
@@ -281,15 +291,18 @@ describe('EventsService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('upserts the RSVP', async () => {
+    it('upserts the RSVP and returns updated counts + the caller own new status', async () => {
       mockTables({
         memberships: chain({ data: { id: 'm1', role: 'student', verification_status: 'verified' }, error: null }),
         events: chain({ data: { id: 'e1' }, error: null }),
-        rsvps: chain({ data: { id: 'r1', status: RsvpStatus.GOING }, error: null }),
+        rsvps: chain(
+          { data: null, error: null }, // the upsert() call itself
+          { data: [{ user_id: 'user-1', status: RsvpStatus.GOING }], error: null }, // the re-fetch for counts
+        ),
       });
 
       const result = await service.upsertRsvp('user-1', 'class-1', 'e1', { status: RsvpStatus.GOING } as any);
-      expect(result.status).toBe(RsvpStatus.GOING);
+      expect(result).toEqual({ going: 1, notGoing: 0, maybe: 0, myRsvp: RsvpStatus.GOING });
     });
   });
 

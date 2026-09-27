@@ -7,7 +7,10 @@ import { useTranslations } from '@/lib/useTranslations';
 import { useToast } from '@/components/providers/ToastProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
+import { EventTile } from './EventTile';
 import styles from './ClassInfoSheet.module.css';
+
+const COLLAPSED_EVENT_LIMIT = 2;
 
 interface MemberAvatar {
   userId: string;
@@ -26,6 +29,7 @@ interface ClassInfoSheetProps {
   upcomingEvents: ClassroomEvent[];
   /** TASKS_09 TASK 11 FIX 2/3 — the event an incoming deep link pointed at, highlighted so it doesn't just blend into the list. */
   highlightEventId?: string | null;
+  onOpenEvent: (eventId: string) => void;
   onViewAllMembers: () => void;
   onCreateEvent: () => void;
   onShare: () => void;
@@ -43,16 +47,21 @@ export function ClassInfoSheet({
   memberPreview,
   upcomingEvents,
   highlightEventId,
+  onOpenEvent,
   onViewAllMembers,
   onCreateEvent,
   onShare,
   onLeave,
 }: ClassInfoSheetProps) {
   const t = useTranslations('classroom.infoSheet');
+  const tEvents = useTranslations('classroom.events.collapse');
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
+  const [eventsExpanded, setEventsExpanded] = useState(false);
   const visible = memberPreview.slice(0, PREVIEW_LIMIT);
   const overflow = memberCount - visible.length;
+  const visibleEvents = eventsExpanded ? upcomingEvents : upcomingEvents.slice(0, COLLAPSED_EVENT_LIMIT);
+  const hiddenEventCount = upcomingEvents.length - COLLAPSED_EVENT_LIMIT;
 
   const handleCopyGlobalId = async () => {
     try {
@@ -99,17 +108,26 @@ export function ClassInfoSheet({
         {upcomingEvents.length === 0 ? (
           <p className={styles.emptyText}>{t('noUpcomingEvents')}</p>
         ) : (
-          <ul className={styles.eventList}>
-            {upcomingEvents.map((event) => (
-              <li
-                key={event.id}
-                className={`${styles.eventRow} ${event.id === highlightEventId ? styles.eventRowHighlighted : ''}`}
-              >
-                <span className={styles.eventTitle}>{event.title}</span>
-                <span className={styles.eventDate}>{safeFormatDate(event.eventDate)}</span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <div className={styles.eventList}>
+              {visibleEvents.map((event) => (
+                <div key={event.id} className={event.id === highlightEventId ? styles.eventRowHighlighted : undefined}>
+                  <EventTile event={event} onOpen={onOpenEvent} />
+                </div>
+              ))}
+            </div>
+            {/* TASKS_09 TASK 16 — collapse past the first 2 upcoming events. */}
+            {!eventsExpanded && hiddenEventCount > 0 && (
+              <button type="button" className={styles.eventsToggle} onClick={() => setEventsExpanded(true)}>
+                {tEvents('showMore', { count: hiddenEventCount })}
+              </button>
+            )}
+            {eventsExpanded && upcomingEvents.length > COLLAPSED_EVENT_LIMIT && (
+              <button type="button" className={styles.eventsToggle} onClick={() => setEventsExpanded(false)}>
+                {tEvents('showLess')}
+              </button>
+            )}
+          </>
         )}
         <Button variant="secondary" size="sm" onClick={onCreateEvent}>
           {t('createEvent')}

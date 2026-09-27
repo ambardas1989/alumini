@@ -557,9 +557,23 @@
       "going": "Going",
       "maybe": "Maybe",
       "notGoing": "Not going",
+      "goingCount": "{count} going",
       "badge": {
         "staff_room": "Teachers only",
         "student_alley": "Students only"
+      },
+      "detail": {
+        "createdBy": "Created by {name}",
+        "goingButton": "✓ Going",
+        "maybeButton": "? Maybe",
+        "cantGoButton": "✗ Can't go",
+        "rsvpSummary": "{going} going · {maybe} maybe · {notGoing} can't go",
+        "changeResponse": "Change my response",
+        "close": "Close"
+      },
+      "collapse": {
+        "showMore": "Show {count} more events ↓",
+        "showLess": "Show less ↑"
       }
     },
     "infoSheet": {

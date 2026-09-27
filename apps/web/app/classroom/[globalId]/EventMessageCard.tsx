@@ -1,22 +1,18 @@
 'use client';
 
-import type { Event as ClassroomEvent, RsvpStatus } from '@alumini/types';
-import { safeFormatDate } from '@/lib/format';
-import { useTranslations } from '@/lib/useTranslations';
+import type { Event as ClassroomEvent } from '@alumini/types';
+import { EventTile } from './EventTile';
 import styles from './EventMessageCard.module.css';
 
 interface EventMessageCardProps {
   event: ClassroomEvent | null;
   /** Shown while the event details haven't been fetched/matched yet. */
   fallbackTitle: string;
-  onRsvp: (eventId: string, status: RsvpStatus) => void;
+  onOpen: (eventId: string) => void;
 }
 
-const RSVP_OPTIONS: RsvpStatus[] = ['going', 'maybe', 'not_going'];
-
-export function EventMessageCard({ event, fallbackTitle, onRsvp }: EventMessageCardProps) {
-  const t = useTranslations('classroom.events');
-
+/** TASKS_09 TASK 16 — chat event cards are now the same compact, tappable EventTile used everywhere else. */
+export function EventMessageCard({ event, fallbackTitle, onOpen }: EventMessageCardProps) {
   if (!event) {
     return (
       <div className={styles.card}>
@@ -25,35 +21,5 @@ export function EventMessageCard({ event, fallbackTitle, onRsvp }: EventMessageC
     );
   }
 
-  const counts = event.rsvpCounts ?? { going: 0, notGoing: 0, maybe: 0 };
-
-  return (
-    <div className={styles.card}>
-      {event.channel === 'staff_room' && (
-        <span className={`${styles.channelBadge} ${styles.channelBadgeStaffRoom}`}>{t('badge.staff_room')}</span>
-      )}
-      {event.channel === 'student_alley' && (
-        <span className={`${styles.channelBadge} ${styles.channelBadgeStudentAlley}`}>{t('badge.student_alley')}</span>
-      )}
-      <p className={styles.title}>{event.title}</p>
-      <p className={styles.meta}>
-        {safeFormatDate(event.eventDate)} · {event.isOnline ? t('online') : event.location || t('online')}
-      </p>
-      <p className={styles.counts}>
-        {t('going')} {counts.going} · {t('maybe')} {counts.maybe} · {t('notGoing')} {counts.notGoing}
-      </p>
-      <div className={styles.rsvpRow}>
-        {RSVP_OPTIONS.map((status) => (
-          <button
-            key={status}
-            type="button"
-            className={`${styles.rsvpButton} ${event.userRsvp === status ? styles.rsvpButtonActive : ''}`}
-            onClick={() => onRsvp(event.id, status)}
-          >
-            {t(status === 'going' ? 'going' : status === 'maybe' ? 'maybe' : 'notGoing')}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  return <EventTile event={event} showChannelBadge onOpen={onOpen} />;
 }

@@ -531,7 +531,8 @@ verified members can upload cover"
 
 ---
 
-## TASK 16 — Feature: events as interactive tiles with RSVP [PENDING]
+## TASK 16 — Feature: events as interactive tiles with RSVP [DONE]
+Note: Confirmed/adjusted the 3 backend endpoints — GET :classroomId/:eventId now returns RSVP counts + myRsvp + creator profile (was the full named-list shape, unused by any frontend caller); POST rsvp now returns updated counts + new status instead of the raw upserted row; DELETE rsvp unchanged. New shared EventTile component (compact 3-line tappable tile: title+status icon, 🕐 date+going-count, 📍 location) used both in chat (EventMessageCard, replacing its old always-expanded inline RSVP buttons) and in ClassInfoSheet's upcoming-events list (with the show-first-2/"Show N more ↓"/"Show less ↑" collapse). New EventDetailSheet bottom sheet (title, date, tappable location→maps, description, creator avatar+name, 3-button RSVP with optimistic update, counts line, "Change my response" link, close button) opened via a shared openEventId state in page.tsx from either surface. Builds + full test suite (16 backend suites/384 tests + utils) pass.
 
 Events in the classroom feed are static cards.
 They need to be clickable with full RSVP functionality.

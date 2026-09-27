@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ChannelType, MessageType } from '@alumini/types';
-import type { Classroom, Event as ClassroomEvent, Institution, Message, RedactedMessage, RsvpStatus } from '@alumini/types';
+import type { Classroom, Event as ClassroomEvent, Institution, Message, RedactedMessage } from '@alumini/types';
 import * as api from '@/lib/api';
 import { ApiError } from '@/lib/api';
 import type { ClassroomMember } from '@/lib/api';
@@ -25,6 +25,7 @@ import { LockedChannel } from './LockedChannel';
 import { MessageBubble } from './MessageBubble';
 import messageBubbleStyles from './MessageBubble.module.css';
 import { EventMessageCard } from './EventMessageCard';
+import { EventDetailSheet } from './EventDetailSheet';
 import { MessageInput } from './MessageInput';
 import { ClassInfoSheet } from './ClassInfoSheet';
 import { EventCreateModal } from './EventCreateModal';
@@ -159,6 +160,8 @@ export default function ClassroomPage() {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [verifyBannerDismissed, setVerifyBannerDismissed] = useState(false);
+  // TASKS_09 TASK 16 — the event whose detail sheet is open, if any.
+  const [openEventId, setOpenEventId] = useState<string | null>(null);
 
   // ── Load classroom + membership ─────────────────────────────────────────
   //
@@ -493,26 +496,24 @@ export default function ClassroomPage() {
   };
 
   // ── RSVP ─────────────────────────────────────────────────────────────────
-  const handleRsvp = async (eventId: string, status: RsvpStatus) => {
+  // TASKS_09 TASK 16 — EventDetailSheet now owns the actual RSVP call
+  // (optimistic update + POST /rsvp), since RSVPing only happens from the
+  // detail sheet now, not inline on the tile. This just folds its result
+  // back into the classroom-wide `events` map so every EventTile (chat,
+  // ClassInfoSheet) reflects the new status without a full reload.
+  const handleRsvpChanged = (eventId: string, rsvps: api.RsvpSummary) => {
     setEvents((prev) => {
       const existing = prev[eventId];
       if (!existing) return prev;
-      const counts = { going: 0, notGoing: 0, maybe: 0, ...existing.rsvpCounts };
-      if (existing.userRsvp === 'going') counts.going--;
-      if (existing.userRsvp === 'not_going') counts.notGoing--;
-      if (existing.userRsvp === 'maybe') counts.maybe--;
-      if (status === 'going') counts.going++;
-      if (status === 'not_going') counts.notGoing++;
-      if (status === 'maybe') counts.maybe++;
-      return { ...prev, [eventId]: { ...existing, userRsvp: status, rsvpCounts: counts } };
+      return {
+        ...prev,
+        [eventId]: {
+          ...existing,
+          userRsvp: rsvps.myRsvp ?? undefined,
+          rsvpCounts: { going: rsvps.going, notGoing: rsvps.notGoing, maybe: rsvps.maybe },
+        },
+      };
     });
-    if (!classroom) return;
-    try {
-      await api.rsvpEvent(classroom.id, eventId, status);
-    } catch (err) {
-      showToast(getErrorMessage(err), 'error');
-      loadEvents();
-    }
   };
 
   // ── Quick actions ────────────────────────────────────────────────────────
@@ -732,7 +733,7 @@ export default function ClassroomPage() {
                   key={message.id}
                   event={message.metadata?.event_id ? events[message.metadata.event_id as string] ?? null : null}
                   fallbackTitle={message.content ?? ''}
-                  onRsvp={handleRsvp}
+                  onOpen={setOpenEventId}
                 />
               ) : (
                 <MessageBubble
@@ -791,6 +792,10 @@ export default function ClassroomPage() {
             memberPreview={members.map((m) => ({ userId: m.userId, fullName: m.fullName ?? '', avatarUrl: m.avatarUrl }))}
             upcomingEvents={upcomingEvents}
             highlightEventId={deepLinkedEventId}
+            onOpenEvent={(eventId) => {
+              setShowInfoSheet(false);
+              setOpenEventId(eventId);
+            }}
             onViewAllMembers={() => {
               setShowInfoSheet(false);
               setMemberModalRoleFilter(undefined);
@@ -805,6 +810,17 @@ export default function ClassroomPage() {
               setShowInfoSheet(false);
               setShowLeaveConfirm(true);
             }}
+          />
+        </BottomSheet>
+      )}
+
+      {openEventId && (
+        <BottomSheet onClose={() => setOpenEventId(null)}>
+          <EventDetailSheet
+            classroomId={classroom.id}
+            eventId={openEventId}
+            onRsvpChanged={handleRsvpChanged}
+            onClose={() => setOpenEventId(null)}
           />
         </BottomSheet>
       )}

@@ -259,6 +259,21 @@ export class EventsService {
     );
   }
 
+  /** Counts + the caller's own status, from a flat list of RSVP rows (no event_id filter — caller pre-filters to one event). */
+  private rsvpSummary(rsvps: Array<{ user_id: string; status: string }>, userId: string) {
+    const counts = { going: 0, notGoing: 0, maybe: 0 };
+    let myRsvp: RsvpStatus | null = null;
+
+    for (const r of rsvps) {
+      if (r.status === RsvpStatus.GOING) counts.going++;
+      else if (r.status === RsvpStatus.NOT_GOING) counts.notGoing++;
+      else if (r.status === RsvpStatus.MAYBE) counts.maybe++;
+      if (r.user_id === userId) myRsvp = r.status as RsvpStatus;
+    }
+
+    return { ...counts, myRsvp };
+  }
+
   private withRsvpSummary(event: any, allRsvps: Array<{ event_id: string; user_id: string; status: string }>, userId: string) {
     const rsvpCounts = { going: 0, notGoing: 0, maybe: 0 };
     let userRsvp: RsvpStatus | undefined;
@@ -290,12 +305,13 @@ export class EventsService {
   // ── Detail ───────────────────────────────────────────────────────────────
 
   /**
-   * Single event with the full RSVP list, by name, grouped by status.
-   * Not redacted: only verified members can RSVP in the first place
-   * (upsertRsvp() enforces this), so — like message senders in the
-   * corridor module — everyone named here was verified at the moment they
-   * RSVPed, and verification is permanent (SPEC.md §1.2). No redaction
-   * dilemma the way there is for classroom membership rosters.
+   * TASKS_09 TASK 16 — single event with RSVP COUNTS + the caller's own
+   * status (event detail bottom sheet), not the full named RSVP list —
+   * that's a different UI (nobody in this app's mockups shows "who's
+   * going" by name), so counts-only matches what the detail sheet
+   * actually renders. Not redacted: only verified members can RSVP in the
+   * first place (upsertRsvp() enforces this), so verification status is a
+   * non-issue here either way.
    */
   async getEventDetail(userId: string, classroomId: string, eventId: string) {
     const resolvedId = await this.resolveClassroomId(classroomId);
@@ -311,7 +327,7 @@ export class EventsService {
 
     const { data: event } = await this.supabase
       .from('events')
-      .select('id, classroom_id, created_by, title, event_date, location, description, is_online, created_at, channel')
+      .select('id, classroom_id, created_by, title, event_date, location, description, is_online, created_at, channel, creator:profiles!events_created_by_fkey(id, full_name, avatar_url)')
       .eq('id', eventId)
       .eq('classroom_id', classroomId)
       .maybeSingle();
@@ -325,30 +341,19 @@ export class EventsService {
 
     const { data: rsvps } = await this.supabase
       .from('rsvps')
-      .select('user_id, status, profile:profiles(id, full_name, avatar_url)')
+      .select('user_id, status')
       .eq('event_id', eventId);
 
-    const grouped: Record<'going' | 'notGoing' | 'maybe', Array<{ userId: string; fullName: string; avatarUrl: string | null }>> = {
-      going: [],
-      notGoing: [],
-      maybe: [],
-    };
-
-    for (const r of rsvps ?? []) {
-      const entry = {
-        userId:    r.user_id,
-        fullName:  (r.profile as any)?.full_name ?? 'Unknown',
-        avatarUrl: (r.profile as any)?.avatar_url ?? null,
-      };
-      if (r.status === RsvpStatus.GOING) grouped.going.push(entry);
-      else if (r.status === RsvpStatus.NOT_GOING) grouped.notGoing.push(entry);
-      else if (r.status === RsvpStatus.MAYBE) grouped.maybe.push(entry);
-    }
+    const creator = event.creator as any;
 
     return {
       id:          event.id,
       classroomId: event.classroom_id,
-      createdBy:   event.created_by,
+      createdBy: {
+        id:        event.created_by,
+        fullName:  creator?.full_name ?? null,
+        avatarUrl: creator?.avatar_url ?? null,
+      },
       title:       event.title,
       eventDate:   event.event_date,
       location:    event.location,
@@ -356,31 +361,36 @@ export class EventsService {
       isOnline:    event.is_online,
       createdAt:   event.created_at,
       channel:     event.channel,
-      rsvps:       grouped,
+      rsvps:       this.rsvpSummary(rsvps ?? [], userId),
     };
   }
 
   // ── RSVP ─────────────────────────────────────────────────────────────────
 
-  /** Upserts the caller's RSVP — rsvps has UNIQUE(event_id, user_id), so this both creates and updates. */
+  /**
+   * Upserts the caller's RSVP — rsvps has UNIQUE(event_id, user_id), so
+   * this both creates and updates. TASKS_09 TASK 16 — returns the
+   * event's updated RSVP counts + the caller's new status (not the raw
+   * upserted row), so the RSVP detail sheet can refresh its counts from
+   * the response instead of re-fetching the whole event.
+   */
   async upsertRsvp(userId: string, classroomId: string, eventId: string, dto: RsvpDto, req?: Request) {
     await this.assertCanAccessEvent(userId, classroomId, eventId);
 
-    const { data, error } = await this.supabase
+    const { error } = await this.supabase
       .from('rsvps')
       .upsert(
         { event_id: eventId, user_id: userId, status: dto.status, updated_at: new Date().toISOString() },
         { onConflict: 'event_id,user_id' },
-      )
-      .select()
-      .single();
+      );
 
-    if (error || !data) {
+    if (error) {
       this.logger.error('Failed to save RSVP', { error, userId, eventId });
       throw new BadRequestException('Failed to save your RSVP. Please try again.');
     }
 
-    return data;
+    const { data: rsvps } = await this.supabase.from('rsvps').select('user_id, status').eq('event_id', eventId);
+    return this.rsvpSummary(rsvps ?? [], userId);
   }
 
   async removeRsvp(userId: string, classroomId: string, eventId: string): Promise<void> {
