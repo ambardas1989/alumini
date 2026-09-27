@@ -1,17 +1,15 @@
 /**
- * DmService — 1:1 direct messages between verified members of a shared
- * classroom (TASKS_03.md TASK 06). No read receipts beyond `is_read`, no
- * typing indicators, no online status.
+ * DmService — 1:1 direct messages between any two platform users
+ * (TASKS_09.md TASK 13). No read receipts beyond `is_read`, no typing
+ * indicators, no online status.
  *
- * ACCESS CONTROL: getMessages() and sendMessage() both require the two
- * users to share at least one classroom where BOTH have
- * verification_status = 'verified' — a plain 'pending'/'pending_auto'
- * membership does not qualify here, unlike corridor's classroom-channel
- * degraded-read mode. DMs are an explicit trust escalation (exchanging a
- * private channel), not a group-read fallback.
+ * ACCESS CONTROL: sendMessage()/getMessages() have no classroom or
+ * verification-status requirement — any user can message any other user.
+ * The only validation is sender != recipient, non-empty content up to
+ * 2000 chars, and the recipient existing in `profiles`.
  */
 
-import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 import { getRange } from '@alumini/utils';
@@ -202,16 +200,6 @@ export class DmService {
   async getMessages(userId: string, otherUserId: string, page = 0): Promise<DmMessage[]> {
     this.appLogger.debug('[DM:messages] entry', { userId, otherUserId, page });
 
-    let hasShared = true;
-    try {
-      await this.assertSharedVerifiedClassroom(userId, otherUserId);
-    } catch (e) {
-      hasShared = false;
-      throw e;
-    } finally {
-      this.appLogger.debug('[DM:messages] shared classroom check', { hasShared });
-    }
-
     const { from, to } = getRange(page, DM_PAGE_SIZE);
 
     const { data, error } = await this.supabase
@@ -245,14 +233,8 @@ export class DmService {
   async sendMessage(senderId: string, recipientId: string, content: string): Promise<DmMessage> {
     this.appLogger.debug('[DM:send] entry', { senderId, recipientId, contentLength: content?.length });
 
-    let hasShared = true;
-    try {
-      await this.assertSharedVerifiedClassroom(senderId, recipientId);
-    } catch (e) {
-      hasShared = false;
-      throw e;
-    } finally {
-      this.appLogger.debug('[DM:send] shared classroom check', { hasShared });
+    if (senderId === recipientId) {
+      throw new BadRequestException('You cannot message yourself');
     }
 
     const trimmed = content?.trim() ?? '';
@@ -261,6 +243,11 @@ export class DmService {
     }
     if (trimmed.length > 2000) {
       throw new BadRequestException('Message cannot exceed 2000 characters');
+    }
+
+    const { data: recipient } = await this.supabase.from('profiles').select('id').eq('id', recipientId).maybeSingle();
+    if (!recipient) {
+      throw new BadRequestException('Recipient not found');
     }
 
     const { data: message, error } = await this.supabase
@@ -310,32 +297,6 @@ export class DmService {
         details: error.details,
       });
       throw new BadRequestException('Failed to mark messages as read');
-    }
-  }
-
-  /**
-   * Shared gate for getMessages()/sendMessage(): both users must be a
-   * VERIFIED member (not pending/pending_auto/rejected) of at least one
-   * common classroom.
-   */
-  private async assertSharedVerifiedClassroom(userId: string, otherUserId: string): Promise<void> {
-    this.appLogger.debug('[DM:sharedClassroom] entry', { userId, otherUserId });
-
-    const [{ data: mineRows }, { data: theirRows }] = await Promise.all([
-      this.supabase.from('memberships').select('classroom_id').eq('user_id', userId).eq('verification_status', 'verified'),
-      this.supabase
-        .from('memberships')
-        .select('classroom_id')
-        .eq('user_id', otherUserId)
-        .eq('verification_status', 'verified'),
-    ]);
-
-    const mineSet = new Set((mineRows ?? []).map((r) => r.classroom_id));
-    const shared = (theirRows ?? []).some((r) => mineSet.has(r.classroom_id));
-
-    if (!shared) {
-      this.appLogger.warn('[DM:sharedClassroom] no shared classroom', { userId, otherUserId });
-      throw new ForbiddenException('You can only message verified members of your classrooms');
     }
   }
 

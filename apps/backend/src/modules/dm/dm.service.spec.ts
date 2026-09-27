@@ -4,10 +4,10 @@
  * Covers:
  * - getConversations(): groups rows by counterparty, correct shape (user,
  *   lastMessage, unreadCount), most-recent-first
- * - getMessages(): throws ForbiddenException with no shared verified
- *   classroom
- * - sendMessage(): validates content length (empty, over 2000 chars);
- *   throws ForbiddenException with no shared verified classroom
+ * - getMessages(): returns the thread for any two users, no classroom or
+ *   verification requirement (TASKS_09 TASK 13)
+ * - sendMessage(): validates content length (empty, over 2000 chars),
+ *   rejects self-messaging, rejects a non-existent recipient
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -171,25 +171,8 @@ describe('DmService', () => {
   // ── getMessages() ────────────────────────────────────────────────────────
 
   describe('getMessages()', () => {
-    it('throws ForbiddenException when the two users share no verified classroom', async () => {
+    it('returns the thread, oldest first, with no classroom or verification requirement', async () => {
       mockTables({
-        memberships: chain(
-          { data: [{ classroom_id: 'class-1' }], error: null },
-          { data: [{ classroom_id: 'class-2' }], error: null },
-        ),
-      });
-
-      await expect(service.getMessages('me', 'other')).rejects.toThrow(
-        'You can only message verified members of your classrooms',
-      );
-    });
-
-    it('returns the thread, oldest first, when a shared verified classroom exists', async () => {
-      mockTables({
-        memberships: chain(
-          { data: [{ classroom_id: 'class-1' }], error: null },
-          { data: [{ classroom_id: 'class-1' }], error: null },
-        ),
         direct_messages: chain({
           data: [
             { id: 'm2', sender_id: 'other', recipient_id: 'me', content: 'newer', is_read: true, is_deleted: false, created_at: '2026-09-20T10:00:00Z' },
@@ -207,41 +190,31 @@ describe('DmService', () => {
   // ── sendMessage() ────────────────────────────────────────────────────────
 
   describe('sendMessage()', () => {
-    const sharedClassroom = () =>
-      chain(
-        { data: [{ classroom_id: 'class-1' }], error: null },
-        { data: [{ classroom_id: 'class-1' }], error: null },
-      );
+    const recipientExists = () => chain({ data: { id: 'other' }, error: null });
 
-    it('throws ForbiddenException when the two users share no verified classroom', async () => {
-      mockTables({
-        memberships: chain(
-          { data: [{ classroom_id: 'class-1' }], error: null },
-          { data: [{ classroom_id: 'class-2' }], error: null },
-        ),
-      });
-
-      await expect(service.sendMessage('me', 'other', 'hello')).rejects.toThrow(
-        'You can only message verified members of your classrooms',
-      );
+    it('rejects sending a message to yourself', async () => {
+      await expect(service.sendMessage('me', 'me', 'hello')).rejects.toThrow('You cannot message yourself');
     });
 
     it('rejects empty content', async () => {
-      mockTables({ memberships: sharedClassroom() });
       await expect(service.sendMessage('me', 'other', '   ')).rejects.toThrow('Message cannot be empty');
     });
 
     it('rejects content over 2000 characters', async () => {
-      mockTables({ memberships: sharedClassroom() });
       const tooLong = 'a'.repeat(2001);
       await expect(service.sendMessage('me', 'other', tooLong)).rejects.toThrow(
         'Message cannot exceed 2000 characters',
       );
     });
 
-    it('creates the message when content and shared classroom are both valid', async () => {
+    it('rejects a non-existent recipient', async () => {
+      mockTables({ profiles: chain({ data: null, error: null }) });
+      await expect(service.sendMessage('me', 'ghost', 'hello')).rejects.toThrow('Recipient not found');
+    });
+
+    it('creates the message when content is valid and the recipient exists', async () => {
       mockTables({
-        memberships: sharedClassroom(),
+        profiles: recipientExists(),
         direct_messages: chain({
           data: {
             id: 'new-msg',

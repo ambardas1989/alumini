@@ -400,7 +400,8 @@ Commit: "fix: pending filter includes pending_auto, admin verify buttons on memb
 
 ---
 
-## TASK 13 — Fix: DM open to all users, no restrictions [PENDING]
+## TASK 13 — Fix: DM open to all users, no restrictions [DONE]
+Note: Removed assertSharedVerifiedClassroom() and its calls from getMessages()/sendMessage() in dm.service.ts. Added sender!=recipient and recipient-exists-in-profiles checks to sendMessage(). Frontend already had no verification gating on the Message button (MemberListModal.tsx) or in messages/page.tsx — no changes needed there. Updated dm.service.spec.ts accordingly. Backend build + full test suite (16 suites) pass.
 
 DMs should be completely open — any user can message
 any other user on the platform. No shared classroom check,
