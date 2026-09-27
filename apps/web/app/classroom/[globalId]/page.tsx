@@ -147,7 +147,7 @@ export default function ClassroomPage() {
   const [pollingStopped, setPollingStopped] = useState(false);
 
   const [members, setMembers] = useState<ClassroomMember[]>([]);
-  const [memberStats, setMemberStats] = useState({ verifiedCount: 0 });
+  const [memberStats, setMemberStats] = useState({ verifiedCount: 0, pendingCount: 0 });
 
   const [showInfoSheet, setShowInfoSheet] = useState(false);
   const [showMemberModal, setShowMemberModal] = useState(false);
@@ -261,6 +261,7 @@ export default function ClassroomPage() {
     setMembers(all);
     setMemberStats({
       verifiedCount: all.filter((m) => m.verificationStatus === 'verified').length,
+      pendingCount: all.filter((m) => m.verificationStatus === 'pending' || m.verificationStatus === 'pending_auto').length,
     });
   }, [classroom]);
 
@@ -621,8 +622,13 @@ export default function ClassroomPage() {
         batchYear={classroom.batchYear}
         memberCount={classroom.memberCount}
         verifiedCount={memberStats.verifiedCount}
+        pendingCount={memberStats.pendingCount}
+        city={classroom.city ?? classroom.institution.cityCode ?? null}
         userRole={membership.userRole}
         coverUrl={classroom.coverUrl}
+        canUploadCover={
+          membership.userRole === 'admin' || user?.id === classroom.createdBy || membership.verificationStatus === 'verified'
+        }
         onCoverUpdated={(coverUrl) => setClassroom((prev) => (prev ? { ...prev, coverUrl } : prev))}
         onStatsClick={() => setShowInfoSheet(true)}
       />

@@ -882,6 +882,30 @@ export class ClassroomService {
   // ── Cover photo ──────────────────────────────────────────────────────────
 
   /**
+   * TASKS_09 TASK 15 FIX C — widened from admin-only to any VERIFIED
+   * member (plus the creator/admin, who may not have re-verified since
+   * creating it) — the mockup's camera-icon overlay is meant to be a
+   * casual "anyone can freshen up the cover photo" action, not an admin
+   * setting like updateClassroom()'s other fields.
+   */
+  private async assertCanUploadCover(actorId: string, classroomId: string): Promise<void> {
+    const { data: membership } = await this.supabase
+      .from('memberships')
+      .select('role, verification_status, is_creator')
+      .eq('user_id', actorId)
+      .eq('classroom_id', classroomId)
+      .maybeSingle();
+
+    const allowed =
+      !!membership &&
+      (membership.verification_status === 'verified' || membership.role === 'admin' || membership.is_creator);
+
+    if (!allowed) {
+      throw new ForbiddenException('Only a verified member of this classroom can do this');
+    }
+  }
+
+  /**
    * TASKS_08 TASK 04 — uploads to Storage using the service-role client
    * (bypassing RLS, which can never pass for this app's custom-JWT
    * sessions — see ClassroomController.updateCover()'s comment) and saves
@@ -889,7 +913,7 @@ export class ClassroomService {
    * Storage and just POSTing the URL here.
    */
   async uploadCover(classroomId: string, actorId: string, file: { buffer: Buffer; mimetype: string; size: number }) {
-    await this.assertClassroomAdmin(actorId, classroomId);
+    await this.assertCanUploadCover(actorId, classroomId);
 
     this.appLogger.debug('[CLASSROOM:cover] upload start', { classroomId, size: file.size, type: file.mimetype });
 

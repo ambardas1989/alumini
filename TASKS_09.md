@@ -484,7 +484,8 @@ Commit: "fix: theme toggle to profile, classroom card — icon only count, event
 
 ---
 
-## TASK 15 — Fix: classroom header stats and layout [PENDING]
+## TASK 15 — Fix: classroom header stats and layout [DONE]
+Note: Subtitle now shows "Class {identity}" only (no "Batch of {year}"); stats row is icon+number, dot-separated: 👥 members, ✓ verified, 📅 batchYear (no "(N years ago)"), ⏳ pendingCount (only if >0, computed client-side from the paginated member list), 📍 city (classroom.city falling back to institution.cityCode, only if present). Cover banner overlay changed to the specified rgba(0,0,0,0.5)→rgba(0,0,0,0.7) gradient. Cover upload widened backend+frontend from admin-only to any verified member + creator + admin (new ClassroomService.assertCanUploadCover(), replacing assertClassroomAdmin() for this one endpoint only — updateClassroom() keeps the stricter admin-only check). Builds + full test suite (16 backend suites/384 tests + utils) pass.
 
 Read apps/web/app/classroom/[globalId]/page.tsx
 

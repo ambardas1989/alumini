@@ -199,7 +199,7 @@ export class ClassroomController {
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('cover', { limits: { fileSize: 12 * 1024 * 1024 } }))
-  @ApiOperation({ summary: "Upload the classroom cover photo — multipart, field name 'cover', max 10MB, JPEG/PNG/WebP, verified admin of this classroom only" })
+  @ApiOperation({ summary: "Upload the classroom cover photo — multipart, field name 'cover', max 10MB, JPEG/PNG/WebP, any verified member (or the creator/admin) of this classroom" })
   async updateCover(
     @CurrentUser() authToken: AuthTokenPayload,
     @Param('id') classroomId: string,

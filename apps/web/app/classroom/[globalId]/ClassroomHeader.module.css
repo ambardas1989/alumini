@@ -127,9 +127,3 @@
 .statsRow svg {
   color: rgba(255, 255, 255, 0.7);
 }
-
-.yearsAgo {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.45);
-  margin-inline-start: 2px;
-}

@@ -19,9 +19,15 @@ interface ClassroomHeaderProps {
   batchYear: number;
   memberCount: number;
   verifiedCount: number;
+  /** TASKS_09 TASK 15 FIX B — pending + pending_auto members; hidden entirely when 0. */
+  pendingCount: number;
+  /** TASKS_09 TASK 15 FIX B — classroom's own city, falling back to its institution's cityCode; hidden entirely when neither is available. */
+  city?: string | null;
   /** FIX 3 — the CURRENT user's own role in this classroom, shown as a badge so they can tell why a channel is locked. */
   userRole: string | null;
   coverUrl?: string | null;
+  /** TASKS_09 TASK 15 FIX C — widened from admin-only to any verified member + creator + admin. */
+  canUploadCover: boolean;
   onCoverUpdated: (coverUrl: string) => void;
   onStatsClick: () => void;
 }
@@ -62,8 +68,11 @@ export function ClassroomHeader({
   batchYear,
   memberCount,
   verifiedCount,
+  pendingCount,
+  city,
   userRole,
   coverUrl,
+  canUploadCover,
   onCoverUpdated,
   onStatsClick,
 }: ClassroomHeaderProps) {
@@ -75,11 +84,6 @@ export function ClassroomHeader({
 
   const identity = grade ? `${grade}${section ?? ''}` : (program ?? name);
   const roleBadgeClass = userRole ? ROLE_BADGE_CLASS[userRole] : undefined;
-  const isAdmin = userRole === 'admin';
-  // FIX C — "(N years ago)" is only worth showing once a batch has
-  // actually graduated; a same-year or future batch has nothing to be
-  // "ago" about.
-  const yearsAgo = new Date().getFullYear() - batchYear;
 
   const handleCoverFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const chosen = e.target.files?.[0];
@@ -119,24 +123,34 @@ export function ClassroomHeader({
   return (
     <header
       className={styles.header}
-      style={coverUrl ? { backgroundImage: `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+      style={
+        coverUrl
+          ? { backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(${coverUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+          : undefined
+      }
     >
       <button type="button" className={styles.back} onClick={() => router.back()} aria-label={t('back')}>
         ←
       </button>
       <div className={styles.titleBlock}>
         <p className={styles.name}>{institutionName}</p>
-        <p className={styles.subtitle}>
-          {t('classroomBatch', { identity, year: batchYear })}
-        </p>
+        {/* TASKS_09 TASK 15 FIX A — "Batch of {year}" dropped from here
+            entirely; the batch year now shows once, as 📅 {year} in the
+            stats row below, with no prefix/suffix. */}
+        <p className={styles.subtitle}>{t('classroomIdentity', { identity })}</p>
       </div>
       {roleBadgeClass && (
         <span className={`${styles.roleBadge} ${styles[roleBadgeClass]}`}>{t(`role.${userRole}`)}</span>
       )}
-      {/* FIX C — icon+number stats instead of text labels, matching the
-          mockup exactly: members/verified icons, then just the batch year
-          (no "Batch of" prefix — that's already in the subtitle above). */}
-      <button type="button" className={styles.statsRow} onClick={onStatsClick} aria-label={t('statsRowLabel', { memberCount, verifiedCount, batchYear })}>
+      {/* TASKS_09 TASK 15 FIX B — icon+number stats only, dot-separated:
+          members, verified, batch year, pending (only if >0), city (only
+          if known). "(N years ago)" is removed entirely, not just hidden. */}
+      <button
+        type="button"
+        className={styles.statsRow}
+        onClick={onStatsClick}
+        aria-label={t('statsRowLabel', { memberCount, verifiedCount, batchYear, pendingCount, city: city ?? '' })}
+      >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
           <circle cx="9" cy="7" r="4" />
@@ -149,11 +163,26 @@ export function ClassroomHeader({
         </svg>
         <span>{verifiedCount}</span>
         <span aria-hidden="true">·</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="18" rx="2" />
+          <path d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
         <span>{batchYear}</span>
-        {yearsAgo > 0 && <span className={styles.yearsAgo}>{t('yearsAgo', { count: yearsAgo })}</span>}
+        {pendingCount > 0 && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>⏳ {pendingCount}</span>
+          </>
+        )}
+        {city && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>📍 {city}</span>
+          </>
+        )}
       </button>
 
-      {isAdmin && (
+      {canUploadCover && (
         <>
           <button
             type="button"

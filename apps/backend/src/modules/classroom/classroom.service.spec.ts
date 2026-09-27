@@ -711,4 +711,39 @@ describe('ClassroomService', () => {
       );
     });
   });
+
+  // TASKS_09 TASK 15 FIX C — cover upload widened from admin-only to any
+  // verified member (or the creator/admin). Only the permission check is
+  // exercised here (throws before reaching Storage, which this spec's
+  // Supabase mock doesn't simulate) — same scoping as updateClassroom()'s
+  // own tests above.
+  describe('uploadCover() — permission check', () => {
+    it('throws ForbiddenException when the caller has no membership', async () => {
+      mockTables({ memberships: chain({ data: null, error: null }) });
+
+      await expect(
+        service.uploadCover('class-001', 'user-1', { buffer: Buffer.from(''), mimetype: 'image/png', size: 1 }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws ForbiddenException for an unverified, non-admin, non-creator member', async () => {
+      mockTables({
+        memberships: chain({ data: { role: 'student', verification_status: 'pending', is_creator: false }, error: null }),
+      });
+
+      await expect(
+        service.uploadCover('class-001', 'user-1', { buffer: Buffer.from(''), mimetype: 'image/png', size: 1 }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows an unverified creator (creator/admin no longer needs verified status)', async () => {
+      mockTables({
+        memberships: chain({ data: { role: 'student', verification_status: 'pending', is_creator: true }, error: null }),
+      });
+
+      await expect(
+        service.uploadCover('class-001', 'user-1', { buffer: Buffer.from(''), mimetype: 'image/png', size: 1 }),
+      ).rejects.not.toThrow(ForbiddenException);
+    });
+  });
 });

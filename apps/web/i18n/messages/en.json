@@ -490,14 +490,14 @@
     },
     "header": {
       "back": "Back",
-      "classroomBatch": "Class {identity} · Batch of {year}",
+      "classroomIdentity": "Class {identity}",
       "details": "Details",
       "changeCover": "Change cover photo",
       "coverUpdatedToast": "Cover photo updated",
       "coverErrors": {
         "wrongType": "Choose a JPEG, PNG, or WEBP image",
         "tooLarge": "Image must be under 10MB",
-        "permissionDenied": "Only classroom admins can update the cover photo.",
+        "permissionDenied": "Only verified members can update the cover photo.",
         "uploadFailedGeneric": "Upload failed. Please try again."
       },
       "role": {
@@ -510,8 +510,7 @@
         "staffRoom": "Teachers and admins only",
         "studentAlley": "Students only — private from teachers"
       },
-      "yearsAgo": "{count, plural, one {(# year ago)} other {(# years ago)}}",
-      "statsRowLabel": "{memberCount} members, {verifiedCount} verified, batch of {batchYear}"
+      "statsRowLabel": "{memberCount} members, {verifiedCount} verified, batch of {batchYear}, {pendingCount} pending, {city}"
     },
     "locked": {
       "staff_room": {
