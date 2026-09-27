@@ -45,7 +45,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'update', 'upsert', 'eq', 'is', 'gt', 'in', 'order', 'limit'].forEach(
+  ['select', 'insert', 'update', 'upsert', 'eq', 'neq', 'ilike', 'is', 'gt', 'in', 'order', 'limit'].forEach(
     (method) => {
       builder[method] = jest.fn(() => builder);
     },
@@ -388,6 +388,58 @@ describe('IdentityService', () => {
       await expect(
         service.switchPersona('missing', { type: PersonaType.ALUMNI } as any),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // TASKS_09 TASK 20 — platform-wide user search (messages "New message" overlay).
+  describe('searchUsers()', () => {
+    it('returns [] for a query shorter than 2 characters', async () => {
+      const result = await service.searchUsers('user-1', 'a');
+      expect(result).toEqual([]);
+    });
+
+    it('does an exact email match, capped to 1 result, when the query contains @', async () => {
+      mockTables({
+        profiles: chain({ data: [{ id: 'u2', full_name: 'Priya Sharma', avatar_url: null }], error: null }),
+        memberships: chain({ data: [], error: null }, { data: [], error: null }),
+      });
+
+      const result = await service.searchUsers('user-1', 'priya@example.com');
+      expect(result).toEqual([{ id: 'u2', fullName: 'Priya Sharma', avatarUrl: null, sharedClassroom: null }]);
+    });
+
+    it('does an ILIKE name search and attaches the first shared classroom, never the email', async () => {
+      mockTables({
+        profiles: chain({ data: [{ id: 'u2', full_name: 'Priya Sharma', avatar_url: 'x' }], error: null }),
+        memberships: chain(
+          { data: [{ classroom_id: 'class-1', classroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }], error: null },
+          { data: [{ user_id: 'u2', classroom_id: 'class-1' }], error: null },
+        ),
+      });
+
+      const result = await service.searchUsers('user-1', 'rah');
+      expect(result).toEqual([
+        {
+          id: 'u2',
+          fullName: 'Priya Sharma',
+          avatarUrl: 'x',
+          sharedClassroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' },
+        },
+      ]);
+      expect(result[0]).not.toHaveProperty('email');
+    });
+
+    it('returns sharedClassroom: null when there is no overlap', async () => {
+      mockTables({
+        profiles: chain({ data: [{ id: 'u2', full_name: 'Raj Kumar', avatar_url: null }], error: null }),
+        memberships: chain(
+          { data: [{ classroom_id: 'class-1', classroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }], error: null },
+          { data: [{ user_id: 'u2', classroom_id: 'class-2' }], error: null },
+        ),
+      });
+
+      const result = await service.searchUsers('user-1', 'raj');
+      expect(result).toEqual([{ id: 'u2', fullName: 'Raj Kumar', avatarUrl: null, sharedClassroom: null }]);
     });
   });
 });

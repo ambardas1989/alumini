@@ -851,7 +851,8 @@ accordion, classroom search with filters"
 
 ---
 
-## TASK 20 — Feature: messages tab — new conversation search [PENDING]
+## TASK 20 — Feature: messages tab — new conversation search [DONE]
+Note: New GET /users/search (new UsersController in the identity module, since it owns `profiles`) — exact-match on email when q contains '@' (0-1 result), otherwise ILIKE full_name (up to 10, ordered), always excludes the caller, response never includes email, includes sharedClassroom {name, globalId} via one extra memberships lookup per search (not per result). The existing "+" button/NewConversationOverlay from TASK 04 already had the right shape — repointed it from the classmates-only searchDmRecipients() to this new platform-wide searchUsers(), updated placeholder/empty-state copy ("Search by name or email...", "No users found for '{query}'"); DmService.searchRecipients() is kept as-is for any future classmates-scoped use. Builds + full test suite (16 backend suites/393 tests + utils) pass.
 
 The messages tab needs a "+" button to start new conversations
 by searching any user on the platform by name or email.

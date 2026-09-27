@@ -283,9 +283,9 @@
     },
     "newConversation": {
       "title": "New message",
-      "searchLabel": "Search your classmates...",
-      "searchPlaceholder": "Search your classmates...",
-      "noResults": "You can only message verified members of your classrooms.",
+      "searchLabel": "Search by name or email",
+      "searchPlaceholder": "Search by name or email...",
+      "noResults": "No users found for '{query}'",
       "alsoIn": "Also in {classroom}"
     }
   },

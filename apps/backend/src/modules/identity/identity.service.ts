@@ -550,4 +550,59 @@ export class IdentityService {
       throw new BadRequestException('Failed to disconnect LinkedIn. Please try again.');
     }
   }
+
+  /**
+   * TASKS_09 TASK 20 — messages tab's "New message" search: ANY platform
+   * user by name or exact email, not just classmates (DmService's own
+   * searchRecipients() stays classmates-only — see its own comment; this
+   * is the separate, broader search TASK 20 asks for). Email never
+   * appears in the response, matching the task's own "never include email"
+   * instruction — it's only used server-side as the match criterion.
+   */
+  async searchUsers(callerId: string, q: string) {
+    this.appLogger.debug('[USERS:search] entry', { query: q, userId: callerId });
+
+    const trimmed = q.trim().slice(0, 100);
+    if (trimmed.length < 2) return [];
+
+    const isEmail = trimmed.includes('@');
+    let query = this.supabase.from('profiles').select('id, full_name, avatar_url').neq('id', callerId);
+    query = isEmail
+      ? query.eq('email', trimmed.toLowerCase()).limit(1)
+      : query.ilike('full_name', `%${trimmed}%`).order('full_name', { ascending: true }).limit(10);
+
+    const { data: users, error } = await query;
+
+    if (error) {
+      this.appLogger.error('[USERS:search] failed', { error: error.message, code: error.code });
+      throw new BadRequestException('Failed to search users');
+    }
+
+    this.appLogger.debug('[USERS:search] result', { count: users?.length ?? 0, type: isEmail ? 'email' : 'name' });
+
+    if (!users || users.length === 0) return [];
+
+    const [{ data: mine }, { data: theirs }] = await Promise.all([
+      this.supabase.from('memberships').select('classroom_id, classroom:classrooms(name, globalId:global_id)').eq('user_id', callerId),
+      this.supabase
+        .from('memberships')
+        .select('user_id, classroom_id')
+        .in('user_id', users.map((u) => u.id)),
+    ]);
+
+    const myClassroomById = new Map((mine ?? []).map((m: any) => [m.classroom_id, m.classroom]));
+    const sharedByUser = new Map<string, { name: string; globalId: string }>();
+    for (const row of theirs ?? []) {
+      if (sharedByUser.has(row.user_id)) continue;
+      const classroom = myClassroomById.get(row.classroom_id);
+      if (classroom) sharedByUser.set(row.user_id, { name: classroom.name, globalId: classroom.globalId });
+    }
+
+    return users.map((u) => ({
+      id:        u.id,
+      fullName:  u.full_name,
+      avatarUrl: u.avatar_url,
+      sharedClassroom: sharedByUser.get(u.id) ?? null,
+    }));
+  }
 }

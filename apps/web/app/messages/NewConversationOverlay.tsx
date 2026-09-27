@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
-import type { DmRecipientSearchResult } from '@/lib/api';
+import type { UserSearchResult } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useDebounce } from '@/lib/useDebounce';
 import { useTranslations } from '@/lib/useTranslations';
@@ -21,14 +21,14 @@ interface NewConversationOverlayProps {
   onClose: () => void;
 }
 
-/** TASKS_09 TASK 04 — "New conversation" search overlay. */
+/** TASKS_09 TASK 04/20 — "New message" search overlay: platform-wide, by name or exact email. */
 export function NewConversationOverlay({ onClose }: NewConversationOverlayProps) {
   const router = useRouter();
   const t = useTranslations('messages.newConversation');
 
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, DEBOUNCE_MS);
-  const [results, setResults] = useState<DmRecipientSearchResult[]>([]);
+  const [results, setResults] = useState<UserSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
@@ -45,7 +45,7 @@ export function NewConversationOverlay({ onClose }: NewConversationOverlayProps)
     setSearching(true);
     setError(null);
     api
-      .searchDmRecipients(q)
+      .searchUsers(q)
       .then((data) => {
         if (!cancelled) {
           setResults(data);
@@ -63,9 +63,9 @@ export function NewConversationOverlay({ onClose }: NewConversationOverlayProps)
     };
   }, [debouncedQuery]);
 
-  const handleSelect = (result: DmRecipientSearchResult) => {
+  const handleSelect = (result: UserSearchResult) => {
     onClose();
-    router.push(`/messages?userId=${result.userId}`);
+    router.push(`/messages?userId=${result.id}`);
   };
 
   return (
@@ -88,19 +88,19 @@ export function NewConversationOverlay({ onClose }: NewConversationOverlayProps)
         {error && !searching && <ErrorMessage message={error} />}
 
         {!searching && !error && searched && results.length === 0 && (
-          <p className={styles.noResults}>{t('noResults')}</p>
+          <p className={styles.noResults}>{t('noResults', { query: debouncedQuery.trim() })}</p>
         )}
 
         {!searching && results.length > 0 && (
           <ul className={styles.results}>
             {results.map((result) => (
-              <li key={result.userId}>
+              <li key={result.id}>
                 <button type="button" className={styles.resultRow} onClick={() => handleSelect(result)}>
                   <Avatar avatarUrl={result.avatarUrl} fullName={result.fullName ?? '?'} size="md" />
                   <div className={styles.resultInfo}>
                     <span className={styles.resultName}>{result.fullName}</span>
-                    {result.sharedClassroomName && (
-                      <span className={styles.resultMeta}>{t('alsoIn', { classroom: result.sharedClassroomName })}</span>
+                    {result.sharedClassroom && (
+                      <span className={styles.resultMeta}>{t('alsoIn', { classroom: result.sharedClassroom.name })}</span>
                     )}
                   </div>
                 </button>

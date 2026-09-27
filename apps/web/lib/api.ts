@@ -1166,7 +1166,13 @@ export function getDmConversations(): Promise<DmConversation[]> {
   return request('/dm/conversations');
 }
 
-/** TASKS_09 TASK 04 — "New conversation" search overlay. */
+/**
+ * TASKS_09 TASK 04's classmates-only search — kept for any other caller
+ * that specifically wants "people I share a verified classroom with", but
+ * the messages tab's "New message" overlay now uses the broader
+ * searchUsers() below instead (TASKS_09 TASK 20 — DMs are fully open
+ * per TASK 13, so classmates-only was too narrow for that flow).
+ */
 export interface DmRecipientSearchResult {
   userId: string;
   fullName: string | null;
@@ -1176,6 +1182,18 @@ export interface DmRecipientSearchResult {
 
 export function searchDmRecipients(q: string): Promise<DmRecipientSearchResult[]> {
   return request('/dm/search-recipients', { query: { q } });
+}
+
+/** TASKS_09 TASK 20 — platform-wide user search (messages "New message" overlay), by name or exact email. Never includes email in the response. */
+export interface UserSearchResult {
+  id: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  sharedClassroom: { name: string; globalId: string } | null;
+}
+
+export function searchUsers(q: string): Promise<UserSearchResult[]> {
+  return request('/users/search', { query: { q } });
 }
 
 export function getDmMessages(userId: string, page = 0): Promise<DmMessage[]> {

@@ -13,11 +13,12 @@
 import { Module } from '@nestjs/common';
 import { IdentityService } from './identity.service';
 import { IdentityController } from './identity.controller';
+import { UsersController } from './users.controller';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [AuthModule],
-  controllers: [IdentityController],
+  controllers: [IdentityController, UsersController],
   providers: [IdentityService],
   exports: [IdentityService],
 })
