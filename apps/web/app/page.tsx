@@ -90,6 +90,12 @@ export default function HomePage() {
   // classrooms (a zero-classroom user lands on NewUserLanding instead).
   const [suggested, setSuggested] = useState<ClassroomSearchResult[]>([]);
   const [joiningSuggestedId, setJoiningSuggestedId] = useState<string | null>(null);
+  // TASKS_09 TASK 14 FIX C — role-aware upcoming event counts, fetched
+  // per-classroom after the classroom list itself loads (not blocking) —
+  // GET /v1/events/:classroomId already scopes results to the caller's own
+  // visible channels (EventsService.visibleChannels()), so no separate
+  // role-aware endpoint is needed here.
+  const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -106,9 +112,18 @@ export default function HomePage() {
         api.getNotifications(20),
         api.getProfile(),
       ]);
-      setClassrooms(flatten(myClassrooms));
+      const flat = flatten(myClassrooms);
+      setClassrooms(flat);
       setFeed(notifications);
       setIsPlatformAdmin(profile.isPlatformAdmin);
+
+      Promise.allSettled(flat.map((c) => api.getEvents(c.globalId))).then((results) => {
+        const counts: Record<string, number> = {};
+        results.forEach((result, i) => {
+          if (result.status === 'fulfilled') counts[flat[i].globalId] = result.value.upcoming.length;
+        });
+        setEventCounts(counts);
+      });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -257,6 +272,7 @@ export default function HomePage() {
                         memberCount: classroom.memberCount,
                         institution: { name: classroom.institution.name, type: classroom.institution.type, cityCode: classroom.institution.cityCode, logoUrl: classroom.institution.logoUrl },
                         verificationStatus: classroom.verificationStatus,
+                        upcomingEventsCount: eventCounts[classroom.globalId],
                       } satisfies ClassroomCardData
                     }
                   />

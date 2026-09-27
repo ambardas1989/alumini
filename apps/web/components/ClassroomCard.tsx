@@ -14,6 +14,8 @@ export interface ClassroomCardData {
   /** cityCode, not a resolved city name — this app has no code→name lookup, so it's shown as-is, same as ClassroomCreateForm's institution picker already does. */
   institution?: { name: string; type?: InstitutionType; cityCode?: string; logoUrl?: string };
   verificationStatus?: VerificationStatus;
+  /** TASKS_09 TASK 14 FIX C — role-aware upcoming event count (caller's own visible channels only). Omitted/0 hides the 📅 stat entirely. */
+  upcomingEventsCount?: number;
 }
 
 interface ClassroomCardProps {
@@ -73,8 +75,19 @@ export function ClassroomCard({ classroom, onTap, loading = false }: ClassroomCa
           <>
             <span className={styles.statItem}>
               <UsersIcon />
-              {tCard('memberCount', { count: classroom.memberCount ?? 0 })}
+              {classroom.memberCount ?? 0}
             </span>
+            {!!classroom.upcomingEventsCount && (
+              <>
+                <span className={styles.statSep} aria-hidden="true">
+                  ·
+                </span>
+                <span className={styles.statItem}>
+                  <CalendarIcon />
+                  {classroom.upcomingEventsCount}
+                </span>
+              </>
+            )}
             {classroom.institution?.cityCode && (
               <>
                 <span className={styles.statSep} aria-hidden="true">
@@ -99,6 +112,15 @@ function UsersIcon() {
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
     </svg>
   );
 }

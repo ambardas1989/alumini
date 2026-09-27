@@ -774,6 +774,7 @@
     },
     "account": {
       "sectionLabel": "Account",
+      "appearanceLabel": "Appearance",
       "twoFactorLabel": "Two-factor authentication",
       "enabledBadge": "Enabled",
       "resetButton": "Reset authenticator",

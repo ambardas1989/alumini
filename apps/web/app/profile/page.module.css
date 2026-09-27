@@ -265,6 +265,13 @@
   margin-block-end: 24px;
 }
 
+.accountIconLabel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* TASKS_07 TASK 06 — consolidated "Sign out" tile (this device / all
    devices) — border-top separates it from account settings above,
    distinct from the plain card look every .accountRow above it uses. */

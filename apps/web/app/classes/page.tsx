@@ -51,6 +51,8 @@ export default function ClassesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [classrooms, setClassrooms] = useState<FlatClassroom[]>([]);
+  // TASKS_09 TASK 14 FIX C — see app/page.tsx's identical eventCounts comment.
+  const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
   const [query, setQuery] = useState('');
   const [institutionFilter, setInstitutionFilter] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -78,7 +80,16 @@ export default function ClassesPage() {
     setError(null);
     try {
       const data = await api.getMyClassrooms();
-      setClassrooms(flatten(data));
+      const flat = flatten(data);
+      setClassrooms(flat);
+
+      Promise.allSettled(flat.map((c) => api.getEvents(c.globalId))).then((results) => {
+        const counts: Record<string, number> = {};
+        results.forEach((result, i) => {
+          if (result.status === 'fulfilled') counts[flat[i].globalId] = result.value.upcoming.length;
+        });
+        setEventCounts(counts);
+      });
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -234,6 +245,7 @@ export default function ClassesPage() {
                       memberCount: classroom.memberCount,
                       institution: { name: classroom.institution.name, type: classroom.institution.type, cityCode: classroom.institution.cityCode, logoUrl: classroom.institution.logoUrl },
                       verificationStatus: classroom.verificationStatus,
+                      upcomingEventsCount: eventCounts[classroom.globalId],
                     } satisfies ClassroomCardData
                   }
                 />

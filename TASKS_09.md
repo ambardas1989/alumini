@@ -434,7 +434,8 @@ Commit: "fix: DM fully open — no shared classroom or verification requirement"
 
 ---
 
-## TASK 14 — Fix: theme toggle moves to profile, classroom card updates [PENDING]
+## TASK 14 — Fix: theme toggle moves to profile, classroom card updates [DONE]
+Note: Moved ThemeToggle out of AppShell (deleted, now unused) into a new "Appearance" row in profile page's account section, reusing the existing Switch track/thumb styling with useTheme(). ClassroomCard now shows "👥 N" (icon+number only, no text label) and an optional "📅 N" upcoming-events stat, hidden when 0/unset. Wired eventCounts (per-classroom GET /events/:classroomId, upcoming.length) into app/page.tsx, profile/page.tsx, and classes/page.tsx's "my classrooms" list. Backend already role/channel-scopes listEvents() correctly (EventsService.visibleChannels()) — no backend change needed for the role-aware requirement. Frontend + backend builds and full test suite pass.
 
 THREE UI fixes from home screen observations.
 

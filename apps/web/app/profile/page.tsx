@@ -29,6 +29,8 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ApiError } from '@/lib/api';
 import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useTheme } from '@/lib/useTheme';
+import switchStyles from '@/components/ui/Switch.module.css';
 import styles from './page.module.css';
 
 type FlatClassroom = Classroom & { institution: Institution; verificationStatus: string; userRole: string };
@@ -38,6 +40,7 @@ export default function ProfilePage() {
   const { ready } = useRequireAuth();
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const tTypes = useTranslations('personaTypes');
@@ -46,6 +49,8 @@ export default function ProfilePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [classrooms, setClassrooms] = useState<FlatClassroom[]>([]);
+  // TASKS_09 TASK 14 FIX C — see app/page.tsx's identical eventCounts comment.
+  const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
 
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -102,11 +107,18 @@ export default function ProfilePage() {
     try {
       const [profileData, myClassrooms] = await Promise.all([api.getProfile(), api.getMyClassrooms()]);
       setProfile(profileData);
-      setClassrooms(
-        myClassrooms.flatMap((g) =>
-          g.classes.map((c) => ({ ...c, institution: g.institution }) as FlatClassroom),
-        ),
+      const flat = myClassrooms.flatMap((g) =>
+        g.classes.map((c) => ({ ...c, institution: g.institution }) as FlatClassroom),
       );
+      setClassrooms(flat);
+
+      Promise.allSettled(flat.map((c) => api.getEvents(c.globalId))).then((results) => {
+        const counts: Record<string, number> = {};
+        results.forEach((result, i) => {
+          if (result.status === 'fulfilled') counts[flat[i].globalId] = result.value.upcoming.length;
+        });
+        setEventCounts(counts);
+      });
     } catch (err) {
       setLoadError(getErrorMessage(err));
     } finally {
@@ -689,6 +701,7 @@ export default function ProfilePage() {
                       memberCount: c.memberCount,
                       institution: { name: c.institution.name, type: c.institution.type, cityCode: c.institution.cityCode, logoUrl: c.institution.logoUrl },
                       verificationStatus: c.verificationStatus as ClassroomCardData['verificationStatus'],
+                      upcomingEventsCount: eventCounts[c.globalId],
                     } satisfies ClassroomCardData
                   }
                 />
@@ -707,6 +720,23 @@ export default function ProfilePage() {
             </Link>
 
             <p className={styles.sectionLabel}>{t('account.sectionLabel')}</p>
+
+            <div className={styles.accountRow}>
+              <span className={styles.accountIconLabel}>
+                {theme === 'dark' ? <MoonIcon /> : <SunIcon />}
+                <span className={styles.accountLabel}>{t('account.appearanceLabel')}</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={theme === 'dark'}
+                aria-label={t('account.appearanceLabel')}
+                className={`${switchStyles.track} ${theme === 'dark' ? switchStyles.trackOn : ''}`}
+                onClick={toggleTheme}
+              >
+                <span className={switchStyles.thumb} />
+              </button>
+            </div>
 
             <div className={styles.accountRow}>
               <LinkedInIcon />
@@ -1042,6 +1072,23 @@ function LogoutIcon() {
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
       <path d="m16 17 5-5-5-5" />
       <path d="M21 12H9" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   );
 }
