@@ -786,7 +786,7 @@ export default function ClassroomPage() {
           <ClassInfoSheet
             classroomName={classroom.name}
             institutionName={classroom.institution.name}
-            globalId={classroom.globalId}
+            city={classroom.city ?? classroom.institution.cityCode ?? null}
             createdAt={classroom.createdAt}
             memberCount={classroom.memberCount}
             memberPreview={members.map((m) => ({ userId: m.userId, fullName: m.fullName ?? '', avatarUrl: m.avatarUrl }))}

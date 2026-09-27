@@ -629,7 +629,8 @@ collapse if more than 2, event detail with RSVP change"
 
 ---
 
-## TASK 17 — Fix: classroom details panel [PENDING]
+## TASK 17 — Fix: classroom details panel [DONE]
+Note: FIX A — removed the raw global-ID row from ClassInfoSheet entirely (Share classroom link already carries it in the copied URL). FIX B — institution line now appends " · {city}" (classroom.city, falling back to institution.cityCode) when known. FIX C — verified as already correct: page.tsx's loadEvents() already calls api.getEvents(classroom.id) (the resolved UUID), never the route's globalId string — no bug present; TASK 16 already applied the compact/clickable/collapsible tile format to this same panel. FIX D — verified as already correct: EventCreateModal already receives channel={activeChannel} from the classroom page, so "Create event" from any tab already creates into that tab's channel. Frontend build + full test suite pass.
 
 The classroom details panel (opened via + button) needs fixes.
 

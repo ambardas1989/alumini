@@ -4,7 +4,6 @@ import { useState } from 'react';
 import type { Event as ClassroomEvent } from '@alumini/types';
 import { safeFormatDate } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
-import { useToast } from '@/components/providers/ToastProvider';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { EventTile } from './EventTile';
@@ -21,8 +20,8 @@ interface MemberAvatar {
 interface ClassInfoSheetProps {
   classroomName: string;
   institutionName: string;
-  /** TASKS_08 TASK 07 FIX B — this panel's own explicit fields. */
-  globalId: string;
+  /** TASKS_09 TASK 17 FIX B — classroom's own city, falling back to its institution's cityCode; omitted entirely when neither is available. */
+  city?: string | null;
   createdAt: string;
   memberCount: number;
   memberPreview: MemberAvatar[];
@@ -41,7 +40,7 @@ const PREVIEW_LIMIT = 8;
 export function ClassInfoSheet({
   classroomName,
   institutionName,
-  globalId,
+  city,
   createdAt,
   memberCount,
   memberPreview,
@@ -55,36 +54,27 @@ export function ClassInfoSheet({
 }: ClassInfoSheetProps) {
   const t = useTranslations('classroom.infoSheet');
   const tEvents = useTranslations('classroom.events.collapse');
-  const { showToast } = useToast();
-  const [copied, setCopied] = useState(false);
   const [eventsExpanded, setEventsExpanded] = useState(false);
   const visible = memberPreview.slice(0, PREVIEW_LIMIT);
   const overflow = memberCount - visible.length;
   const visibleEvents = eventsExpanded ? upcomingEvents : upcomingEvents.slice(0, COLLAPSED_EVENT_LIMIT);
   const hiddenEventCount = upcomingEvents.length - COLLAPSED_EVENT_LIMIT;
 
-  const handleCopyGlobalId = async () => {
-    try {
-      await navigator.clipboard.writeText(globalId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      showToast(t('copyFailed'), 'error');
-    }
-  };
-
   return (
     <div className={styles.wrap}>
       <div className={styles.header}>
         <p className={styles.name}>{classroomName}</p>
-        <p className={styles.institution}>{institutionName}</p>
+        {/* TASKS_09 TASK 17 FIX B — city appended to the institution line when known, e.g. "KV Fort William · Kolkata". */}
+        <p className={styles.institution}>
+          {institutionName}
+          {city ? ` · ${city}` : ''}
+        </p>
       </div>
 
+      {/* TASKS_09 TASK 17 FIX A — the raw global ID row is gone; "Share
+          classroom link" below already carries the same ID in its copied
+          URL, so showing it twice was redundant. */}
       <section className={styles.section}>
-        <button type="button" className={styles.globalIdRow} onClick={handleCopyGlobalId}>
-          <span className={styles.globalId}>{globalId}</span>
-          <span className={styles.copyHint}>{copied ? t('copied') : t('copyGlobalId')}</span>
-        </button>
         <p className={styles.createdAt}>{t('createdOn', { date: safeFormatDate(createdAt) })}</p>
       </section>
 

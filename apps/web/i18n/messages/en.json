@@ -588,9 +588,6 @@
       "leaveConfirmTitle": "Leave {name}?",
       "leaveConfirmMessage": "You will lose access to all messages.",
       "leaveButton": "Leave",
-      "copyGlobalId": "Tap to copy",
-      "copied": "Copied!",
-      "copyFailed": "Could not copy — long-press to select instead",
       "createdOn": "Created {date}"
     },
     "eventCreate": {
