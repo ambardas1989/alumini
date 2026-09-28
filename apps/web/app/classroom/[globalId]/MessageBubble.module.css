@@ -34,6 +34,19 @@
   color: var(--color-text-muted);
 }
 
+/* TASKS_09 TASK 21 FIX C — small purple "Teacher"/"Admin" pill next to a staff sender's name. */
+.roleTag {
+  display: inline-block;
+  margin-inline-start: 5px;
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .bubble {
   padding: 9px 13px;
   font-size: 13px;

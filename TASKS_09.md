@@ -921,7 +921,8 @@ Commit: "feat: messages tab — new conversation search by name or email,
 
 ---
 
-## TASK 21 — Fix: classroom view — match mockup exactly [PENDING]
+## TASK 21 — Fix: classroom view — match mockup exactly [DONE]
+Note: Read docs/mockups/alumni-demo.html's #s2 screen as ground truth for exact markup/colors where it conflicted with the task's own prose (e.g. mockup's actual ✅/⏳ stats icons and circular institution icon, vs. the task text's ✗/rounded-square). FIX A — ClassroomHeader rewritten to a single solid #1c1c2e header: back arrow, 34px circle institution emoji, one-line "{institution} · {identity} · {year}", icon-only space-separated stats row (👥/✅/⏳); dropped the earlier per-task-15 dot-separated stats/role-badge/city row to match this exact mockup. FIX B — ChannelTabs: removed the standalone +/ℹ button; a ⓘ badge now appears inline after the active tab's label only, opens the same info panel. FIX C — MessageBubble avatars bumped to 28px (Avatar's existing initials/color-hash already matched the spec); non-staff senders now show "First L." short names, staff show full name + a "Teacher"/"Admin" pill, via a new senderRole lookup from the already-loaded member roster. FIX D — new chat-specific event card (dark header bar "🎉 Event · X created", white body, overlapping going-attendee avatars from a new goingAttendees field EventsService.listEvents()/backend now returns, ✓ Going/Pass/? Maybe quick-RSVP pills with optimistic update) — kept the existing generic EventTile for ClassInfoSheet's list, since that one's compact/collapsible format is unrelated to this in-chat design. FIX E — MessageInput gained a paperclip button that shows an "Attachments coming soon" toast (real upload flow stays deferred to TASKS_08 TASK 09). Builds + full test suite (16 backend suites/393 tests + utils) pass.
 
 The classroom view is far from the mockup. This task
 brings it in line with the original design.

@@ -213,7 +213,10 @@ export class EventsService {
 
     const { data: events, error } = await this.supabase
       .from('events')
-      .select('id, classroom_id, created_by, title, event_date, location, description, is_online, created_at, channel')
+      .select(
+        'id, classroom_id, created_by, title, event_date, location, description, is_online, created_at, channel, ' +
+          'creator:profiles!events_created_by_fkey(id, full_name, avatar_url)',
+      )
       .eq('classroom_id', classroomId)
       .in('channel', visibleChannels)
       .order('event_date', { ascending: true });
@@ -223,15 +226,25 @@ export class EventsService {
       throw new BadRequestException('Failed to load events');
     }
 
-    const visible = (events ?? []).filter((event) => this.canSeeEvent(membership, event));
+    // TASKS_09 TASK 21 FIX D — cast to any: the `!events_created_by_fkey`
+    // hint (needed so PostgREST embeds the CREATOR's profile, not every
+    // profile that ever RSVPed) resolves to a supabase-js "GenericStringError"
+    // generic here that TS can't reconcile with a plain array type, the
+    // same reason getEventDetail()'s identical select below casts its own
+    // `event.creator` — this is a compile-time-only workaround, not a runtime concern.
+    const visible = ((events ?? []) as any[]).filter((event) => this.canSeeEvent(membership, event));
 
     if (visible.length === 0) {
       return { upcoming: [], past: [] };
     }
 
+    // TASKS_09 TASK 21 FIX D — the chat event card shows up to 4 "going"
+    // attendee avatars, so this now joins profiles for the RSVP rows too
+    // (previously just event_id/user_id/status — enough for counts, not
+    // for faces/names).
     const { data: rsvps } = await this.supabase
       .from('rsvps')
-      .select('event_id, user_id, status')
+      .select('event_id, user_id, status, profile:profiles(id, full_name, avatar_url)')
       .in('event_id', visible.map((e) => e.id));
 
     const enriched = visible.map((event) => this.withRsvpSummary(event, rsvps ?? [], userId));
@@ -274,22 +287,35 @@ export class EventsService {
     return { ...counts, myRsvp };
   }
 
-  private withRsvpSummary(event: any, allRsvps: Array<{ event_id: string; user_id: string; status: string }>, userId: string) {
+  private withRsvpSummary(event: any, allRsvps: any[], userId: string) {
     const rsvpCounts = { going: 0, notGoing: 0, maybe: 0 };
     let userRsvp: RsvpStatus | undefined;
+    const goingAttendees: Array<{ id: string; fullName: string; avatarUrl: string | null }> = [];
+    const MAX_GOING_ATTENDEES = 4;
 
     for (const r of allRsvps) {
       if (r.event_id !== event.id) continue;
-      if (r.status === RsvpStatus.GOING) rsvpCounts.going++;
-      else if (r.status === RsvpStatus.NOT_GOING) rsvpCounts.notGoing++;
+      if (r.status === RsvpStatus.GOING) {
+        rsvpCounts.going++;
+        // profile comes back as a single object for this to-one relation,
+        // but defensively unwrap same as elsewhere in this codebase
+        // (DmService.searchRecipients()) in case a join ever fans out.
+        const profile = Array.isArray(r.profile) ? r.profile[0] : r.profile;
+        if (goingAttendees.length < MAX_GOING_ATTENDEES && profile) {
+          goingAttendees.push({ id: profile.id, fullName: profile.full_name, avatarUrl: profile.avatar_url });
+        }
+      } else if (r.status === RsvpStatus.NOT_GOING) rsvpCounts.notGoing++;
       else if (r.status === RsvpStatus.MAYBE) rsvpCounts.maybe++;
       if (r.user_id === userId) userRsvp = r.status as RsvpStatus;
     }
+
+    const creator = event.creator as { id: string; full_name: string; avatar_url: string | null } | undefined;
 
     return {
       id:           event.id,
       classroomId:  event.classroom_id,
       createdBy:    event.created_by,
+      createdByName: creator?.full_name ?? null,
       title:        event.title,
       eventDate:    event.event_date,
       location:     event.location,
@@ -299,6 +325,7 @@ export class EventsService {
       channel:      event.channel,
       rsvpCounts,
       userRsvp,
+      goingAttendees,
     };
   }
 

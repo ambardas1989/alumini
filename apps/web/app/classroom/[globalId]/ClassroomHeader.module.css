@@ -1,16 +1,14 @@
+/* TASKS_09 TASK 21 FIX A — solid dark purple by default, matching the
+   mockup exactly (no gradient); a cover photo (TASK 15 FIX C) still
+   overrides this with its own image + dark overlay via inline style. */
 .header {
   position: relative;
   flex-shrink: 0;
   display: flex;
-  /* flex-wrap is required for .statsRow/.detailsLink's flex-basis:100% to
-     actually push them onto their own line below back+titleBlock — it was
-     missing here before, so those two rows were competing for space on
-     the SAME line as the back button instead of wrapping underneath it. */
-  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
-  background: linear-gradient(to bottom, var(--classroom-gradient-from), var(--classroom-gradient-to));
+  padding: 9px 13px;
+  background: #1c1c2e;
 }
 
 /* TASKS_05 TASK 05 — admin-only cover upload trigger, bottom right. Not
@@ -53,77 +51,42 @@
   font-size: 15px;
 }
 
+.institutionIcon {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
 .titleBlock {
   flex: 1;
   min-width: 0;
 }
 
 .name {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 800;
   color: #fff;
-  line-height: 1.3;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.subtitle {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-block-start: 1px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* FIX 3 — current user's role badge. Deliberately literal colors here
-   (dark/purple/blue), not the shared Badge component's palette — that
-   component's 'student' variant is a neutral gray elsewhere in the app,
-   but this specific spec asks for a distinct blue. */
-.roleBadge {
-  flex-basis: 100%;
-  align-self: flex-start;
-  margin-inline-start: 44px;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 20px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.roleBadgeAdmin {
-  background: #1c1c2e;
-  color: #fff;
-}
-
-.roleBadgeTeacher {
-  background: #ede9fe;
-  color: #6d28d9;
-}
-
-.roleBadgeStudent {
-  background: #dbeafe;
-  color: #1e40af;
 }
 
 .statsRow {
-  flex-basis: 100%;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-  padding-inline-start: 44px;
-  margin-block-start: 4px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  gap: 8px;
+  margin-block-start: 1px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.55);
   background: none;
   border: none;
   text-align: start;
   justify-content: flex-start;
-}
-
-.statsRow svg {
-  color: rgba(255, 255, 255, 0.7);
 }

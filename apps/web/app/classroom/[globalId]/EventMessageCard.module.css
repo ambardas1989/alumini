@@ -1,4 +1,4 @@
-/** Fallback-only — shown while an event_card message's event hasn't loaded/matched yet (see EventMessageCard's null-event branch). The matched-event case renders EventTile instead, which has its own module.css. */
+/** Fallback-only — shown while an event_card message's event hasn't loaded/matched yet (see EventMessageCard's null-event branch). */
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-primary-light);
@@ -12,4 +12,103 @@
   font-weight: 800;
   color: var(--color-text-primary);
   margin-block-end: 3px;
+}
+
+/* TASKS_09 TASK 21 FIX D — chat event card, matching the mockup exactly. */
+.chatCard {
+  background: var(--color-surface);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-block-end: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+}
+
+.chatCardHeader {
+  background: var(--color-primary);
+  padding: 7px 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.chatCardBody {
+  padding: 9px 11px;
+}
+
+.chatCardTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--color-text-primary);
+  margin-block-end: 2px;
+}
+
+.chatCardMeta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-block-end: 7px;
+}
+
+.attendeeRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.attendeeAvatars {
+  display: flex;
+}
+
+.attendeeAvatar {
+  display: block;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-surface);
+}
+
+.attendeeOverflow {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.goingCount {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.rsvpPills {
+  margin-inline-start: auto;
+  display: flex;
+  gap: 4px;
+}
+
+.rsvpPill {
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.rsvpPillGoing.rsvpPillActive {
+  background: var(--color-success-light, #dcfce7);
+  color: var(--color-success, #16a34a);
+  border-color: var(--color-success, #16a34a);
+}
+
+.rsvpPillMaybe.rsvpPillActive {
+  background: var(--color-warning-light, #fef3c7);
+  color: var(--color-warning, #d97706);
+  border-color: var(--color-warning, #d97706);
+}
+
+.rsvpPillActiveNeutral {
+  background: var(--color-text-muted);
+  color: #fff;
 }

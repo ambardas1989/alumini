@@ -495,11 +495,10 @@ export default function ClassroomPage() {
   };
 
   // ── RSVP ─────────────────────────────────────────────────────────────────
-  // TASKS_09 TASK 16 — EventDetailSheet now owns the actual RSVP call
-  // (optimistic update + POST /rsvp), since RSVPing only happens from the
-  // detail sheet now, not inline on the tile. This just folds its result
-  // back into the classroom-wide `events` map so every EventTile (chat,
-  // ClassInfoSheet) reflects the new status without a full reload.
+  // TASKS_09 TASK 16 — EventDetailSheet owns the detail sheet's own RSVP
+  // call (optimistic update + POST /rsvp). This just folds its result back
+  // into the classroom-wide `events` map so every surface (chat card,
+  // ClassInfoSheet's list) reflects the new status without a full reload.
   const handleRsvpChanged = (eventId: string, rsvps: api.RsvpSummary) => {
     setEvents((prev) => {
       const existing = prev[eventId];
@@ -513,6 +512,35 @@ export default function ClassroomPage() {
         },
       };
     });
+  };
+
+  // TASKS_09 TASK 21 FIX D — the chat event card's own quick RSVP pills
+  // (Going/Pass/Maybe), separate from the detail sheet's: optimistic
+  // update here too, same rollback-on-error shape as EventDetailSheet's
+  // handleRsvp(), but without a loading/disabled state — a chat pill is a
+  // much lighter-weight action than the sheet's full RSVP flow.
+  const handleQuickRsvp = async (eventId: string, status: api.RsvpSummary['myRsvp']) => {
+    if (!classroom || !status) return;
+    const previous = events[eventId];
+    if (!previous) return;
+    const previousCounts = previous.rsvpCounts ?? { going: 0, notGoing: 0, maybe: 0 };
+    const optimisticCounts = { ...previousCounts };
+    if (previous.userRsvp === 'going') optimisticCounts.going--;
+    if (previous.userRsvp === 'not_going') optimisticCounts.notGoing--;
+    if (previous.userRsvp === 'maybe') optimisticCounts.maybe--;
+    if (status === 'going') optimisticCounts.going++;
+    if (status === 'not_going') optimisticCounts.notGoing++;
+    if (status === 'maybe') optimisticCounts.maybe++;
+
+    setEvents((prev) => ({ ...prev, [eventId]: { ...previous, userRsvp: status, rsvpCounts: optimisticCounts } }));
+
+    try {
+      const rsvps = await api.rsvpEvent(classroom.id, eventId, status);
+      handleRsvpChanged(eventId, rsvps);
+    } catch (err) {
+      setEvents((prev) => ({ ...prev, [eventId]: previous }));
+      showToast(getErrorMessage(err), 'error');
+    }
   };
 
   // ── Quick actions ────────────────────────────────────────────────────────
@@ -545,6 +573,11 @@ export default function ClassroomPage() {
         .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()),
     [events],
   );
+
+  // TASKS_09 TASK 21 FIX C — role lookup for message senders, from the
+  // already-loaded member roster (loadMemberStats() above) rather than a
+  // separate fetch.
+  const roleById = useMemo(() => new Map(members.map((m) => [m.userId, m.role])), [members]);
 
   if (loading) {
     return (
@@ -616,11 +649,11 @@ export default function ClassroomPage() {
         section={classroom.section}
         program={classroom.program}
         institutionName={classroom.institution.name}
+        institutionType={classroom.institution.type}
         batchYear={classroom.batchYear}
         memberCount={classroom.memberCount}
         verifiedCount={memberStats.verifiedCount}
         pendingCount={memberStats.pendingCount}
-        city={classroom.city ?? classroom.institution.cityCode ?? null}
         userRole={membership.userRole}
         coverUrl={classroom.coverUrl}
         canUploadCover={
@@ -730,12 +763,14 @@ export default function ClassroomPage() {
                   event={message.metadata?.event_id ? events[message.metadata.event_id as string] ?? null : null}
                   fallbackTitle={message.content ?? ''}
                   onOpen={setOpenEventId}
+                  onQuickRsvp={handleQuickRsvp}
                 />
               ) : (
                 <MessageBubble
                   key={message.id}
                   message={message}
                   isOwn={message.sender?.id === user?.id}
+                  senderRole={message.sender ? roleById.get(message.sender.id) : undefined}
                   onDelete={handleDelete}
                   onRetry={handleRetry}
                 />

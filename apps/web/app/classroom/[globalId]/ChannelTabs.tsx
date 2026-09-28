@@ -18,14 +18,11 @@ const TABS: Array<{ channel: ChannelType; brandKey: 'main' | 'staff' | 'student'
 ];
 
 /**
- * "+" opens the same classroom info panel (member list, global ID, creation
- * date) as ClassroomHeader's "Details" link — a previous pass removed a
- * standalone "ℹ" that floated BETWEEN tabs (confusing placement) in favour
- * of that header link only; this re-adds a dedicated entry point in the tab
- * bar too, but as the LAST item after Student Alley, not interleaved with
- * the channel tabs — hand-rolled SVG rather than pulling in @tabler/icons
- * for one icon, matching this codebase's established icon convention (see
- * AuthLayout.tsx's own icons).
+ * TASKS_09 TASK 21 FIX B — matches the mockup exactly: no standalone "+"/ℹ
+ * button in the tab bar anymore. Instead, a small ⓘ badge appears AFTER
+ * the label of whichever tab is currently active only, and opens the same
+ * classroom info panel ClassroomHeader's stats row does. It moves with the
+ * active tab rather than sitting in a fixed position.
  */
 export function ChannelTabs({ active, onChange, onInfoClick }: ChannelTabsProps) {
   const t = useTranslations('classroom.header');
@@ -45,15 +42,24 @@ export function ChannelTabs({ active, onChange, onInfoClick }: ChannelTabsProps)
               onClick={() => onChange(tab.channel)}
             >
               {brand.channels[tab.brandKey]}
+              {isActive && (
+                <span
+                  className={styles.infoIcon}
+                  role="button"
+                  aria-label={t('details')}
+                  title={t('details')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onInfoClick();
+                  }}
+                >
+                  ⓘ
+                </span>
+              )}
             </button>
           </div>
         );
       })}
-      <button type="button" className={styles.infoButton} aria-label={t('details')} title={t('details')} onClick={onInfoClick}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-      </button>
     </div>
   );
 }

@@ -314,6 +314,8 @@ export interface Event {
   id: string;
   classroomId: string;
   createdBy: string;
+  /** TASKS_09 TASK 21 FIX D — only populated by listEvents() (joins the creator's profile), not by createEvent()'s own insert response. */
+  createdByName?: string | null;
   title: string;
   eventDate: string;
   location?: string;
@@ -321,6 +323,8 @@ export interface Event {
   isOnline: boolean;
   rsvpCounts?: { going: number; notGoing: number; maybe: number };
   userRsvp?: RsvpStatus;
+  /** TASKS_09 TASK 21 FIX D — up to 4 "going" attendees, for the chat event card's overlapping-avatars row. Same populated-only-by-listEvents() caveat as createdByName. */
+  goingAttendees?: Array<{ id: string; fullName: string; avatarUrl: string | null }>;
   createdAt: string;
   /** TASKS_08 TASK 05 — channel-scoped visibility, matching messages. */
   channel: ChannelType;

@@ -13,14 +13,25 @@ import styles from './MessageBubble.module.css';
 interface MessageBubbleProps {
   message: UiMessage;
   isOwn: boolean;
+  /** TASKS_09 TASK 21 FIX C — the sender's role in THIS classroom, looked up from the already-loaded member roster; undefined/null (unknown, or a redacted sender) falls back to the plain short-name format. */
+  senderRole?: string | null;
   onDelete: (messageId: string) => void;
   onRetry: (message: UiMessage) => void;
 }
 
 const LONG_PRESS_MS = 500;
 
-export function MessageBubble({ message, isOwn, onDelete, onRetry }: MessageBubbleProps) {
+/** "Rahul Agarwal" → "Rahul A." — single-word names pass through unchanged. */
+function shortName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return fullName;
+  return `${parts[0]} ${parts[parts.length - 1]![0]}.`;
+}
+
+export function MessageBubble({ message, isOwn, senderRole, onDelete, onRetry }: MessageBubbleProps) {
   const t = useTranslations('classroom.messages');
+  const tRole = useTranslations('status');
+  const isStaff = senderRole === 'teacher' || senderRole === 'admin';
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -56,13 +67,24 @@ export function MessageBubble({ message, isOwn, onDelete, onRetry }: MessageBubb
         <Avatar
           avatarUrl={message.isRedacted ? null : message.sender?.avatarUrl}
           fullName={message.sender?.fullName ?? '?'}
-          size="sm"
+          sizePx={28}
         />
       )}
       <div className={styles.column}>
         {!isOwn && (
           <p className={`${styles.senderName} ${message.isRedacted ? styles.redactedPill : ''}`}>
-            {message.sender?.fullName ?? '?'}
+            {/* TASKS_09 TASK 21 FIX C — staff show their full name + a role
+                pill ("Ghosh Sir · Teacher"); everyone else gets the
+                space-saving "First L." short form. Redacted senders keep
+                whatever placeholder name they already carry, unshortened —
+                shortening a name the viewer can't otherwise verify would
+                just add noise. */}
+            {message.isRedacted || !message.sender?.fullName
+              ? (message.sender?.fullName ?? '?')
+              : isStaff
+                ? message.sender.fullName
+                : shortName(message.sender.fullName)}
+            {isStaff && !message.isRedacted && <span className={styles.roleTag}>{tRole(senderRole!)}</span>}
           </p>
         )}
         <div

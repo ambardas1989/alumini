@@ -184,8 +184,8 @@ describe('EventsService', () => {
         }),
         rsvps: chain({
           data: [
-            { event_id: 'e1', user_id: 'user-1', status: RsvpStatus.GOING },
-            { event_id: 'e1', user_id: 'other-user', status: RsvpStatus.MAYBE },
+            { event_id: 'e1', user_id: 'user-1', status: RsvpStatus.GOING, profile: { id: 'user-1', full_name: 'Priya Sharma', avatar_url: null } },
+            { event_id: 'e1', user_id: 'other-user', status: RsvpStatus.MAYBE, profile: { id: 'other-user', full_name: 'Raj Kumar', avatar_url: null } },
           ],
           error: null,
         }),
@@ -197,6 +197,7 @@ describe('EventsService', () => {
       expect(result.upcoming[0].id).toBe('e1');
       expect(result.upcoming[0].rsvpCounts).toEqual({ going: 1, notGoing: 0, maybe: 1 });
       expect(result.upcoming[0].userRsvp).toBe(RsvpStatus.GOING);
+      expect(result.upcoming[0].goingAttendees).toEqual([{ id: 'user-1', fullName: 'Priya Sharma', avatarUrl: null }]);
 
       expect(result.past).toHaveLength(1);
       expect(result.past[0].id).toBe('e2');

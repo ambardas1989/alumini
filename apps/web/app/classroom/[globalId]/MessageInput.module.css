@@ -9,6 +9,14 @@
   border-block-start: 1px solid var(--color-border);
 }
 
+/* TASKS_09 TASK 21 FIX E — attachment entry point (shows a "coming soon" toast for now; TASKS_08 TASK 09's actual upload flow is still deferred). */
+.attachButton {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  background: none;
+  align-self: center;
+}
+
 .textarea {
   flex: 1;
   resize: none;

@@ -1,10 +1,8 @@
+/* TASKS_09 TASK 21 FIX B — same solid dark purple as the header, matching the mockup exactly (no gradient). */
 .tabs {
   flex-shrink: 0;
   display: flex;
-  /* TASKS_04 TASK 06 — "same dark gradient" as the header, not a flat
-     colour — the tab bar is directly below the header's own gradient, so
-     this repeats it rather than picking one solid stop from it. */
-  background: linear-gradient(to bottom, var(--classroom-gradient-from), var(--classroom-gradient-to));
+  background: #1c1c2e;
   border-block-end: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -23,7 +21,10 @@
 
 .tab {
   flex: 1;
-  padding-block: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-block: 9px;
   font-size: var(--text-xs);
   font-weight: 700;
   color: rgba(255, 255, 255, 0.5);
@@ -35,14 +36,11 @@
   color: #fff;
 }
 
-.infoButton {
-  flex-shrink: 0;
-  display: flex;
+.infoIcon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
+  margin-inline-start: 4px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.6);
-  background: none;
-  border: none;
-  border-inline-start: 1px solid rgba(255, 255, 255, 0.15);
 }
