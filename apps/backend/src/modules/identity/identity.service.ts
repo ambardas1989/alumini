@@ -127,6 +127,7 @@ export class IdentityService {
           'isPlatformAdmin:is_platform_admin, ' +
           'activePersona:active_persona, linkedinUrl:linkedin_url, linkedinVerified:linkedin_verified, ' +
           'linkedinConnected:linkedin_connected, linkedinName:linkedin_name, linkedinAvatarUrl:linkedin_avatar_url, ' +
+          'jobTitle:job_title, company, locationCity:location_city, ' +
           'createdAt:created_at, updatedAt:updated_at',
       )
       .eq('id', userId)
@@ -173,6 +174,10 @@ export class IdentityService {
     if (dto.avatarUrl !== undefined) patch.avatar_url = dto.avatarUrl;
     if (dto.phone !== undefined) patch.phone = dto.phone;
     if (dto.linkedinUrl !== undefined) patch.linkedin_url = dto.linkedinUrl;
+    // TASKS_09 TASK 22 FIX B — self-reported current role.
+    if (dto.jobTitle !== undefined) patch.job_title = dto.jobTitle;
+    if (dto.company !== undefined) patch.company = dto.company;
+    if (dto.locationCity !== undefined) patch.location_city = dto.locationCity;
 
     if (Object.keys(patch).length === 0) {
       throw new BadRequestException('No updatable fields were provided');
@@ -184,7 +189,8 @@ export class IdentityService {
       .eq('id', userId)
       .select(
         'id, email, fullName:full_name, avatarUrl:avatar_url, phone, ' +
-          'activePersona:active_persona, linkedinUrl:linkedin_url, updatedAt:updated_at',
+          'activePersona:active_persona, linkedinUrl:linkedin_url, ' +
+          'jobTitle:job_title, company, locationCity:location_city, updatedAt:updated_at',
       )
       .single();
 

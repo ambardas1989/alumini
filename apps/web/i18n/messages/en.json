@@ -794,16 +794,30 @@
     "fullNameLabel": "Full name",
     "phoneLabel": "Phone number",
     "phoneNotSet": "Add a phone number",
-    "yourClassrooms": "Your classrooms",
     "verifiedBadge": "Verified",
     "noClassroomsTitle": "No classrooms yet",
     "noClassroomsDescription": "Find your batch to get started",
     "findMyBatch": "Find your batch",
     "memberSince": "Member since {date}",
     "stats": {
-      "classrooms": "Classrooms",
-      "verifiedIn": "Verified in",
+      "institutions": "Institutions",
+      "connections": "Connections",
       "memberSince": "Member since"
+    },
+    "currentRole": {
+      "sectionLabel": "Current role · self-reported",
+      "jobTitleLabel": "Job title",
+      "companyLabel": "Company",
+      "cityLabel": "City",
+      "emptyPrompt": "Define your current role"
+    },
+    "education": {
+      "sectionLabel": "Education",
+      "sectionLabelWithStatus": "Education · {status}",
+      "status": {
+        "verified": "verified",
+        "pending": "pending"
+      }
     },
     "linkedin": {
       "title": "LinkedIn",

@@ -148,6 +148,15 @@ describe('IdentityService', () => {
       const result = await service.updateProfile('user-1', { fullName: 'New Name' });
       expect(result).toEqual({ id: 'user-1', full_name: 'New Name' });
     });
+
+    // TASKS_09 TASK 22 FIX B — self-reported current role fields.
+    it('accepts jobTitle/company/locationCity as updatable fields', async () => {
+      const updateSpy = jest.fn(() => chain({ data: { id: 'user-1', job_title: 'PM', company: 'Razorpay', location_city: 'Bengaluru' }, error: null }));
+      mockTables({ profiles: { update: updateSpy } as any });
+
+      await service.updateProfile('user-1', { jobTitle: 'PM', company: 'Razorpay', locationCity: 'Bengaluru' });
+      expect(updateSpy).toHaveBeenCalledWith({ job_title: 'PM', company: 'Razorpay', location_city: 'Bengaluru' });
+    });
   });
 
   // ── uploadAvatar() (TASKS_07 TASK 11) ───────────────────────────────────

@@ -217,6 +217,10 @@ export interface Profile {
   linkedinConnected?: boolean;
   linkedinName?: string;
   linkedinAvatarUrl?: string;
+  /** TASKS_09 TASK 22 FIX B — self-reported "current role", independent of LinkedIn (which this app's OAuth scope can never populate — see 017_linkedin_profile.sql's own comment). Requires supabase/migrations columns not yet applied — see fileUpdates.md. */
+  jobTitle?: string;
+  company?: string;
+  locationCity?: string;
   createdAt: string;
   updatedAt: string;
 }

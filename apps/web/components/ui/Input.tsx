@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, type InputHTMLAttributes } from 'react';
+import { forwardRef, useId, type InputHTMLAttributes } from 'react';
 import styles from './Input.module.css';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -9,7 +9,11 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   hint?: string;
 }
 
-export function Input({ label, error, hint, id, className, ...rest }: InputProps) {
+/** forwardRef — TASKS_09 TASK 22 FIX B needs to programmatically focus a specific field (job title) when the edit form opens from "Define your current role". */
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { label, error, hint, id, className, ...rest },
+  ref,
+) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
   const describedById = error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined;
@@ -20,6 +24,7 @@ export function Input({ label, error, hint, id, className, ...rest }: InputProps
         {label}
       </label>
       <input
+        ref={ref}
         id={inputId}
         className={[styles.input, error ? styles.inputError : '', className].filter(Boolean).join(' ')}
         aria-invalid={!!error}
@@ -38,4 +43,4 @@ export function Input({ label, error, hint, id, className, ...rest }: InputProps
       )}
     </div>
   );
-}
+});

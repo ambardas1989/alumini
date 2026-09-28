@@ -27,7 +27,6 @@ import { Modal } from '@/components/ui/Modal';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ApiError } from '@/lib/api';
-import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { useTheme } from '@/lib/useTheme';
 import switchStyles from '@/components/ui/Switch.module.css';
@@ -49,8 +48,6 @@ export default function ProfilePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [classrooms, setClassrooms] = useState<FlatClassroom[]>([]);
-  // TASKS_09 TASK 14 FIX C — see app/page.tsx's identical eventCounts comment.
-  const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
 
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -58,6 +55,18 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  // TASKS_09 TASK 22 FIX B — self-reported current role.
+  const [jobTitle, setJobTitle] = useState('');
+  const [company, setCompany] = useState('');
+  const [locationCity, setLocationCity] = useState('');
+  const [focusRoleField, setFocusRoleField] = useState(false);
+  const jobTitleInputRef = useRef<HTMLInputElement>(null);
+  // TASKS_09 TASK 22 FIX A — deduplicated member count across all of the
+  // caller's classrooms, fetched separately from `classrooms` itself
+  // (memberCount there is per-classroom, not deduplicated). Capped at each
+  // classroom's first page (25 members) — same documented-approximation
+  // pattern as the classroom page's own loadMemberStats().
+  const [connectionCount, setConnectionCount] = useState(0);
 
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -112,12 +121,13 @@ export default function ProfilePage() {
       );
       setClassrooms(flat);
 
-      Promise.allSettled(flat.map((c) => api.getEvents(c.globalId))).then((results) => {
-        const counts: Record<string, number> = {};
-        results.forEach((result, i) => {
-          if (result.status === 'fulfilled') counts[flat[i].globalId] = result.value.upcoming.length;
+      Promise.allSettled(flat.map((c) => api.getMembers(c.id))).then((results) => {
+        const uniqueUserIds = new Set<string>();
+        results.forEach((result) => {
+          if (result.status === 'fulfilled') result.value.forEach((m) => uniqueUserIds.add(m.userId));
         });
-        setEventCounts(counts);
+        uniqueUserIds.delete(profileData.id);
+        setConnectionCount(uniqueUserIds.size);
       });
     } catch (err) {
       setLoadError(getErrorMessage(err));
@@ -154,13 +164,26 @@ export default function ProfilePage() {
     };
   }, [avatarPreviewUrl]);
 
-  const startEditing = () => {
+  const startEditing = (focusOnRole = false) => {
     if (!profile) return;
     setFullName(profile.fullName ?? '');
     setPhone(profile.phone ?? '');
+    setJobTitle(profile.jobTitle ?? '');
+    setCompany(profile.company ?? '');
+    setLocationCity(profile.locationCity ?? '');
     setSaveError(null);
+    setFocusRoleField(focusOnRole);
     setEditing(true);
   };
+
+  // TASKS_09 TASK 22 FIX B — "Define your current role" opens the same edit
+  // form as the pencil icon, but focuses the job-title field once it's rendered.
+  useEffect(() => {
+    if (editing && focusRoleField) {
+      jobTitleInputRef.current?.focus();
+      setFocusRoleField(false);
+    }
+  }, [editing, focusRoleField]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -172,7 +195,13 @@ export default function ProfilePage() {
     // what actually gets validated server-side matches what's shown here.
     const normalizedPhone = phone ? normalizePhoneForSubmit(phone) : '';
     try {
-      const updated = await api.updateProfile({ fullName, phone: normalizedPhone || undefined });
+      const updated = await api.updateProfile({
+        fullName,
+        phone: normalizedPhone || undefined,
+        jobTitle: jobTitle.trim() || undefined,
+        company: company.trim() || undefined,
+        locationCity: locationCity.trim() || undefined,
+      });
       setProfile(updated);
       updateUser({ fullName: updated.fullName, avatarUrl: updated.avatarUrl ?? null });
       setEditing(false);
@@ -537,6 +566,11 @@ export default function ProfilePage() {
 
   const verifiedCount = classrooms.filter((c) => c.verificationStatus === 'verified').length;
   const isClassroomAdmin = classrooms.some((c) => c.userRole === 'admin');
+  // TASKS_09 TASK 22 FIX A.
+  const institutionCount = new Set(classrooms.map((c) => c.institution.id)).size;
+  // TASKS_09 TASK 22 FIX C.
+  const educationStatus = classrooms.length === 0 ? null : classrooms.every((c) => c.verificationStatus === 'verified') ? 'verified' : 'pending';
+  const hasCurrentRole = !!(profile.jobTitle || profile.company || profile.locationCity);
 
   // FIX 2 — belt-and-suspenders: the actual root cause was
   // identity.service.ts's getProfile()/updateProfile() returning
@@ -597,7 +631,7 @@ export default function ProfilePage() {
             // TASKS_09 TASK 05 — icon button instead of a text label,
             // matching the mockup; hand-rolled SVG, same convention as
             // AuthLayout.tsx's own icons (no icon-font package installed).
-            <button type="button" className={styles.editButton} onClick={startEditing} aria-label={t('editButton')} title={t('editButton')}>
+            <button type="button" className={styles.editButton} onClick={() => startEditing()} aria-label={t('editButton')} title={t('editButton')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z" />
               </svg>
@@ -642,6 +676,10 @@ export default function ProfilePage() {
                   />
                   <p className={styles.phoneFormatHint}>{t('phoneFormatHint')}</p>
                 </div>
+                {/* TASKS_09 TASK 22 FIX B — self-reported current role, editable from the same form. */}
+                <Input ref={jobTitleInputRef} label={t('currentRole.jobTitleLabel')} value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+                <Input label={t('currentRole.companyLabel')} value={company} onChange={(e) => setCompany(e.target.value)} />
+                <Input label={t('currentRole.cityLabel')} value={locationCity} onChange={(e) => setLocationCity(e.target.value)} />
                 {saveError && <ErrorMessage message={saveError} />}
                 <div className={styles.editActions}>
                   <Button variant="ghost" size="md" onClick={() => setEditing(false)} disabled={saving}>
@@ -656,31 +694,61 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* Spec asks for "Connections | Profile %" as the last two columns —
-            neither concept exists in this app's data model (no connections
-            graph, no profile-completeness endpoint), so the 3rd column
-            stays the real "verified since" metric rather than a fabricated
-            number. */}
+        {/* TASKS_09 TASK 22 FIX A — institutions / connections (deduplicated
+            members across all classrooms) / member since, replacing the
+            previous classrooms-count/verified-count/member-since trio. */}
         {!editing && (
           <div className={styles.statsRow}>
             <div className={styles.statItem}>
-              <p className={styles.statNumber}>{classrooms.length}</p>
-              <p className={styles.statLabel}>{t('stats.classrooms')}</p>
+              <span className={styles.statIcon} aria-hidden="true">🏫</span>
+              <p className={styles.statNumber}>{institutionCount}</p>
+              <p className={styles.statLabel}>{t('stats.institutions')}</p>
             </div>
             <div className={styles.statItem}>
-              <p className={styles.statNumber}>{verifiedCount}</p>
-              <p className={styles.statLabel}>{t('stats.verifiedIn')}</p>
+              <span className={styles.statIcon} aria-hidden="true">💛</span>
+              <p className={styles.statNumber}>{connectionCount}</p>
+              <p className={styles.statLabel}>{t('stats.connections')}</p>
             </div>
             <div className={styles.statItem}>
+              <span className={styles.statIcon} aria-hidden="true">📅</span>
               <p className={styles.statNumber}>{memberSinceLabel}</p>
               <p className={styles.statLabel}>{t('stats.memberSince')}</p>
             </div>
           </div>
         )}
 
+        {/* TASKS_09 TASK 22 FIX B — "current role", self-reported. */}
         {!editing && (
           <>
-            <p className={styles.sectionLabel}>{t('yourClassrooms')}</p>
+            <p className={styles.sectionLabel}>{t('currentRole.sectionLabel')}</p>
+            {hasCurrentRole ? (
+              <div className={styles.roleCard}>
+                <span className={styles.roleIcon} aria-hidden="true">💼</span>
+                <div>
+                  <p className={styles.roleTitle}>{profile.jobTitle}</p>
+                  <p className={styles.roleMeta}>
+                    {[profile.company, profile.locationCity].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className={styles.roleCardEmpty} onClick={() => startEditing(true)}>
+                <span className={`${styles.roleIcon} ${styles.roleIconMuted}`} aria-hidden="true">💼</span>
+                <p className={styles.roleEmptyText}>{t('currentRole.emptyPrompt')}</p>
+              </button>
+            )}
+          </>
+        )}
+
+        {!editing && (
+          <>
+            {/* TASKS_09 TASK 22 FIX C — "Education", not "Your classrooms": frames classrooms as education history, matching the mockup. */}
+            <p className={styles.sectionLabel}>
+              {educationStatus && (
+                <span className={`${styles.educationDot} ${educationStatus === 'verified' ? styles.educationDotVerified : styles.educationDotPending}`} aria-hidden="true" />
+              )}
+              {educationStatus ? t('education.sectionLabelWithStatus', { status: t(`education.status.${educationStatus}`) }) : t('education.sectionLabel')}
+            </p>
             {classrooms.length === 0 ? (
               <EmptyState
                 icon="🎓"
@@ -690,24 +758,35 @@ export default function ProfilePage() {
                 onCta={() => router.push('/classes')}
               />
             ) : (
-              classrooms.map((c) => (
-                <ClassroomCard
-                  key={c.id}
-                  classroom={
-                    {
-                      globalId: c.globalId,
-                      name: c.name,
-                      batchYear: c.batchYear,
-                      memberCount: c.memberCount,
-                      institution: { name: c.institution.name, type: c.institution.type, cityCode: c.institution.cityCode, logoUrl: c.institution.logoUrl },
-                      verificationStatus: c.verificationStatus as ClassroomCardData['verificationStatus'],
-                      upcomingEventsCount: eventCounts[c.globalId],
-                    } satisfies ClassroomCardData
-                  }
-                />
-              ))
+              classrooms.map((c) => {
+                const identity = c.grade ? `${c.grade}${c.section ?? ''}` : (c.program ?? c.name);
+                const statusIcon = c.verificationStatus === 'verified' ? '✓' : c.verificationStatus === 'rejected' ? '✗' : '⏳';
+                const statusClass =
+                  c.verificationStatus === 'verified'
+                    ? styles.educationStatusVerified
+                    : c.verificationStatus === 'rejected'
+                      ? styles.educationStatusRejected
+                      : styles.educationStatusPending;
+                return (
+                  <Link key={c.id} href={`/classroom/${c.globalId}`} className={styles.educationRow}>
+                    <span className={styles.educationIcon} aria-hidden="true">
+                      {c.institution.type === 'school' ? '🏫' : '🎓'}
+                    </span>
+                    <span className={styles.educationInfo}>
+                      {c.institution.name} · {identity} · {c.batchYear}
+                    </span>
+                    <span className={`${styles.educationStatus} ${statusClass}`} aria-hidden="true">
+                      {statusIcon}
+                    </span>
+                  </Link>
+                );
+              })
             )}
+          </>
+        )}
 
+        {!editing && (
+          <>
             <Link href="/persona" className={styles.personaRow}>
               <span className={styles.personaIcon} aria-hidden="true">
                 {PERSONA_ICONS[profile.activePersona]}

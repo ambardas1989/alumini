@@ -1036,7 +1036,8 @@ message avatars with initials, event tile, attachment icon"
 
 ---
 
-## TASK 22 — Fix: profile page — match mockup layout [PENDING]
+## TASK 22 — Fix: profile page — match mockup layout [DONE]
+Note: Confirmed linkedin_headline/company/location never existed in this schema (017_linkedin_profile.sql's own comment: LinkedIn's basic OAuth scope can't return them) and no custom job_title/company/location_city columns existed either — added those 3 columns to Profile/UpdateProfileDto/identity.service.ts (getProfile/updateProfile) and recorded the not-yet-applied ALTER TABLE in fileUpdates.md (UPDATE 10) per the task's own instruction, since this repo's migrations are applied manually. FIX A — stats row is now 🏫 institutionCount (unique institutions across classrooms) / 💛 connectionCount (deduplicated members across all classrooms, fetched via one getMembers() call per classroom, first-page-only — documented approximation matching the classroom page's own loadMemberStats() cap) / 📅 memberSince. FIX B — new "Current role · self-reported" card (💼 icon, job title/company·city, or a dashed-border "Define your current role" prompt that opens the edit form focused on the job-title field — required adding forwardRef to the shared Input component). FIX C — "Your classrooms" renamed to "Education · verified/pending" (dot-colored by whether every classroom is verified), each row now a compact institution-icon + "Institution · Section · Year" + verification-icon-only line linking to the classroom, replacing the old full ClassroomCard list. Builds + full test suite (16 backend suites/394 tests + utils) pass.
 
 Read apps/web/app/profile/page.tsx
 Read alumini-demo.html screen s6

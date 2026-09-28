@@ -60,4 +60,25 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsUrl()
   linkedinUrl?: string;
+
+  // TASKS_09 TASK 22 FIX B — self-reported "current role", independent of
+  // LinkedIn (this app's OAuth scope can never populate a headline/company —
+  // see 017_linkedin_profile.sql's own comment).
+  @ApiPropertyOptional({ description: 'Self-reported current job title' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 120)
+  jobTitle?: string;
+
+  @ApiPropertyOptional({ description: 'Self-reported current company' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 120)
+  company?: string;
+
+  @ApiPropertyOptional({ description: 'Self-reported current city' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 120)
+  locationCity?: string;
 }

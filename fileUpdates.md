@@ -195,6 +195,30 @@ Apply this rule in:
 
 ---
 
+## UPDATE 10 — profiles current-role columns (TASKS_09 TASK 22)
+
+File: a new supabase/migrations/0XX_profile_role_fields.sql
+
+NOT yet applied anywhere (unlike UPDATE 01-09 above, which document
+changes already made manually in Supabase) — this is a NEW requirement
+from TASKS_09 TASK 22's "Current role" profile section. The app code
+(apps/backend/src/modules/identity — getProfile/updateProfile/
+UpdateProfileDto, packages/types Profile.jobTitle/company/locationCity)
+already reads/writes these columns; until this migration is applied,
+every read returns null/undefined for them and every write attempting to
+set them will fail with "column does not exist".
+
+ALTER TABLE public.profiles
+ADD COLUMN IF NOT EXISTS job_title text,
+ADD COLUMN IF NOT EXISTS company text,
+ADD COLUMN IF NOT EXISTS location_city text;
+
+Action: create the migration file with the SQL above, then run it in the
+Supabase SQL Editor (this repo's migrations are not auto-applied — see
+supabase/migrations/README.md).
+
+---
+
 ## HOW TO APPLY
 
 When tokens are available, paste this into Claude Code:
