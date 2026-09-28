@@ -150,12 +150,16 @@ describe('IdentityService', () => {
     });
 
     // TASKS_09 TASK 22 FIX B — self-reported current role fields.
-    it('accepts jobTitle/company/locationCity as updatable fields', async () => {
-      const updateSpy = jest.fn(() => chain({ data: { id: 'user-1', job_title: 'PM', company: 'Razorpay', location_city: 'Bengaluru' }, error: null }));
+    // BUG FIX — jobTitle dropped from this test: profiles.job_title
+    // doesn't exist on the live database (the migration recording it was
+    // never applied), so UpdateProfileDto no longer accepts it — see
+    // update-profile.dto.ts's own comment.
+    it('accepts company/locationCity as updatable fields', async () => {
+      const updateSpy = jest.fn(() => chain({ data: { id: 'user-1', company: 'Razorpay', location_city: 'Bengaluru' }, error: null }));
       mockTables({ profiles: { update: updateSpy } as any });
 
-      await service.updateProfile('user-1', { jobTitle: 'PM', company: 'Razorpay', locationCity: 'Bengaluru' });
-      expect(updateSpy).toHaveBeenCalledWith({ job_title: 'PM', company: 'Razorpay', location_city: 'Bengaluru' });
+      await service.updateProfile('user-1', { company: 'Razorpay', locationCity: 'Bengaluru' });
+      expect(updateSpy).toHaveBeenCalledWith({ company: 'Razorpay', location_city: 'Bengaluru' });
     });
   });
 

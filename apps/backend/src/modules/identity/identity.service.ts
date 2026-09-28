@@ -127,7 +127,11 @@ export class IdentityService {
           'isPlatformAdmin:is_platform_admin, ' +
           'activePersona:active_persona, linkedinUrl:linkedin_url, linkedinVerified:linkedin_verified, ' +
           'linkedinConnected:linkedin_connected, linkedinName:linkedin_name, linkedinAvatarUrl:linkedin_avatar_url, ' +
-          'jobTitle:job_title, company, locationCity:location_city, ' +
+          // BUG FIX — profiles.job_title was never actually added to the
+          // live database (the TASK 22 migration recording it in
+          // fileUpdates.md was never applied), so selecting it 500'd every
+          // GET /identity/profile call. Removed until that column exists.
+          'company, locationCity:location_city, ' +
           'birthdayMonth:birthday_month, birthdayDay:birthday_day, workStartDate:work_start_date, ' +
           'createdAt:created_at, updatedAt:updated_at',
       )
@@ -176,7 +180,9 @@ export class IdentityService {
     if (dto.phone !== undefined) patch.phone = dto.phone;
     if (dto.linkedinUrl !== undefined) patch.linkedin_url = dto.linkedinUrl;
     // TASKS_09 TASK 22 FIX B — self-reported current role.
-    if (dto.jobTitle !== undefined) patch.job_title = dto.jobTitle;
+    // BUG FIX — job_title write removed alongside the select above; the
+    // column doesn't exist on the live profiles table, so this would
+    // otherwise 500 whenever a caller included jobTitle in the patch.
     if (dto.company !== undefined) patch.company = dto.company;
     if (dto.locationCity !== undefined) patch.location_city = dto.locationCity;
     if (dto.birthdayMonth !== undefined) patch.birthday_month = dto.birthdayMonth;
@@ -194,7 +200,7 @@ export class IdentityService {
       .select(
         'id, email, fullName:full_name, avatarUrl:avatar_url, phone, ' +
           'activePersona:active_persona, linkedinUrl:linkedin_url, ' +
-          'jobTitle:job_title, company, locationCity:location_city, ' +
+          'company, locationCity:location_city, ' +
           'birthdayMonth:birthday_month, birthdayDay:birthday_day, workStartDate:work_start_date, updatedAt:updated_at',
       )
       .single();
@@ -757,9 +763,14 @@ export class IdentityService {
 
     const myClassroomById = new Map((mine ?? []).map((m: any) => [m.classroom_id, m.classroom]));
 
+    // BUG FIX — PGRST201: memberships has TWO FKs into profiles (user_id
+    // and verified_by), so a bare `profile:profiles(...)` embed is
+    // ambiguous to PostgREST. The `!memberships_user_id_fkey` hint
+    // disambiguates it — same fix pattern already used elsewhere in this
+    // codebase (e.g. CorridorService's `sender:profiles!messages_sender_id_fkey`).
     const { data: rows, error } = await this.supabase
       .from('memberships')
-      .select('user_id, classroom_id, profile:profiles(id, full_name, avatar_url, birthday_month, birthday_day)')
+      .select('user_id, classroom_id, profile:profiles!memberships_user_id_fkey(id, full_name, avatar_url, birthday_month, birthday_day)')
       .in('classroom_id', myClassroomIds)
       .eq('verification_status', 'verified')
       .neq('user_id', callerId);

@@ -64,12 +64,9 @@ export class UpdateProfileDto {
   // TASKS_09 TASK 22 FIX B — self-reported "current role", independent of
   // LinkedIn (this app's OAuth scope can never populate a headline/company —
   // see 017_linkedin_profile.sql's own comment).
-  @ApiPropertyOptional({ description: 'Self-reported current job title' })
-  @IsOptional()
-  @IsString()
-  @Length(1, 120)
-  jobTitle?: string;
-
+  // BUG FIX — jobTitle removed: profiles.job_title doesn't exist on the
+  // live database (the migration recording it was never applied), so
+  // accepting/writing it here 500'd. Re-add once that column exists.
   @ApiPropertyOptional({ description: 'Self-reported current company' })
   @IsOptional()
   @IsString()
