@@ -347,6 +347,10 @@
       "wishButton": "Wish them",
       "prefillMessage": "Happy birthday {name}! 🎂"
     },
+    "announcement": {
+      "badge": "Announcement",
+      "verifyNudge": "Verify your membership to read this"
+    },
     "landing": {
       "headerWelcome": "Welcome, {name}",
       "student": {
@@ -569,10 +573,22 @@
     "messages": {
       "empty": "Say hello!",
       "deleted": "Message deleted",
+      "announcementLabel": "Announcement",
+      "announcementVerifyNudge": "Verify your membership to read this",
       "redacted": "Verify your membership to read messages",
       "inputPlaceholder": "Write a message...",
       "attach": "Attach a file",
       "attachmentComingSoon": "Attachments coming soon",
+      "attachMenu": {
+        "photo": "Photo",
+        "file": "File",
+        "announcement": "Announcement"
+      },
+      "announcementMode": {
+        "label": "Announcement",
+        "cancel": "Cancel announcement",
+        "placeholder": "Write an announcement..."
+      },
       "send": "Send",
       "sending": "Sending…",
       "sendFailed": "Failed · Tap to retry",

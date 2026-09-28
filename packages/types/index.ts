@@ -83,6 +83,8 @@ export const MessageType = {
   EVENT_CARD: 'event_card',
   SYSTEM: 'system',
   ATTACHMENT: 'attachment',
+  /** TASKS_09 TASK 24 — verified members/admins only (canAccessChannel() already enforces this for every post, so no extra gate is needed for this type specifically). */
+  ANNOUNCEMENT: 'announcement',
 } as const;
 export type MessageType = (typeof MessageType)[keyof typeof MessageType];
 

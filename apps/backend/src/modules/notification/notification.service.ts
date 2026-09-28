@@ -533,6 +533,73 @@ export class NotificationService {
   }
 
   /**
+   * TASKS_09 TASK 24 — announcement fan-out. This IS the "feed_item"
+   * step the task describes — there is no separate feed_item table in
+   * this schema (the home feed already reads GET /notifications, same as
+   * every other feed entry this module creates), so an in-app
+   * notification per eligible member is that feed item.
+   *
+   * AUDIENCE per channel (excludes the sender, includes every other
+   * verification status except 'rejected' — an unverified/pending member
+   * still gets the card+push per the task's own "unverified members still
+   * receive the push notification" rule, just with blurred content
+   * client-side and no content in the push body either way):
+   *   classroom     → every member
+   *   staff_room    → teacher/admin only
+   *   student_alley → student only
+   *
+   * Content is never revealed in title/body for EITHER delivery surface,
+   * per the task's explicit "notification body does not reveal content"
+   * instruction.
+   */
+  @OnEvent('corridor.announcement.sent')
+  async handleAnnouncementSent(payload: {
+    messageId: string;
+    classroomId: string;
+    channel: 'classroom' | 'staff_room' | 'student_alley';
+    senderId: string;
+  }): Promise<void> {
+    const { data: sender } = await this.supabase.from('profiles').select('full_name').eq('id', payload.senderId).maybeSingle();
+    const firstName = sender?.full_name?.split(/\s+/)[0] ?? 'Someone';
+
+    const { data: allMembers, error } = await this.supabase
+      .from('memberships')
+      .select('user_id, role')
+      .eq('classroom_id', payload.classroomId)
+      .neq('verification_status', 'rejected');
+
+    if (error) {
+      this.appLogger.error('[NOTIFY:announcement] failed', { error });
+      return;
+    }
+
+    const eligible = (allMembers ?? []).filter((m) => {
+      if (payload.channel === 'staff_room') return m.role === 'teacher' || m.role === 'admin';
+      if (payload.channel === 'student_alley') return m.role === 'student';
+      return true;
+    });
+
+    const title = `${firstName} made an announcement`;
+    const body = `Open ${brand.name} to read it`;
+
+    for (const member of eligible) {
+      if (member.user_id === payload.senderId) continue;
+
+      await this.sendInApp(member.user_id, 'announcement', title, body, {
+        classroom_id: payload.classroomId,
+        channel: payload.channel,
+        message_id: payload.messageId,
+      });
+
+      await this.sendPush(member.user_id, title, body, {
+        type: 'announcement',
+        classroom_id: payload.classroomId,
+        message_id: payload.messageId,
+      });
+    }
+  }
+
+  /**
    * SPEC.md §10.1: notify every verified member when an event is created.
    *
    * TASKS_08 TASK 05 — only members who can actually see the event's

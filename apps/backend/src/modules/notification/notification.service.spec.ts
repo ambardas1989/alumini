@@ -471,6 +471,68 @@ describe('NotificationService', () => {
     });
   });
 
+  // TASKS_09 TASK 24 — announcement fan-out.
+  describe('handleAnnouncementSent()', () => {
+    it('notifies every eligible member (excluding the sender and rejected members) via in-app + push, never revealing content', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({
+        profiles: chain({ data: { full_name: 'Priya Sharma' }, error: null }),
+        memberships: chain({
+          data: [
+            { user_id: 'sender-1', role: 'student' },
+            { user_id: 'member-1', role: 'student' },
+            { user_id: 'member-2', role: 'teacher' },
+          ],
+          error: null,
+        }),
+        notifications: notificationsChain,
+      });
+
+      const service = await createService();
+      await service.handleAnnouncementSent({
+        messageId: 'msg-1',
+        classroomId: 'class-1',
+        channel: 'classroom',
+        senderId: 'sender-1',
+      });
+
+      // classroom channel → every member except the sender
+      expect(notificationsChain.insert).toHaveBeenCalledTimes(2);
+      expect(notificationsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ user_id: 'member-1', type: 'announcement', title: expect.stringContaining('Priya') }),
+      );
+      const insertedBody = notificationsChain.insert.mock.calls[0][0];
+      expect(insertedBody.body).not.toContain('msg-1');
+    });
+
+    it('only notifies teachers/admins for a staff_room announcement', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({
+        profiles: chain({ data: { full_name: 'Ghosh Sir' }, error: null }),
+        memberships: chain({
+          data: [
+            { user_id: 'sender-1', role: 'teacher' },
+            { user_id: 'student-1', role: 'student' },
+            { user_id: 'teacher-2', role: 'teacher' },
+          ],
+          error: null,
+        }),
+        notifications: notificationsChain,
+      });
+
+      const service = await createService();
+      await service.handleAnnouncementSent({
+        messageId: 'msg-2',
+        classroomId: 'class-1',
+        channel: 'staff_room',
+        senderId: 'sender-1',
+      });
+
+      expect(notificationsChain.insert).toHaveBeenCalledTimes(1);
+      expect(notificationsChain.insert).toHaveBeenCalledWith(expect.objectContaining({ user_id: 'teacher-2' }));
+    });
+  });
+
   // TASKS_09 TASK 23 — daily birthday notification cron.
   describe('sendBirthdayNotifications()', () => {
     it('notifies every verified batchmate for each classroom the birthday person shares with them', async () => {

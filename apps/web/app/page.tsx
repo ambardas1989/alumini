@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Classroom, Institution, VerificationStatus } from '@alumini/types';
 import * as api from '@/lib/api';
-import type { NotificationRow, ClassroomSearchResult, BirthdayToday } from '@/lib/api';
+import type { NotificationRow, ClassroomSearchResult, BirthdayToday, AnnouncementFeedItem } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useToast } from '@/components/providers/ToastProvider';
 import { Button } from '@/components/ui/Button';
@@ -99,6 +99,8 @@ export default function HomePage() {
   const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
   // TASKS_09 TASK 23 — home feed birthday cards.
   const [birthdaysToday, setBirthdaysToday] = useState<BirthdayToday[]>([]);
+  // TASKS_09 TASK 24 — home feed announcement cards.
+  const [announcements, setAnnouncements] = useState<AnnouncementFeedItem[]>([]);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -110,17 +112,19 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const [myClassrooms, notifications, profile, birthdays] = await Promise.all([
+      const [myClassrooms, notifications, profile, birthdays, recentAnnouncements] = await Promise.all([
         api.getMyClassrooms(),
         api.getNotifications(20),
         api.getProfile(),
         api.getBirthdaysToday().catch(() => []), // non-fatal — the birthday cards just don't show if this fails
+        api.getRecentAnnouncements().catch(() => []), // non-fatal, same reasoning
       ]);
       const flat = flatten(myClassrooms);
       setClassrooms(flat);
       setFeed(notifications);
       setIsPlatformAdmin(profile.isPlatformAdmin);
       setBirthdaysToday(birthdays);
+      setAnnouncements(recentAnnouncements);
 
       Promise.allSettled(flat.map((c) => api.getEvents(c.globalId))).then((results) => {
         const counts: Record<string, number> = {};
@@ -262,6 +266,35 @@ export default function HomePage() {
                     <Button variant="ghost" size="sm" onClick={() => handleWishBirthday(person)}>
                       {t('birthday.wishButton')}
                     </Button>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* TASKS_09 TASK 24 — announcement cards from the caller's classrooms. */}
+            {announcements.length > 0 && (
+              <>
+                {announcements.map((item) => (
+                  <div key={item.id} className={`card card-sm ${styles.announcementCard}`}>
+                    <div className={styles.announcementTopRow}>
+                      <Avatar avatarUrl={item.sender?.avatarUrl ?? null} fullName={item.sender?.fullName ?? '?'} size="sm" />
+                      <span className={styles.announcementSenderName}>{item.sender?.fullName ?? '?'}</span>
+                      <span className={styles.announcementClassroomName}>{item.classroomName}</span>
+                      <span className={styles.announcementBadge}>{t('announcement.badge')}</span>
+                    </div>
+                    {item.isRedacted ? (
+                      <>
+                        <p className={styles.announcementBodyBlurred} aria-hidden="true">
+                          {item.content}
+                        </p>
+                        <div className={styles.announcementVerifyNudge}>
+                          🔒 {t('announcement.verifyNudge')}
+                        </div>
+                      </>
+                    ) : (
+                      <p className={styles.announcementBody}>{item.content}</p>
+                    )}
+                    <span className={styles.announcementTime}>{safeRelativeTime(item.createdAt)}</span>
                   </div>
                 ))}
               </>

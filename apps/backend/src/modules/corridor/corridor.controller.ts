@@ -41,6 +41,18 @@ import { AuthTokenPayload } from '../auth/auth.types';
 export class CorridorController {
   constructor(private readonly corridorService: CorridorService) {}
 
+  /**
+   * TASKS_09 TASK 24 — home feed's announcement cards. A single literal
+   * segment, at a different depth than ':classroomId/:channel' below, so
+   * there's no route-ordering ambiguity between them.
+   */
+  @Get('announcements')
+  @ApiOperation({ summary: "Recent announcements across the caller's own classrooms, redacted per the same rules as the classroom channel itself" })
+  async getRecentAnnouncements(@CurrentUser() authToken: AuthTokenPayload, @Query('limit') limit?: string) {
+    const limitNumber = limit ? Math.min(parseInt(limit, 10) || 10, 30) : 10;
+    return this.corridorService.getRecentAnnouncements(authToken.sub, limitNumber);
+  }
+
   @Get(':classroomId/:channel')
   @ApiOperation({ summary: 'Paginated messages for one channel — redacted for unverified members' })
   async getMessages(

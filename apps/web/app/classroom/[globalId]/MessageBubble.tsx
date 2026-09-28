@@ -53,6 +53,32 @@ export function MessageBubble({ message, isOwn, senderRole, onDelete, onRetry }:
     );
   }
 
+  // TASKS_09 TASK 24 — announcement card. message.isRedacted (set by
+  // CorridorService's existing redact-for-unverified-viewer logic, same
+  // flag every other message type already uses) is what actually decides
+  // blurred-vs-plain here — no separate announcement-specific backend
+  // check was needed since the classroom channel already redacts content
+  // for an unverified viewer regardless of message type.
+  if (message.messageType === MessageType.ANNOUNCEMENT) {
+    return (
+      <div className={styles.announcementCard}>
+        <p className={styles.announcementSenderLine}>
+          {message.sender?.fullName ?? '?'} · <span className={styles.announcementTag}>{t('announcementLabel')}</span>
+        </p>
+        {message.isRedacted ? (
+          <>
+            <p className={styles.announcementBlurredText} aria-hidden="true">
+              {message.content}
+            </p>
+            <div className={styles.announcementVerifyNudge}>🔒 {t('announcementVerifyNudge')}</div>
+          </>
+        ) : (
+          <p className={styles.announcementText}>{message.content}</p>
+        )}
+      </div>
+    );
+  }
+
   const startPress = () => {
     if (!isOwn) return;
     pressTimer.current = setTimeout(() => setConfirmingDelete(true), LONG_PRESS_MS);

@@ -779,8 +779,26 @@ export function getMessages(
   return request(`/corridor/${classroomId}/${channel}`, { query: { page } });
 }
 
-export function sendMessage(classroomId: string, channel: ChannelType, content: string): Promise<Message> {
-  return request(`/corridor/${classroomId}/${channel}`, { method: 'POST', body: { content } });
+/** TASKS_09 TASK 24 — messageType defaults to plain text server-side; pass 'announcement' for the announcement-mode compose flow. */
+export function sendMessage(classroomId: string, channel: ChannelType, content: string, messageType?: 'text' | 'announcement'): Promise<Message> {
+  return request(`/corridor/${classroomId}/${channel}`, { method: 'POST', body: { content, messageType } });
+}
+
+/** TASKS_09 TASK 24 — home feed's announcement cards, across all of the caller's classrooms. Redacted (isRedacted:true, no content) for an unverified/pending viewer of a classroom-channel announcement. */
+export interface AnnouncementFeedItem {
+  id: string;
+  classroomId: string;
+  classroomName: string;
+  classroomGlobalId: string;
+  channel: ChannelType;
+  sender: { id: string; fullName: string; avatarUrl: string | null } | null;
+  content: string | null;
+  isRedacted: boolean;
+  createdAt: string;
+}
+
+export function getRecentAnnouncements(limit = 10): Promise<AnnouncementFeedItem[]> {
+  return request('/corridor/announcements', { query: { limit } });
 }
 
 /** DELETE /corridor/:classroomId/message/:messageId needs classroomId too — added ahead of messageId. */

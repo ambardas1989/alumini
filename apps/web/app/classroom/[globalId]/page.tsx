@@ -441,7 +441,10 @@ export default function ClassroomPage() {
   };
 
   // ── Send / retry / delete ────────────────────────────────────────────────
-  const handleSend = async (content: string) => {
+  // TASKS_09 TASK 24 — isAnnouncement threads through to both the
+  // optimistic bubble's own messageType (so it renders with the
+  // announcement styling immediately) and the actual API call.
+  const handleSend = async (content: string, isAnnouncement = false) => {
     if (!classroom || !user) return;
     const clientId = `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const optimistic: UiMessage = {
@@ -449,7 +452,7 @@ export default function ClassroomPage() {
       clientId,
       classroomId: classroom.id,
       channel: activeChannel,
-      messageType: MessageType.TEXT,
+      messageType: isAnnouncement ? MessageType.ANNOUNCEMENT : MessageType.TEXT,
       metadata: null,
       isDeleted: false,
       deletedAt: null,
@@ -465,7 +468,7 @@ export default function ClassroomPage() {
     });
 
     try {
-      const sent = await api.sendMessage(classroom.id, activeChannel, content);
+      const sent = await api.sendMessage(classroom.id, activeChannel, content, isAnnouncement ? 'announcement' : 'text');
       setMessages((prev) =>
         prev.map((m) => (m.clientId === clientId ? toUiMessage(sent, classroom.id, activeChannel) : m)),
       );
@@ -477,7 +480,7 @@ export default function ClassroomPage() {
   const handleRetry = (message: UiMessage) => {
     if (!message.content) return;
     setMessages((prev) => prev.filter((m) => m.clientId !== message.clientId));
-    handleSend(message.content);
+    handleSend(message.content, message.messageType === MessageType.ANNOUNCEMENT);
   };
 
   const handleDelete = async (messageId: string) => {

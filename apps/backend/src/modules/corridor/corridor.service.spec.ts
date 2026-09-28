@@ -37,7 +37,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'update', 'eq', 'or', 'gte', 'order', 'range'].forEach((method) => {
+  ['select', 'insert', 'update', 'eq', 'neq', 'in', 'or', 'gte', 'order', 'range', 'limit'].forEach((method) => {
     builder[method] = jest.fn(() => builder);
   });
   builder.single = jest.fn(() => Promise.resolve(next()));
@@ -320,6 +320,36 @@ describe('CorridorService', () => {
       );
     });
 
+    // TASKS_09 TASK 24 — announcement fan-out is triggered by its own
+    // event, separate from the always-fired corridor.message.sent above.
+    it('emits corridor.announcement.sent when message_type is announcement', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      mockTables({
+        messages: chain({ data: { id: 'msg-2', content: 'Big news', message_type: 'announcement' }, error: null }),
+      });
+
+      await service.sendMessage(
+        'user-1',
+        'class-1',
+        ChannelType.CLASSROOM,
+        { content: 'Big news', messageType: MessageType.ANNOUNCEMENT } as any,
+      );
+
+      expect(mockEventEmit).toHaveBeenCalledWith(
+        'corridor.announcement.sent',
+        expect.objectContaining({ messageId: 'msg-2', classroomId: 'class-1', channel: ChannelType.CLASSROOM, senderId: 'user-1' }),
+      );
+    });
+
+    it('does not emit corridor.announcement.sent for a plain text message', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      mockTables({ messages: chain({ data: { id: 'msg-3', content: 'hi', message_type: 'text' }, error: null }) });
+
+      await service.sendMessage('user-1', 'class-1', ChannelType.CLASSROOM, { content: 'hi' } as any);
+
+      expect(mockEventEmit).not.toHaveBeenCalledWith('corridor.announcement.sent', expect.anything());
+    });
+
     // TASKS_08 TASK 08 — regression test: the insert's own .select() used to
     // omit the sender join entirely, so the response the frontend uses to
     // replace its optimistic placeholder had sender: undefined, flipping a
@@ -478,6 +508,61 @@ describe('CorridorService', () => {
           metadata: { event_id: 'event-1' },
         }),
       );
+    });
+  });
+
+  // TASKS_09 TASK 24 — home feed's announcement cards.
+  describe('getRecentAnnouncements()', () => {
+    it('returns [] for a caller with no memberships', async () => {
+      mockTables({ memberships: chain({ data: [], error: null }) });
+      const result = await service.getRecentAnnouncements('user-1', 10);
+      expect(result).toEqual([]);
+    });
+
+    it('returns unredacted content for a verified member', async () => {
+      mockTables({
+        memberships: chain({
+          data: [{ classroom_id: 'class-1', role: 'student', verification_status: 'verified', joined_at: '2025-01-01', classroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }],
+          error: null,
+        }),
+        messages: chain({
+          data: [{ id: 'msg-1', classroom_id: 'class-1', channel: ChannelType.CLASSROOM, content: 'Big news', created_at: '2026-01-01T00:00:00Z', sender: { id: 'sender-1', full_name: 'Priya Sharma', avatar_url: null } }],
+          error: null,
+        }),
+      });
+
+      const result = await service.getRecentAnnouncements('user-1', 10);
+      expect(result).toEqual([
+        {
+          id: 'msg-1',
+          classroomId: 'class-1',
+          classroomName: 'Grade 9A',
+          classroomGlobalId: 'IN-KOL-X-9A-2012',
+          channel: ChannelType.CLASSROOM,
+          sender: { id: 'sender-1', fullName: 'Priya Sharma', avatarUrl: null },
+          content: 'Big news',
+          isRedacted: false,
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ]);
+    });
+
+    it('redacts classroom-channel content for an unverified/pending member', async () => {
+      mockTables({
+        memberships: chain({
+          data: [{ classroom_id: 'class-1', role: 'student', verification_status: 'pending', joined_at: '2025-01-01', classroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }],
+          error: null,
+        }),
+        messages: chain({
+          data: [{ id: 'msg-1', classroom_id: 'class-1', channel: ChannelType.CLASSROOM, content: 'Big news', created_at: '2026-01-01T00:00:00Z', sender: { id: 'sender-1', full_name: 'Priya Sharma', avatar_url: 'x' } }],
+          error: null,
+        }),
+      });
+
+      const result = await service.getRecentAnnouncements('user-1', 10);
+      expect(result[0]!.isRedacted).toBe(true);
+      expect(result[0]!.content).not.toBe('Big news');
+      expect(result[0]!.sender?.avatarUrl).toBeNull();
     });
   });
 });

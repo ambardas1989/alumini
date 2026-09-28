@@ -376,6 +376,91 @@ export class CorridorService {
     };
   }
 
+  /**
+   * TASKS_09 TASK 24 — home feed's announcement cards, across every
+   * classroom the caller belongs to. Redaction mirrors getMessages()
+   * exactly: classroom-channel announcements are blurred client-side for
+   * an unverified/pending viewer (content still withheld server-side, same
+   * REDACTED_CONTENT_PLACEHOLDER every other redacted message uses);
+   * staff_room/student_alley are hard-locked to the right role, so an
+   * announcement in either only ever appears here for someone who could
+   * already read that channel in full.
+   */
+  async getRecentAnnouncements(userId: string, limit: number): Promise<
+    Array<{
+      id: string;
+      classroomId: string;
+      classroomName: string;
+      classroomGlobalId: string;
+      channel: ChannelType;
+      sender: { id: string; fullName: string; avatarUrl: string | null } | null;
+      content: string | null;
+      isRedacted: boolean;
+      createdAt: string;
+    }>
+  > {
+    const { data: memberships } = await this.supabase
+      .from('memberships')
+      .select('classroom_id, role, verification_status, joined_at, classroom:classrooms(name, globalId:global_id)')
+      .eq('user_id', userId)
+      .neq('verification_status', 'rejected');
+
+    if (!memberships || memberships.length === 0) return [];
+
+    const results: Array<{
+      id: string;
+      classroomId: string;
+      classroomName: string;
+      classroomGlobalId: string;
+      channel: ChannelType;
+      sender: { id: string; fullName: string; avatarUrl: string | null } | null;
+      content: string | null;
+      isRedacted: boolean;
+      createdAt: string;
+    }> = [];
+
+    for (const m of memberships as any[]) {
+      const hasFullAccess = m.verification_status === 'verified' || m.verification_status === 'pending_auto';
+      const readableChannels: ChannelType[] = [ChannelType.CLASSROOM];
+      if (hasFullAccess && (m.role === MemberRole.TEACHER || m.role === MemberRole.ADMIN)) readableChannels.push(ChannelType.STAFF_ROOM);
+      if (hasFullAccess && m.role === MemberRole.STUDENT) readableChannels.push(ChannelType.STUDENT_ALLEY);
+
+      const { data: announcements } = await this.supabase
+        .from('messages')
+        .select(
+          'id, classroom_id, channel, content, created_at, ' +
+            'sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)',
+        )
+        .eq('classroom_id', m.classroom_id)
+        .eq('message_type', MessageType.ANNOUNCEMENT)
+        .eq('is_deleted', false)
+        .in('channel', readableChannels)
+        .gte('created_at', m.joined_at)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      for (const a of (announcements ?? []) as any[]) {
+        const redact = a.channel === ChannelType.CLASSROOM && !hasFullAccess;
+        results.push({
+          id:                a.id,
+          classroomId:       a.classroom_id,
+          classroomName:     m.classroom?.name ?? '',
+          classroomGlobalId: m.classroom?.globalId ?? '',
+          channel:           a.channel,
+          sender: a.sender
+            ? { id: a.sender.id, fullName: redact ? redactName(a.sender.full_name) : a.sender.full_name, avatarUrl: redact ? null : a.sender.avatar_url }
+            : null,
+          content:   redact ? appConfig.REDACTED_CONTENT_PLACEHOLDER : a.content,
+          isRedacted: redact,
+          createdAt: a.created_at,
+        });
+      }
+    }
+
+    results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return results.slice(0, limit);
+  }
+
   // ── Write ────────────────────────────────────────────────────────────────
 
   /**
@@ -461,6 +546,23 @@ export class CorridorService {
       channel,
       senderId: userId,
     });
+
+    // TASKS_09 TASK 24 — NotificationService listens for this to fan out
+    // an in-app "feed item" (there is no separate feed_item table in this
+    // schema — the home feed already reads from `notifications`, so that's
+    // what an eligible member's feed entry actually is here) plus a
+    // content-free push, to every member the announcement's channel makes
+    // it eligible for (see NotificationService.handleAnnouncementSent()'s
+    // own doc comment for the exact per-channel audience).
+    if (dto.messageType === MessageType.ANNOUNCEMENT) {
+      this.appLogger.info('[CORRIDOR:announcement] sent', { senderId: userId, classroomId, channel, messageId: message.id });
+      this.eventEmitter.emit('corridor.announcement.sent', {
+        messageId: message.id,
+        classroomId,
+        channel,
+        senderId: userId,
+      });
+    }
 
     // redact=false — the sender is always shown their own message
     // unredacted regardless of verification status; canAccessChannel()

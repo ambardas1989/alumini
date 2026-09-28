@@ -1,12 +1,43 @@
-.bar {
+.wrap {
   flex-shrink: 0;
+  background: var(--color-surface);
+  border-block-start: 1px solid var(--color-border);
+}
+
+.bar {
   display: flex;
   align-items: flex-end;
   gap: 8px;
   padding: 10px 12px;
   padding-block-end: calc(10px + var(--safe-area-bottom));
-  background: var(--color-surface);
-  border-block-start: 1px solid var(--color-border);
+}
+
+/* TASKS_09 TASK 24 — announcement-mode compose bar: purple label above the input plus a thin left accent border, matching the mockup's --text-pro/--fill-pro treatment via this app's own primary-purple tokens. */
+.barAnnouncement {
+  border-inline-start: 3px solid var(--color-primary);
+}
+
+.announcementLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px 0;
+}
+
+.announcementLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.announcementCancel {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.attachWrap {
+  position: relative;
+  flex-shrink: 0;
 }
 
 /* TASKS_09 TASK 21 FIX E — attachment entry point (shows a "coming soon" toast for now; TASKS_08 TASK 09's actual upload flow is still deferred). */
@@ -15,6 +46,46 @@
   color: var(--color-text-muted);
   background: none;
   align-self: center;
+}
+
+.menuBackdrop {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  border: none;
+  z-index: 5;
+}
+
+.attachMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  inset-inline-start: 0;
+  z-index: 6;
+  min-width: 180px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.attachMenuItem {
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: 10px 14px;
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+  background: none;
+}
+
+/* TASKS_09 TASK 24 — Announcement menu item, distinct color per spec. */
+.attachMenuItemPro {
+  color: var(--color-primary);
+}
+
+.attachMenuItemPro:hover {
+  background: var(--color-primary-light);
 }
 
 .textarea {
