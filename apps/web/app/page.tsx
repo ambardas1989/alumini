@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Classroom, Institution, VerificationStatus } from '@alumini/types';
 import * as api from '@/lib/api';
-import type { NotificationRow, ClassroomSearchResult } from '@/lib/api';
+import type { NotificationRow, ClassroomSearchResult, BirthdayToday } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useToast } from '@/components/providers/ToastProvider';
 import { Button } from '@/components/ui/Button';
@@ -19,6 +19,7 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
+import { Avatar } from '@/components/ui/Avatar';
 import { NewUserLanding, type LandingVariant } from './NewUserLanding';
 import styles from './page.module.css';
 
@@ -96,6 +97,8 @@ export default function HomePage() {
   // visible channels (EventsService.visibleChannels()), so no separate
   // role-aware endpoint is needed here.
   const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
+  // TASKS_09 TASK 23 — home feed birthday cards.
+  const [birthdaysToday, setBirthdaysToday] = useState<BirthdayToday[]>([]);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -107,15 +110,17 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const [myClassrooms, notifications, profile] = await Promise.all([
+      const [myClassrooms, notifications, profile, birthdays] = await Promise.all([
         api.getMyClassrooms(),
         api.getNotifications(20),
         api.getProfile(),
+        api.getBirthdaysToday().catch(() => []), // non-fatal — the birthday cards just don't show if this fails
       ]);
       const flat = flatten(myClassrooms);
       setClassrooms(flat);
       setFeed(notifications);
       setIsPlatformAdmin(profile.isPlatformAdmin);
+      setBirthdaysToday(birthdays);
 
       Promise.allSettled(flat.map((c) => api.getEvents(c.globalId))).then((results) => {
         const counts: Record<string, number> = {};
@@ -152,6 +157,15 @@ export default function HomePage() {
       cancelled = true;
     };
   }, [loading, classrooms.length]);
+
+  // TASKS_09 TASK 23 — "Wish them": navigate to a pre-filled DM, dismissing
+  // the card immediately (optimistic — there's no "undo wish" concept, so
+  // there's nothing to roll back on a navigation that always succeeds).
+  const handleWishBirthday = (person: BirthdayToday) => {
+    setBirthdaysToday((prev) => prev.filter((p) => p.id !== person.id));
+    const firstName = person.fullName.split(/\s+/)[0] ?? person.fullName;
+    router.push(`/messages?userId=${person.id}&prefill=${encodeURIComponent(t('birthday.prefillMessage', { name: firstName }))}`);
+  };
 
   const handleJoinSuggested = async (result: ClassroomSearchResult) => {
     setJoiningSuggestedId(result.id);
@@ -235,6 +249,24 @@ export default function HomePage() {
 
         {!error && (
           <>
+            {/* TASKS_09 TASK 23 — birthday cards, above all other activity per spec. */}
+            {birthdaysToday.length > 0 && (
+              <>
+                {birthdaysToday.map((person) => (
+                  <div key={person.id} className={`card card-sm ${styles.birthdayCard}`}>
+                    <Avatar avatarUrl={person.avatarUrl} fullName={person.fullName} size="md" />
+                    <div className={styles.birthdayInfo}>
+                      <span className={styles.birthdayName}>{t('birthday.cardTitle', { name: person.fullName })}</span>
+                      {person.sharedClassroom && <span className={styles.birthdayMeta}>{person.sharedClassroom.name}</span>}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleWishBirthday(person)}>
+                      {t('birthday.wishButton')}
+                    </Button>
+                  </div>
+                ))}
+              </>
+            )}
+
             {loading && (
               <>
                 <SkeletonCard />

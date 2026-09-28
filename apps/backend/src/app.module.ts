@@ -9,6 +9,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AuthModule } from './modules/auth/auth.module';
@@ -49,6 +50,10 @@ import { appConfig } from '@alumini/config/app';
       maxListeners: 20,
       verboseMemoryLeak: true,
     }),
+
+    // TASKS_09 TASK 23 — enables @Cron() decorators (birthday/work-anniversary
+    // daily notification jobs).
+    ScheduleModule.forRoot(),
 
     // ── Rate limiting ───────────────────────────────────────────────────────
     // Global throttler — specific limits also applied per-endpoint

@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl, Length, Matches } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsUrl, Length, Matches, Max, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -81,4 +81,20 @@ export class UpdateProfileDto {
   @IsString()
   @Length(1, 120)
   locationCity?: string;
+
+  // TASKS_09 TASK 23 — month/day only, never year (privacy by design —
+  // see 027_birthday_field.sql's own comment).
+  @ApiPropertyOptional({ description: 'Birthday month, 1-12 — no year' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  birthdayMonth?: number;
+
+  @ApiPropertyOptional({ description: 'Birthday day, 1-31 — no year' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(31)
+  birthdayDay?: number;
 }

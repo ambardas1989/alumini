@@ -25,4 +25,15 @@ export class UsersController {
   async search(@CurrentUser() authToken: AuthTokenPayload, @Query('q') q: string) {
     return this.identityService.searchUsers(authToken.sub, q ?? '');
   }
+
+  /**
+   * TASKS_09 TASK 23 — literal path segment, declared before nothing here
+   * (this controller has no dynamic route to collide with), but kept as a
+   * plain literal segment for consistency with the rest of this app.
+   */
+  @Get('birthdays-today')
+  @ApiOperation({ summary: "Verified batchmates (shared verified classroom) whose birthday is today (IST) — never returns email or birth year" })
+  async birthdaysToday(@CurrentUser() authToken: AuthTokenPayload) {
+    return this.identityService.getBirthdaysToday(authToken.sub);
+  }
 }

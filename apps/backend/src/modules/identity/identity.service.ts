@@ -128,6 +128,7 @@ export class IdentityService {
           'activePersona:active_persona, linkedinUrl:linkedin_url, linkedinVerified:linkedin_verified, ' +
           'linkedinConnected:linkedin_connected, linkedinName:linkedin_name, linkedinAvatarUrl:linkedin_avatar_url, ' +
           'jobTitle:job_title, company, locationCity:location_city, ' +
+          'birthdayMonth:birthday_month, birthdayDay:birthday_day, ' +
           'createdAt:created_at, updatedAt:updated_at',
       )
       .eq('id', userId)
@@ -178,6 +179,8 @@ export class IdentityService {
     if (dto.jobTitle !== undefined) patch.job_title = dto.jobTitle;
     if (dto.company !== undefined) patch.company = dto.company;
     if (dto.locationCity !== undefined) patch.location_city = dto.locationCity;
+    if (dto.birthdayMonth !== undefined) patch.birthday_month = dto.birthdayMonth;
+    if (dto.birthdayDay !== undefined) patch.birthday_day = dto.birthdayDay;
 
     if (Object.keys(patch).length === 0) {
       throw new BadRequestException('No updatable fields were provided');
@@ -190,7 +193,8 @@ export class IdentityService {
       .select(
         'id, email, fullName:full_name, avatarUrl:avatar_url, phone, ' +
           'activePersona:active_persona, linkedinUrl:linkedin_url, ' +
-          'jobTitle:job_title, company, locationCity:location_city, updatedAt:updated_at',
+          'jobTitle:job_title, company, locationCity:location_city, ' +
+          'birthdayMonth:birthday_month, birthdayDay:birthday_day, updatedAt:updated_at',
       )
       .single();
 
@@ -611,4 +615,66 @@ export class IdentityService {
       sharedClassroom: sharedByUser.get(u.id) ?? null,
     }));
   }
+
+  /**
+   * TASKS_09 TASK 23 — home feed's birthday cards: verified batchmates
+   * (shared VERIFIED classroom, both directions) whose birthday_month/day
+   * match today in IST — the same "today" the daily notification cron
+   * (NotificationService.sendBirthdayNotifications()) uses, so the feed
+   * and the notification never disagree about which day it is.
+   */
+  async getBirthdaysToday(callerId: string) {
+    const { month, day } = todayInIst();
+    this.appLogger.debug('[USERS:birthdays] checked', { userId: callerId, count: 0 });
+
+    const { data: mine } = await this.supabase
+      .from('memberships')
+      .select('classroom_id, classroom:classrooms(name, globalId:global_id)')
+      .eq('user_id', callerId)
+      .eq('verification_status', 'verified');
+
+    const myClassroomIds = Array.from(new Set((mine ?? []).map((m) => m.classroom_id)));
+    if (myClassroomIds.length === 0) return [];
+
+    const myClassroomById = new Map((mine ?? []).map((m: any) => [m.classroom_id, m.classroom]));
+
+    const { data: rows, error } = await this.supabase
+      .from('memberships')
+      .select('user_id, classroom_id, profile:profiles(id, full_name, avatar_url, birthday_month, birthday_day)')
+      .in('classroom_id', myClassroomIds)
+      .eq('verification_status', 'verified')
+      .neq('user_id', callerId);
+
+    if (error) {
+      this.appLogger.error('[USERS:birthdays] failed', { error });
+      throw new BadRequestException('Failed to load birthdays');
+    }
+
+    const seen = new Set<string>();
+    const results: Array<{ id: string; fullName: string; avatarUrl: string | null; sharedClassroom: { name: string; globalId: string } | null }> = [];
+
+    for (const row of (rows ?? []) as any[]) {
+      const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+      if (!profile || profile.birthday_month !== month || profile.birthday_day !== day) continue;
+      if (seen.has(row.user_id)) continue;
+      seen.add(row.user_id);
+      const classroom = myClassroomById.get(row.classroom_id);
+      results.push({
+        id: profile.id,
+        fullName: profile.full_name,
+        avatarUrl: profile.avatar_url,
+        sharedClassroom: classroom ? { name: classroom.name, globalId: classroom.globalId } : null,
+      });
+    }
+
+    this.appLogger.debug('[USERS:birthdays] checked', { userId: callerId, count: results.length });
+    return results;
+  }
+}
+
+/** IST = UTC+5:30 — shared "what day is it" for both the birthday feed query above and NotificationService's daily cron, so they never disagree. */
+function todayInIst(): { month: number; day: number } {
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(Date.now() + IST_OFFSET_MS);
+  return { month: ist.getUTCMonth() + 1, day: ist.getUTCDate() };
 }

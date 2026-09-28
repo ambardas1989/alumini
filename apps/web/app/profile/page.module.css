@@ -58,6 +58,23 @@
   margin-block-start: 4px;
 }
 
+/* TASKS_09 TASK 23 — birthday month/day dropdowns. */
+.fieldLabel {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-block-end: 4px;
+}
+
+.birthdayRow {
+  display: flex;
+  gap: 8px;
+}
+
+.birthdayRow > * {
+  flex: 1;
+}
+
 .badgeRow {
   display: flex;
   align-items: center;

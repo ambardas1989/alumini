@@ -159,6 +159,37 @@
   color: var(--color-text-muted);
 }
 
+/* TASKS_09 TASK 23 — birthday cards. */
+.birthdayCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-block-end: 8px;
+}
+
+.birthdayInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.birthdayName {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.birthdayMeta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .feedTime {
   flex-shrink: 0;
   font-size: 10px;

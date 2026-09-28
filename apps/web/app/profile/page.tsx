@@ -20,6 +20,7 @@ import { PageContainer } from '@/components/layout/PageContainer';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { PasswordStrength } from '@/components/ui/PasswordStrength';
 import { CodeInput } from '@/components/ui/CodeInput';
@@ -33,6 +34,13 @@ import switchStyles from '@/components/ui/Switch.module.css';
 import styles from './page.module.css';
 
 type FlatClassroom = Classroom & { institution: Institution; verificationStatus: string; userRole: string };
+
+// TASKS_09 TASK 23 — birthday dropdowns; no year field, by design.
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -61,6 +69,10 @@ export default function ProfilePage() {
   const [locationCity, setLocationCity] = useState('');
   const [focusRoleField, setFocusRoleField] = useState(false);
   const jobTitleInputRef = useRef<HTMLInputElement>(null);
+  // TASKS_09 TASK 23 — birthday (month/day only, no year — see the
+  // migration's own comment on why).
+  const [birthdayMonth, setBirthdayMonth] = useState('');
+  const [birthdayDay, setBirthdayDay] = useState('');
   // TASKS_09 TASK 22 FIX A — deduplicated member count across all of the
   // caller's classrooms, fetched separately from `classrooms` itself
   // (memberCount there is per-classroom, not deduplicated). Capped at each
@@ -171,6 +183,8 @@ export default function ProfilePage() {
     setJobTitle(profile.jobTitle ?? '');
     setCompany(profile.company ?? '');
     setLocationCity(profile.locationCity ?? '');
+    setBirthdayMonth(profile.birthdayMonth ? String(profile.birthdayMonth) : '');
+    setBirthdayDay(profile.birthdayDay ? String(profile.birthdayDay) : '');
     setSaveError(null);
     setFocusRoleField(focusOnRole);
     setEditing(true);
@@ -201,6 +215,8 @@ export default function ProfilePage() {
         jobTitle: jobTitle.trim() || undefined,
         company: company.trim() || undefined,
         locationCity: locationCity.trim() || undefined,
+        birthdayMonth: birthdayMonth ? parseInt(birthdayMonth, 10) : undefined,
+        birthdayDay: birthdayDay ? parseInt(birthdayDay, 10) : undefined,
       });
       setProfile(updated);
       updateUser({ fullName: updated.fullName, avatarUrl: updated.avatarUrl ?? null });
@@ -650,6 +666,10 @@ export default function ProfilePage() {
               <p className={styles.email}>{safeEmail}</p>
               {phoneDisplay && <p className={styles.memberSince}>{phoneDisplay}</p>}
               <p className={styles.memberSince}>{t('memberSince', { date: memberSinceLabel })}</p>
+              {/* TASKS_09 TASK 23 — own-profile-only birthday display; nothing shown at all when unset (no placeholder). */}
+              {profile.birthdayMonth && profile.birthdayDay && (
+                <p className={styles.memberSince}>🎂 {MONTH_NAMES[profile.birthdayMonth - 1]} {profile.birthdayDay}</p>
+              )}
               <div className={styles.badgeRow}>
                 <span className={styles.personaTypeBadge}>{tTypes(profile.activePersona)}</span>
                 {verifiedCount > 0 && <span className={styles.verifiedHeaderBadge}>{t('verifiedBadge')}</span>}
@@ -680,6 +700,28 @@ export default function ProfilePage() {
                 <Input ref={jobTitleInputRef} label={t('currentRole.jobTitleLabel')} value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
                 <Input label={t('currentRole.companyLabel')} value={company} onChange={(e) => setCompany(e.target.value)} />
                 <Input label={t('currentRole.cityLabel')} value={locationCity} onChange={(e) => setLocationCity(e.target.value)} />
+                <div>
+                  <div className={styles.fieldLabel}>{t('birthday.label')}</div>
+                  <div className={styles.birthdayRow}>
+                    <Select label={t('birthday.monthLabel')} value={birthdayMonth} onChange={(e) => setBirthdayMonth(e.target.value)}>
+                      <option value="">{t('birthday.monthPlaceholder')}</option>
+                      {MONTH_NAMES.map((name, i) => (
+                        <option key={name} value={String(i + 1)}>
+                          {name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select label={t('birthday.dayLabel')} value={birthdayDay} onChange={(e) => setBirthdayDay(e.target.value)}>
+                      <option value="">{t('birthday.dayPlaceholder')}</option>
+                      {DAY_OPTIONS.map((d) => (
+                        <option key={d} value={String(d)}>
+                          {d}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <p className={styles.phoneFormatHint}>{t('birthday.hint')}</p>
+                </div>
                 {saveError && <ErrorMessage message={saveError} />}
                 <div className={styles.editActions}>
                   <Button variant="ghost" size="md" onClick={() => setEditing(false)} disabled={saving}>

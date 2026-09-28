@@ -35,7 +35,7 @@ function chain(...results: Array<{ data: any; error: any; count?: number }>) {
   const next = () => (queue.length > 1 ? queue.shift()! : queue[0]);
 
   const builder: any = {};
-  ['select', 'insert', 'update', 'eq', 'or', 'is', 'not', 'in', 'order', 'limit'].forEach((method) => {
+  ['select', 'insert', 'update', 'eq', 'neq', 'or', 'is', 'not', 'in', 'order', 'limit'].forEach((method) => {
     builder[method] = jest.fn(() => builder);
   });
   builder.single = jest.fn(() => Promise.resolve(next()));
@@ -468,6 +468,48 @@ describe('NotificationService', () => {
       expect(notificationsChain.insert).toHaveBeenCalledWith(
         expect.objectContaining({ body: expect.stringContaining('Online') }),
       );
+    });
+  });
+
+  // TASKS_09 TASK 23 — daily birthday notification cron.
+  describe('sendBirthdayNotifications()', () => {
+    it('notifies every verified batchmate for each classroom the birthday person shares with them', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({
+        profiles: chain({ data: [{ id: 'birthday-user', full_name: 'Priya Sharma' }], error: null }),
+        memberships: chain(
+          { data: [{ classroom_id: 'class-1', classroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }], error: null },
+          { data: [{ user_id: 'member-1' }, { user_id: 'member-2' }], error: null },
+        ),
+        notifications: notificationsChain,
+      });
+
+      const service = await createService();
+      await service.sendBirthdayNotifications();
+
+      expect(notificationsChain.insert).toHaveBeenCalledTimes(2);
+      expect(notificationsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'member-1',
+          type: 'birthday',
+          title: expect.stringContaining('Priya Sharma'),
+          body: expect.stringContaining('Priya'),
+          data: { user_id: 'birthday-user', classroom_global_id: 'IN-KOL-X-9A-2012' },
+        }),
+      );
+    });
+
+    it('sends nothing when nobody has a birthday today', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({
+        profiles: chain({ data: [], error: null }),
+        notifications: notificationsChain,
+      });
+
+      const service = await createService();
+      await service.sendBirthdayNotifications();
+
+      expect(notificationsChain.insert).not.toHaveBeenCalled();
     });
   });
 });

@@ -451,4 +451,35 @@ describe('IdentityService', () => {
       expect(result).toEqual([{ id: 'u2', fullName: 'Raj Kumar', avatarUrl: null, sharedClassroom: null }]);
     });
   });
+
+  // TASKS_09 TASK 23 — home feed's birthday-today lookup.
+  describe('getBirthdaysToday()', () => {
+    it('returns [] when the caller has no verified memberships', async () => {
+      mockTables({ memberships: chain({ data: [], error: null }) });
+      const result = await service.getBirthdaysToday('user-1');
+      expect(result).toEqual([]);
+    });
+
+    it('returns only batchmates whose birthday matches today, deduped, excluding the caller', async () => {
+      const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+      const month = today.getUTCMonth() + 1;
+      const day = today.getUTCDate();
+
+      mockTables({
+        memberships: chain(
+          { data: [{ classroom_id: 'class-1', classroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }], error: null },
+          {
+            data: [
+              { user_id: 'u2', classroom_id: 'class-1', profile: { id: 'u2', full_name: 'Priya Sharma', avatar_url: null, birthday_month: month, birthday_day: day } },
+              { user_id: 'u3', classroom_id: 'class-1', profile: { id: 'u3', full_name: 'Raj Kumar', avatar_url: null, birthday_month: 1, birthday_day: 1 } },
+            ],
+            error: null,
+          },
+        ),
+      });
+
+      const result = await service.getBirthdaysToday('user-1');
+      expect(result).toEqual([{ id: 'u2', fullName: 'Priya Sharma', avatarUrl: null, sharedClassroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }]);
+    });
+  });
 });

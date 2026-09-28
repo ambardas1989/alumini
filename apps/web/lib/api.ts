@@ -395,7 +395,9 @@ export function getProfile(): Promise<Profile> {
 }
 
 export function updateProfile(
-  data: Partial<Pick<Profile, 'fullName' | 'avatarUrl' | 'phone' | 'linkedinUrl' | 'jobTitle' | 'company' | 'locationCity'>>,
+  data: Partial<
+    Pick<Profile, 'fullName' | 'avatarUrl' | 'phone' | 'linkedinUrl' | 'jobTitle' | 'company' | 'locationCity' | 'birthdayMonth' | 'birthdayDay'>
+  >,
 ): Promise<Profile> {
   return request('/identity/profile', { method: 'PATCH', body: data });
 }
@@ -1194,6 +1196,18 @@ export interface UserSearchResult {
 
 export function searchUsers(q: string): Promise<UserSearchResult[]> {
   return request('/users/search', { query: { q } });
+}
+
+/** TASKS_09 TASK 23 — home feed's birthday cards. Verified batchmates whose birthday is today (IST). Never includes email or birth year. */
+export interface BirthdayToday {
+  id: string;
+  fullName: string;
+  avatarUrl: string | null;
+  sharedClassroom: { name: string; globalId: string } | null;
+}
+
+export function getBirthdaysToday(): Promise<BirthdayToday[]> {
+  return request('/users/birthdays-today');
 }
 
 export function getDmMessages(userId: string, page = 0): Promise<DmMessage[]> {

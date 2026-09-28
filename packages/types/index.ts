@@ -221,6 +221,9 @@ export interface Profile {
   jobTitle?: string;
   company?: string;
   locationCity?: string;
+  /** TASKS_09 TASK 23 — month/day only, never year (privacy — see 027_birthday_field.sql's own comment). */
+  birthdayMonth?: number;
+  birthdayDay?: number;
   createdAt: string;
   updatedAt: string;
 }

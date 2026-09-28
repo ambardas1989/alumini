@@ -21,9 +21,11 @@ function dayKey(iso: string): string {
 
 interface ThreadViewProps {
   userId: string;
+  /** TASKS_09 TASK 23 — "Wish them" from a home-feed birthday card pre-fills this instead of navigating straight to an empty thread. */
+  initialValue?: string;
 }
 
-export function ThreadView({ userId }: ThreadViewProps) {
+export function ThreadView({ userId, initialValue }: ThreadViewProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -33,7 +35,7 @@ export function ThreadView({ userId }: ThreadViewProps) {
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(initialValue ?? '');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -67,6 +69,11 @@ export function ThreadView({ userId }: ThreadViewProps) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: 'end' });
   }, [loading, messages.length]);
+
+  useEffect(() => {
+    if (initialValue) autoGrow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const autoGrow = () => {
     const el = textareaRef.current;

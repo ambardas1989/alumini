@@ -52,6 +52,7 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { OnEvent } from '@nestjs/event-emitter';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -589,4 +590,79 @@ export class NotificationService {
     const where = isOnline ? 'Online' : location || 'Location TBD';
     return `${when} · ${where}`;
   }
+
+  /**
+   * TASKS_09 TASK 23 — daily in-app notification for every verified member
+   * who shares a verified classroom with someone whose birthday is today
+   * (IST). Runs at 2:30 AM UTC = 8:00 AM IST. Deliberately NOT wrapped in
+   * a single try/catch around the whole method — each per-birthday-person/
+   * per-classroom iteration is independent, so one bad row shouldn't skip
+   * every other notification this run would otherwise send; every query
+   * failure is caught and logged locally instead (see the module's own
+   * "handlers never throw" convention).
+   */
+  @Cron('0 30 2 * * *')
+  async sendBirthdayNotifications(): Promise<void> {
+    const { month, day } = todayInIst();
+
+    const { data: birthdayProfiles, error } = await this.supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('birthday_month', month)
+      .eq('birthday_day', day);
+
+    if (error) {
+      this.appLogger.error('[NOTIFY:birthday] failed', { error });
+      return;
+    }
+
+    for (const birthdayPerson of birthdayProfiles ?? []) {
+      const { data: theirClassrooms, error: membershipError } = await this.supabase
+        .from('memberships')
+        .select('classroom_id, classroom:classrooms(name, globalId:global_id)')
+        .eq('user_id', birthdayPerson.id)
+        .eq('verification_status', 'verified');
+
+      if (membershipError) {
+        this.appLogger.error('[NOTIFY:birthday] failed', { error: membershipError });
+        continue;
+      }
+
+      for (const membership of (theirClassrooms ?? []) as any[]) {
+        const classroom = membership.classroom;
+
+        const { data: recipients, error: recipientsError } = await this.supabase
+          .from('memberships')
+          .select('user_id')
+          .eq('classroom_id', membership.classroom_id)
+          .eq('verification_status', 'verified')
+          .neq('user_id', birthdayPerson.id);
+
+        if (recipientsError) {
+          this.appLogger.error('[NOTIFY:birthday] failed', { error: recipientsError });
+          continue;
+        }
+
+        const firstName = birthdayPerson.full_name?.split(/\s+/)[0] ?? birthdayPerson.full_name;
+
+        for (const recipient of recipients ?? []) {
+          await this.sendInApp(
+            recipient.user_id,
+            'birthday',
+            `🎂 ${birthdayPerson.full_name}'s birthday today`,
+            `Wish ${firstName} from ${classroom?.name ?? 'your classroom'} a happy birthday`,
+            { user_id: birthdayPerson.id, classroom_global_id: classroom?.globalId },
+          );
+          this.appLogger.info('[NOTIFY:birthday] sent', { recipientId: recipient.user_id, birthdayUserId: birthdayPerson.id });
+        }
+      }
+    }
+  }
+}
+
+/** IST = UTC+5:30 — kept in sync with IdentityService.getBirthdaysToday()'s identical helper so the feed and this cron never disagree about which day it is. */
+function todayInIst(): { month: number; day: number } {
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const ist = new Date(Date.now() + IST_OFFSET_MS);
+  return { month: ist.getUTCMonth() + 1, day: ist.getUTCDate() };
 }

@@ -342,6 +342,11 @@
       "mutualAlumni": "{count, plural, one {# mutual alumni} other {# mutual alumni}}",
       "joinedToast": "Joined!"
     },
+    "birthday": {
+      "cardTitle": "🎂 {name}'s birthday today!",
+      "wishButton": "Wish them",
+      "prefillMessage": "Happy birthday {name}! 🎂"
+    },
     "landing": {
       "headerWelcome": "Welcome, {name}",
       "student": {
@@ -810,6 +815,14 @@
       "companyLabel": "Company",
       "cityLabel": "City",
       "emptyPrompt": "Define your current role"
+    },
+    "birthday": {
+      "label": "Birthday",
+      "monthLabel": "Month",
+      "monthPlaceholder": "Month",
+      "dayLabel": "Day",
+      "dayPlaceholder": "Day",
+      "hint": "Only month and day shown to batchmates"
     },
     "education": {
       "sectionLabel": "Education",

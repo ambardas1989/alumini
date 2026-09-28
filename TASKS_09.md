@@ -1133,7 +1133,8 @@ Also add to fileUpdates.md:
 
 ---
 
-## TASK 23 — Feature: birthday display and notifications [PENDING]
+## TASK 23 — Feature: birthday display and notifications [DONE]
+Note: New supabase/migrations/027_birthday_field.sql (renumbered from the task's literal "028" — 027 was the actual next-available slot; up to 026 already existed) adds profiles.birthday_month/birthday_day (month/day only, no year column at all — the migration's own comment explains why), listed ⚠️ Check in the migrations README. Installed @nestjs/schedule + ScheduleModule.forRoot() (not previously used anywhere in this backend). New GET /users/birthdays-today (IdentityService.getBirthdaysToday(), same shared-verified-classroom pattern as searchUsers()) and a shared todayInIst() helper (UTC+5:30) used identically by both the endpoint and NotificationService's new @Cron('0 30 2 * * *') sendBirthdayNotifications() job, so the feed and the daily notification always agree on "today". Profile edit form gained Month/Day dropdowns (no year field) with a "Only month and day shown to batchmates" hint, and the profile header shows "🎂 Month Day" only when set. Home feed fetches birthdays-today and renders dismissible cards above all other activity, whose "Wish them" button navigates to a pre-filled DM (ThreadView gained an initialValue prop; messages page reads a new ?prefill= param). Builds + full test suite (16 backend suites/398 tests + utils) pass.
 
 Collect batchmates' birthdays and surface them in the home
 feed and as notifications. Year is never shown or stored

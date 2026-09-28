@@ -16,6 +16,8 @@ export default function MessagesPage() {
   const t = useTranslations('messages');
   const searchParams = useSearchParams();
   const userId = searchParams.get('userId');
+  // TASKS_09 TASK 23 — "Wish them" from a home-feed birthday card.
+  const prefill = searchParams.get('prefill');
   // TASKS_09 TASK 04 — "New conversation" compose button + overlay.
   const [showCompose, setShowCompose] = useState(false);
 
@@ -24,7 +26,7 @@ export default function MessagesPage() {
   if (userId) {
     return (
       <AppShell showNav={false}>
-        <ThreadView userId={userId} />
+        <ThreadView userId={userId} initialValue={prefill ?? undefined} />
       </AppShell>
     );
   }
