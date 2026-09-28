@@ -128,7 +128,7 @@ export class IdentityService {
           'activePersona:active_persona, linkedinUrl:linkedin_url, linkedinVerified:linkedin_verified, ' +
           'linkedinConnected:linkedin_connected, linkedinName:linkedin_name, linkedinAvatarUrl:linkedin_avatar_url, ' +
           'jobTitle:job_title, company, locationCity:location_city, ' +
-          'birthdayMonth:birthday_month, birthdayDay:birthday_day, ' +
+          'birthdayMonth:birthday_month, birthdayDay:birthday_day, workStartDate:work_start_date, ' +
           'createdAt:created_at, updatedAt:updated_at',
       )
       .eq('id', userId)
@@ -181,6 +181,7 @@ export class IdentityService {
     if (dto.locationCity !== undefined) patch.location_city = dto.locationCity;
     if (dto.birthdayMonth !== undefined) patch.birthday_month = dto.birthdayMonth;
     if (dto.birthdayDay !== undefined) patch.birthday_day = dto.birthdayDay;
+    if (dto.workStartDate !== undefined) patch.work_start_date = dto.workStartDate;
 
     if (Object.keys(patch).length === 0) {
       throw new BadRequestException('No updatable fields were provided');
@@ -194,7 +195,7 @@ export class IdentityService {
         'id, email, fullName:full_name, avatarUrl:avatar_url, phone, ' +
           'activePersona:active_persona, linkedinUrl:linkedin_url, ' +
           'jobTitle:job_title, company, locationCity:location_city, ' +
-          'birthdayMonth:birthday_month, birthdayDay:birthday_day, updatedAt:updated_at',
+          'birthdayMonth:birthday_month, birthdayDay:birthday_day, workStartDate:work_start_date, updatedAt:updated_at',
       )
       .single();
 

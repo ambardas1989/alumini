@@ -228,6 +228,8 @@ export interface Profile {
   /** TASKS_09 TASK 23 — month/day only, never year (privacy — see 027_birthday_field.sql's own comment). */
   birthdayMonth?: number;
   birthdayDay?: number;
+  /** TASKS_09 TASK 27 — always the 1st of the month (only month+year are collected). company (TASK 22) doubles as the work-anniversary card's "at {company}" — see 030_work_anniversary.sql's own comment on why there's no separate work_company column. */
+  workStartDate?: string;
   createdAt: string;
   updatedAt: string;
 }

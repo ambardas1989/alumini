@@ -784,11 +784,81 @@ export class NotificationService {
       }
     }
   }
+
+  /**
+   * TASKS_09 TASK 27 — same 8am IST schedule as the birthday cron above,
+   * a separate job rather than folded into it (unrelated trigger
+   * condition — work_start_date, not birthday_month/day). Only verified
+   * members of a classroom the anniversary person is ALSO verified in are
+   * notified; the person themselves is excluded. work_start_date's day is
+   * always 1 (only month+year are collected — see profile page/DTO
+   * comments), so this only ever fires on the 1st of the matching month,
+   * which is the intended behaviour of that storage choice, not a bug.
+   */
+  @Cron('0 30 2 * * *')
+  async sendWorkAnniversaryNotifications(): Promise<void> {
+    const { year: currentYear, month, day } = todayInIst();
+
+    const { data: profiles, error } = await this.supabase
+      .from('profiles')
+      .select('id, full_name, company, work_start_date')
+      .not('work_start_date', 'is', null);
+
+    if (error) {
+      this.appLogger.error('[NOTIFY:work_anniversary] failed', { error });
+      return;
+    }
+
+    for (const person of profiles ?? []) {
+      const startDate = new Date(person.work_start_date);
+      if (startDate.getUTCMonth() + 1 !== month || startDate.getUTCDate() !== day) continue;
+
+      const years = currentYear - startDate.getUTCFullYear();
+      if (years < 1) continue;
+
+      const { data: myClassrooms, error: membershipError } = await this.supabase
+        .from('memberships')
+        .select('classroom_id')
+        .eq('user_id', person.id)
+        .eq('verification_status', 'verified');
+
+      if (membershipError) {
+        this.appLogger.error('[NOTIFY:work_anniversary] failed', { error: membershipError });
+        continue;
+      }
+
+      const classroomIds = (myClassrooms ?? []).map((m) => m.classroom_id);
+      if (classroomIds.length === 0) continue;
+
+      const { data: recipientRows, error: recipientsError } = await this.supabase
+        .from('memberships')
+        .select('user_id')
+        .in('classroom_id', classroomIds)
+        .eq('verification_status', 'verified')
+        .neq('user_id', person.id);
+
+      if (recipientsError) {
+        this.appLogger.error('[NOTIFY:work_anniversary] failed', { error: recipientsError });
+        continue;
+      }
+
+      const recipientIds = Array.from(new Set((recipientRows ?? []).map((r) => r.user_id)));
+      const title = `🎉 ${person.full_name}'s ${years}-year work anniversary`;
+      const body = person.company ? `${years} years at ${person.company} — wish them well` : `${years}-year work anniversary`;
+
+      for (const recipientId of recipientIds) {
+        await this.sendInApp(recipientId, 'work_anniversary', title, body, { user_id: person.id, years });
+        await this.sendPush(recipientId, title, body, { type: 'work_anniversary', user_id: person.id });
+      }
+
+      this.appLogger.info('[NOTIFY:work_anniversary] sent', { personId: person.id, years, recipientCount: recipientIds.length });
+    }
+  }
 }
 
 /** IST = UTC+5:30 — kept in sync with IdentityService.getBirthdaysToday()'s identical helper so the feed and this cron never disagree about which day it is. */
-function todayInIst(): { month: number; day: number } {
+function todayInIst(): { year: number; month: number; day: number } {
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
   const ist = new Date(Date.now() + IST_OFFSET_MS);
-  return { month: ist.getUTCMonth() + 1, day: ist.getUTCDate() };
+  return { year: ist.getUTCFullYear(), month: ist.getUTCMonth() + 1, day: ist.getUTCDate() };
 }

@@ -396,7 +396,10 @@ export function getProfile(): Promise<Profile> {
 
 export function updateProfile(
   data: Partial<
-    Pick<Profile, 'fullName' | 'avatarUrl' | 'phone' | 'linkedinUrl' | 'jobTitle' | 'company' | 'locationCity' | 'birthdayMonth' | 'birthdayDay'>
+    Pick<
+      Profile,
+      'fullName' | 'avatarUrl' | 'phone' | 'linkedinUrl' | 'jobTitle' | 'company' | 'locationCity' | 'birthdayMonth' | 'birthdayDay' | 'workStartDate'
+    >
   >,
 ): Promise<Profile> {
   return request('/identity/profile', { method: 'PATCH', body: data });

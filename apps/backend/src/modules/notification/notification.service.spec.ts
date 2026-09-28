@@ -644,4 +644,65 @@ describe('NotificationService', () => {
       expect(notificationsChain.insert).not.toHaveBeenCalled();
     });
   });
+
+  // TASKS_09 TASK 27 — daily work-anniversary notification cron.
+  describe('sendWorkAnniversaryNotifications()', () => {
+    // Same IST-shift approach as todayInIst() itself, so this test's
+    // "today" always matches the service's, regardless of when it runs.
+    const istToday = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    const anniversaryDate = (yearsAgo: number) =>
+      `${istToday.getUTCFullYear() - yearsAgo}-${String(istToday.getUTCMonth() + 1).padStart(2, '0')}-${String(istToday.getUTCDate()).padStart(2, '0')}`;
+
+    it('notifies every verified batchmate for each classroom the anniversary person shares with them', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({
+        profiles: chain({ data: [{ id: 'anniv-user', full_name: 'Rahul Agarwal', company: 'Razorpay', work_start_date: anniversaryDate(3) }], error: null }),
+        memberships: chain(
+          { data: [{ classroom_id: 'class-1' }], error: null },
+          { data: [{ user_id: 'member-1' }, { user_id: 'member-2' }], error: null },
+        ),
+        notifications: notificationsChain,
+      });
+
+      const service = await createService();
+      await service.sendWorkAnniversaryNotifications();
+
+      expect(notificationsChain.insert).toHaveBeenCalledTimes(2);
+      expect(notificationsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'member-1',
+          type: 'work_anniversary',
+          title: expect.stringContaining('3-year'),
+          body: expect.stringContaining('Razorpay'),
+          data: { user_id: 'anniv-user', years: 3 },
+        }),
+      );
+    });
+
+    it('does not notify for a work_start_date less than a year ago', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({
+        profiles: chain({ data: [{ id: 'anniv-user', full_name: 'Rahul Agarwal', company: null, work_start_date: anniversaryDate(0) }], error: null }),
+        notifications: notificationsChain,
+      });
+
+      const service = await createService();
+      await service.sendWorkAnniversaryNotifications();
+
+      expect(notificationsChain.insert).not.toHaveBeenCalled();
+    });
+
+    it('sends nothing when no profile has a work_start_date', async () => {
+      const notificationsChain = chain({ data: [], error: null });
+      mockTables({
+        profiles: chain({ data: [], error: null }),
+        notifications: notificationsChain,
+      });
+
+      const service = await createService();
+      await service.sendWorkAnniversaryNotifications();
+
+      expect(notificationsChain.insert).not.toHaveBeenCalled();
+    });
+  });
 });

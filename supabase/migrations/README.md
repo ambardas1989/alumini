@@ -44,6 +44,7 @@ database has NOT been verified against Supabase itself. Run the query in
 | 027_birthday_field.sql | ⚠️ Check | `profiles.birthday_month`/`birthday_day` (no year, by design — TASKS_09 TASK 23) | Yes — `ADD COLUMN IF NOT EXISTS` |
 | 028_message_announcement_type.sql | ⚠️ Check | Widens `messages_message_type_check` to add `'announcement'` (TASKS_09 TASK 24) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
 | 029_message_visiting_city_type.sql | ⚠️ Check | Widens `messages_message_type_check` to add `'visiting_city'` (TASKS_09 TASK 25) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
+| 030_work_anniversary.sql | ⚠️ Check | `profiles.work_start_date` (reuses TASK 22's `company` column instead of adding a duplicate `work_company` — TASKS_09 TASK 27) | Yes — `ADD COLUMN IF NOT EXISTS` |
 
 ⚠️ Check = not verified against the live database from this environment —
 run the query below and confirm before relying on this table.

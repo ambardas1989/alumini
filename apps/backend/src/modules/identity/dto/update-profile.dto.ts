@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, IsUrl, Length, Matches, Max, Min } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, IsString, IsUrl, Length, Matches, Max, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -97,4 +97,12 @@ export class UpdateProfileDto {
   @Min(1)
   @Max(31)
   birthdayDay?: number;
+
+  // TASKS_09 TASK 27 — month+year only is collected client-side; the day
+  // is always normalized to 1 before this is sent (ProfilePage does that),
+  // so this just validates the resulting date string is well-formed.
+  @ApiPropertyOptional({ description: 'ISO date, always the 1st of the month (only month+year are collected)' })
+  @IsOptional()
+  @IsDateString()
+  workStartDate?: string;
 }

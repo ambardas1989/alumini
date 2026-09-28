@@ -41,6 +41,9 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
+// TASKS_09 TASK 27 — work anniversary year dropdown, current year back to 50 years ago.
+const CURRENT_YEAR = new Date().getFullYear();
+const WORK_YEAR_OPTIONS = Array.from({ length: 50 }, (_, i) => CURRENT_YEAR - i);
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -73,6 +76,9 @@ export default function ProfilePage() {
   // migration's own comment on why).
   const [birthdayMonth, setBirthdayMonth] = useState('');
   const [birthdayDay, setBirthdayDay] = useState('');
+  // TASKS_09 TASK 27 — work anniversary (month + year only; always stored as the 1st of the month).
+  const [workStartMonth, setWorkStartMonth] = useState('');
+  const [workStartYear, setWorkStartYear] = useState('');
   // TASKS_09 TASK 22 FIX A — deduplicated member count across all of the
   // caller's classrooms, fetched separately from `classrooms` itself
   // (memberCount there is per-classroom, not deduplicated). Capped at each
@@ -185,6 +191,14 @@ export default function ProfilePage() {
     setLocationCity(profile.locationCity ?? '');
     setBirthdayMonth(profile.birthdayMonth ? String(profile.birthdayMonth) : '');
     setBirthdayDay(profile.birthdayDay ? String(profile.birthdayDay) : '');
+    if (profile.workStartDate) {
+      const [y, m] = profile.workStartDate.split('-');
+      setWorkStartYear(y ?? '');
+      setWorkStartMonth(m ? String(parseInt(m, 10)) : '');
+    } else {
+      setWorkStartYear('');
+      setWorkStartMonth('');
+    }
     setSaveError(null);
     setFocusRoleField(focusOnRole);
     setEditing(true);
@@ -217,6 +231,7 @@ export default function ProfilePage() {
         locationCity: locationCity.trim() || undefined,
         birthdayMonth: birthdayMonth ? parseInt(birthdayMonth, 10) : undefined,
         birthdayDay: birthdayDay ? parseInt(birthdayDay, 10) : undefined,
+        workStartDate: workStartMonth && workStartYear ? `${workStartYear}-${workStartMonth.padStart(2, '0')}-01` : undefined,
       });
       setProfile(updated);
       updateUser({ fullName: updated.fullName, avatarUrl: updated.avatarUrl ?? null });
@@ -721,6 +736,27 @@ export default function ProfilePage() {
                     </Select>
                   </div>
                   <p className={styles.phoneFormatHint}>{t('birthday.hint')}</p>
+                </div>
+                <div>
+                  <div className={styles.fieldLabel}>{t('workAnniversary.label', { company: company.trim() || t('workAnniversary.yourCompany') })}</div>
+                  <div className={styles.birthdayRow}>
+                    <Select label={t('workAnniversary.monthLabel')} value={workStartMonth} onChange={(e) => setWorkStartMonth(e.target.value)}>
+                      <option value="">{t('birthday.monthPlaceholder')}</option>
+                      {MONTH_NAMES.map((name, i) => (
+                        <option key={name} value={String(i + 1)}>
+                          {name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select label={t('workAnniversary.yearLabel')} value={workStartYear} onChange={(e) => setWorkStartYear(e.target.value)}>
+                      <option value="">{t('workAnniversary.yearPlaceholder')}</option>
+                      {WORK_YEAR_OPTIONS.map((y) => (
+                        <option key={y} value={String(y)}>
+                          {y}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
                 </div>
                 {saveError && <ErrorMessage message={saveError} />}
                 <div className={styles.editActions}>

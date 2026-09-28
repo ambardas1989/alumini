@@ -360,6 +360,10 @@
     "newMember": {
       "sayHello": "Say hello"
     },
+    "workAnniversary": {
+      "congratsButton": "Congrats",
+      "prefillMessage": "Congratulations on {years} years! 🎉"
+    },
     "landing": {
       "headerWelcome": "Welcome, {name}",
       "student": {
@@ -860,6 +864,13 @@
       "dayLabel": "Day",
       "dayPlaceholder": "Day",
       "hint": "Only month and day shown to batchmates"
+    },
+    "workAnniversary": {
+      "label": "Started at {company} on",
+      "yourCompany": "your company",
+      "monthLabel": "Month",
+      "yearLabel": "Year",
+      "yearPlaceholder": "Year"
     },
     "education": {
       "sectionLabel": "Education",

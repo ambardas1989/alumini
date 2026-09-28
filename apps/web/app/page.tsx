@@ -452,6 +452,40 @@ export default function HomePage() {
                 const group = dateGroupOf(item.created_at);
                 const showGroupHeading = index === 0 || dateGroupOf(feed[index - 1]!.created_at) !== group;
 
+                // TASKS_09 TASK 27 — work anniversary gets its own card
+                // (success-colored left border, "Congrats" → pre-filled DM).
+                if (item.type === 'work_anniversary') {
+                  const personName = item.title.split("'s ")[0]?.replace(/^🎉\s*/, '') ?? item.title;
+                  const personId = item.data?.user_id as string | undefined;
+                  const years = item.data?.years as number | undefined;
+                  return (
+                    <div key={item.id}>
+                      {showGroupHeading && <p className="section-heading">{t(`dateGroup.${group}`)}</p>}
+                      <div className={`card card-sm ${styles.workAnniversaryCard}`}>
+                        <Avatar avatarUrl={null} fullName={personName} size="md" />
+                        <div className={styles.newMemberInfo}>
+                          <span className={styles.newMemberTitle}>{item.title}</span>
+                          {item.body && <span className={styles.newMemberMeta}>{item.body}</span>}
+                          <span className={styles.announcementTime}>{safeRelativeTime(item.created_at)}</span>
+                        </div>
+                        {personId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              router.push(
+                                `/messages?userId=${personId}&prefill=${encodeURIComponent(t('workAnniversary.prefillMessage', { years: years ?? 0 }))}`,
+                              )
+                            }
+                          >
+                            {t('workAnniversary.congratsButton')}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
                 // TASKS_09 TASK 26 — "new member joined" gets its own richer
                 // card (avatar, name parsed from the title, a "Say hello"
                 // button that goes to a DM, not the classroom) instead of

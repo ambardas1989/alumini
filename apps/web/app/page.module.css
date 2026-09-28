@@ -281,6 +281,17 @@
   margin-block-end: 8px;
 }
 
+/* TASKS_09 TASK 27 — work anniversary feed cards (reuses .newMember* text styles). */
+.workAnniversaryCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-block-end: 8px;
+  border-inline-start-width: 3px;
+  border-inline-start-color: var(--color-success, #16a34a);
+}
+
 .newMemberInfo {
   flex: 1;
   min-width: 0;

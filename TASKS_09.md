@@ -1677,7 +1677,8 @@ push notification on verification"
 
 ---
 
-## TASK 27 — Feature: work anniversary feed card and notification [PENDING]
+## TASK 27 — Feature: work anniversary feed card and notification [DONE]
+Note: New supabase/migrations/030_work_anniversary.sql adds only profiles.work_start_date — reused TASK 22's `company` column instead of adding a duplicate `work_company`, per the task's own instruction to check first. Profile edit form gained a "Started at {company} on" month+year picker (day always normalized to 1). New NotificationService.sendWorkAnniversaryNotifications() cron, same 8am IST schedule as the birthday job (todayInIst() extended to also return year, shared by both), notifying verified members of classrooms the anniversary person is ALSO verified in, excluding themselves; skips anyone whose match would be <1 year (i.e. today). Home feed gained a dedicated work_anniversary card (success-green left border, avatar, title/body straight from the notification, "Congrats" button opening a pre-filled DM) alongside TASK 26's new_member card, both bypassing the generic icon+title+body feed row. Builds + full test suite (16 backend suites/419 tests + utils) pass.
 
 When a batchmate's work anniversary falls today, surface
 a feed card and send a notification to verified members
