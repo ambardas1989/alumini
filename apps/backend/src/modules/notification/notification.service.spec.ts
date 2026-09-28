@@ -399,6 +399,47 @@ describe('NotificationService', () => {
     });
   });
 
+  // TASKS_09 TASK 26 — new-member-verified classroom-wide notification, a
+  // second listener on the SAME 'verification.approved' event as above.
+  describe('handleMemberVerifiedNotifyClassroom()', () => {
+    it('notifies every other member (in-app), and pushes only to verified ones, excluding the new member and rejected members', async () => {
+      setFirebaseEnv();
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({
+        profiles: chain({ data: { full_name: 'Priya Sharma' }, error: null }),
+        classrooms: chain({ data: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' }, error: null }),
+        memberships: chain(
+          { data: { role: 'student' }, error: null }, // the new member's own role
+          {
+            data: [
+              { user_id: 'member-1', verification_status: 'verified' },
+              { user_id: 'member-2', verification_status: 'pending' },
+            ],
+            error: null,
+          },
+        ),
+        notifications: notificationsChain,
+        sessions: chain({ data: [{ fcm_token: 'token-a' }], error: null }),
+      });
+
+      const service = await createService();
+      await service.handleMemberVerifiedNotifyClassroom({ userId: 'new-member-1', classroomId: 'class-1', method: 'peer_vouch' });
+
+      expect(notificationsChain.insert).toHaveBeenCalledTimes(2);
+      expect(notificationsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'member-1',
+          type: 'new_member',
+          title: expect.stringContaining('Priya Sharma'),
+          body: expect.stringContaining('peer vouch'),
+        }),
+      );
+      expect(notificationsChain.insert).toHaveBeenCalledWith(expect.objectContaining({ user_id: 'member-2' }));
+      // Only member-1 is verified, so only one push goes out.
+      expect(mockMessagingSend).toHaveBeenCalledTimes(1);
+    });
+  });
+
   // ── institution.admin.invited ────────────────────────────────────────────
 
   describe('handleAdminInvited()', () => {

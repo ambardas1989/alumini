@@ -357,6 +357,9 @@
       "going": "You're going",
       "responderCount": "{count, plural, one {# batchmate is there} other {# batchmates are there}}"
     },
+    "newMember": {
+      "sayHello": "Say hello"
+    },
     "landing": {
       "headerWelcome": "Welcome, {name}",
       "student": {

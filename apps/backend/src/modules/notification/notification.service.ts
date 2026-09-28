@@ -16,12 +16,23 @@
  *   verification.document.submitted  → in-app to classroom admins
  *   verification.document.approved   → in-app + push to applicant
  *   verification.document.rejected   → in-app to applicant (with reason)
- *   verification.approved            → in-app + push to member
+ *   verification.approved            → in-app + push to member; ALSO a
+ *                                       second listener (TASKS_09 TASK 26)
+ *                                       notifying the rest of the
+ *                                       classroom "X joined" — see
+ *                                       handleMemberVerifiedNotifyClassroom()
  *   institution.admin.invited        → invitation email with magic link
  *   classroom.created                → NOT handled here, deliberately —
  *                                       corridor posts the welcome system
  *                                       message instead (see below)
  *   event.created                    → in-app + push to verified members
+ *   corridor.announcement.sent       → in-app + push, fan-out per channel role (TASK 24)
+ *   corridor.visiting_city.response  → in-app to the original poster (TASK 25)
+ *
+ * classroom.joined is deliberately NOT handled here (any more) — TASK 02's
+ * original "new_member on JOIN, any verification status" listener was
+ * removed in favour of TASK 26's verification.approved-based one above, to
+ * avoid a member producing two separate "joined" cards.
  *
  * EVENTS THIS MODULE DOES NOT YET HANDLE (documented, not forgotten):
  * auth module's 'mfa.sms.send' (SMS OTP via Twilio — twilio is already a
@@ -486,45 +497,70 @@ export class NotificationService {
   // message" per this task) — a notification here would be redundant.
 
   /**
-   * TASKS_09 TASK 02 — home feed's 'new_member' item. Fires on JOIN (any
-   * verification status), not on verification — this is the simple
-   * version the task describes; TASK 26 later refines the trigger to
-   * "on verification" with cross-role visibility rules, at which point
-   * this listener's condition should be revisited rather than duplicated.
+   * TASKS_09 TASK 26 — home feed's 'new_member' item, now on VERIFICATION
+   * rather than on join (superseding TASK 02's original "fires on JOIN,
+   * any status" version — that listener is removed rather than kept
+   * alongside this one, to avoid a member producing TWO "joined" cards:
+   * once unverified on join, once again on verification). Both of
+   * verification's own emit sites (MembershipService.adminVerifyMember(),
+   * VerificationService's approval flow) already fire 'verification.approved'
+   * for every method, so this needs no new emit call anywhere — it's a
+   * second listener on the same event handleVerificationApproved() (this
+   * file, above) already listens to for the DIFFERENT "you are now
+   * verified" self-notification.
    *
-   * Notifies existing VERIFIED members only (a pending member's own feed
-   * doesn't need "someone else joined" noise, and non-members obviously
-   * shouldn't see it) — same reasoning as handleEventCreated() above.
-   * The new member themselves is excluded.
+   * AUDIENCE — every OTHER member of the classroom regardless of their own
+   * verification status (in-app "feed item" — this app's home feed reads
+   * GET /notifications for every card type, so there's no separate
+   * feed_item table/mechanism to write to here), since the task's own
+   * spec says there's no sensitive content in a "someone joined" card.
+   * Push is sent to verified members only — a less disruptive scope for
+   * the more disruptive channel.
    */
-  @OnEvent('classroom.joined')
-  async handleClassroomJoined(payload: { classroomId: string; userId: string; role: string }): Promise<void> {
-    const [{ data: newMember }, { data: classroom }, { data: existingMembers, error }] = await Promise.all([
-      this.supabase.from('profiles').select('full_name').eq('id', payload.userId).maybeSingle(),
-      this.supabase.from('classrooms').select('name').eq('id', payload.classroomId).maybeSingle(),
-      this.supabase
-        .from('memberships')
-        .select('user_id')
-        .eq('classroom_id', payload.classroomId)
-        .eq('verification_status', 'verified')
-        .neq('user_id', payload.userId),
-    ]);
+  @OnEvent('verification.approved')
+  async handleMemberVerifiedNotifyClassroom(payload: { userId: string; classroomId: string; method: string }): Promise<void> {
+    try {
+      const [{ data: newMember }, { data: classroom }, { data: membership }, { data: recipients, error }] = await Promise.all([
+        this.supabase.from('profiles').select('full_name').eq('id', payload.userId).maybeSingle(),
+        this.supabase.from('classrooms').select('name, globalId:global_id').eq('id', payload.classroomId).maybeSingle(),
+        this.supabase.from('memberships').select('role').eq('user_id', payload.userId).eq('classroom_id', payload.classroomId).maybeSingle(),
+        this.supabase
+          .from('memberships')
+          .select('user_id, verification_status')
+          .eq('classroom_id', payload.classroomId)
+          .neq('user_id', payload.userId)
+          .neq('verification_status', 'rejected'),
+      ]);
 
-    if (error) {
-      this.logger.error('Failed to look up members to notify of new joiner', { error, classroomId: payload.classroomId });
-      return;
-    }
+      if (error) {
+        this.appLogger.error('[MEMBERSHIP:verified] notify failed', { error });
+        return;
+      }
 
-    const memberName = newMember?.full_name ?? 'A new member';
-    const classroomName = classroom?.name ?? 'your classroom';
-    const title = `${memberName} joined ${classroomName}`;
-    const body = `${this.capitalize(payload.role)} · pending verification`;
+      const memberName = newMember?.full_name ?? 'A new member';
+      const classroomName = classroom?.name ?? 'your classroom';
+      const role = membership?.role ? this.capitalize(membership.role) : 'Member';
+      const title = `${memberName} joined ${classroomName}`;
+      const body = `${role} · verified via ${payload.method.replace(/_/g, ' ')}`;
 
-    for (const member of existingMembers ?? []) {
-      await this.sendInApp(member.user_id, 'new_member', title, body, {
-        user_id: payload.userId,
-        classroom_id: payload.classroomId,
-      });
+      let recipientCount = 0;
+      for (const recipient of recipients ?? []) {
+        await this.sendInApp(recipient.user_id, 'new_member', title, body, {
+          user_id: payload.userId,
+          classroom_global_id: (classroom as any)?.globalId,
+          role: membership?.role,
+          verification_method: payload.method,
+        });
+
+        if (recipient.verification_status === 'verified') {
+          await this.sendPush(recipient.user_id, title, body, { type: 'new_member', user_id: payload.userId });
+        }
+        recipientCount++;
+      }
+
+      this.appLogger.info('[MEMBERSHIP:verified] notified classroom', { newMemberId: payload.userId, classroomId: payload.classroomId, recipientCount });
+    } catch (err) {
+      this.appLogger.error('[MEMBERSHIP:verified] notify failed', { error: err });
     }
   }
 

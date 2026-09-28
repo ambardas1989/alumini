@@ -1600,7 +1600,8 @@ response, chat card, home feed card"
 
 ---
 
-## TASK 26 — Feature: new member joined — feed card and notification [PENDING]
+## TASK 26 — Feature: new member joined — feed card and notification [DONE]
+Note: Retired TASK 02's 'classroom.joined' (fires on JOIN, any status) listener entirely — kept it alongside a verification-triggered one would have produced two "joined" cards per member. Both real emit sites for verification (MembershipService.adminVerifyMember(), VerificationService's approval flow) already fire 'verification.approved' for every method, so no new emit call was needed — NotificationService.handleMemberVerifiedNotifyClassroom() is a second listener on that same event (the first, handleVerificationApproved(), still handles the unrelated "you are now verified" self-notification). In-app notifications (this app's only feed mechanism — no separate feed_item table) go to every OTHER non-rejected member regardless of their own verification status, since the task says a "someone joined" card has no sensitive content; push is sent only to verified members. Home feed gained a dedicated new_member card (avatar with initials fallback, "{name} joined {classroom}" title, "{role} · verified via {method}" subtitle, "Say hello" button to a DM — not the classroom) instead of the generic icon+title+body row every other notification type uses. Builds + full test suite (16 backend suites/416 tests + utils) pass.
 
 When a new member joins and is verified in a classroom,
 all existing members of that classroom get a feed card

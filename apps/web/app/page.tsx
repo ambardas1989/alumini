@@ -449,9 +449,37 @@ export default function HomePage() {
             {!loading &&
               feed.length > 0 &&
               feed.map((item, index) => {
-                const { icon, accent } = feedAccent(item.type);
                 const group = dateGroupOf(item.created_at);
                 const showGroupHeading = index === 0 || dateGroupOf(feed[index - 1]!.created_at) !== group;
+
+                // TASKS_09 TASK 26 — "new member joined" gets its own richer
+                // card (avatar, name parsed from the title, a "Say hello"
+                // button that goes to a DM, not the classroom) instead of
+                // the generic icon+title+body row every other feed item uses.
+                if (item.type === 'new_member') {
+                  const newMemberName = item.title.split(' joined ')[0] ?? item.title;
+                  const newMemberId = item.data?.user_id as string | undefined;
+                  return (
+                    <div key={item.id}>
+                      {showGroupHeading && <p className="section-heading">{t(`dateGroup.${group}`)}</p>}
+                      <div className={`card card-sm ${styles.newMemberCard}`}>
+                        <Avatar avatarUrl={null} fullName={newMemberName} size="md" />
+                        <div className={styles.newMemberInfo}>
+                          <span className={styles.newMemberTitle}>{item.title}</span>
+                          {item.body && <span className={styles.newMemberMeta}>{item.body}</span>}
+                          <span className={styles.announcementTime}>{safeRelativeTime(item.created_at)}</span>
+                        </div>
+                        {newMemberId && (
+                          <Button variant="ghost" size="sm" onClick={() => router.push(`/messages?userId=${newMemberId}`)}>
+                            {t('newMember.sayHello')}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                const { icon, accent } = feedAccent(item.type);
                 return (
                   <div key={item.id}>
                     {showGroupHeading && <p className="section-heading">{t(`dateGroup.${group}`)}</p>}
