@@ -36,4 +36,15 @@ export class UsersController {
   async birthdaysToday(@CurrentUser() authToken: AuthTokenPayload) {
     return this.identityService.getBirthdaysToday(authToken.sub);
   }
+
+  /**
+   * TASKS_09 TASK 28 — returns [] (not an error) when the caller hasn't
+   * set their own location_city — see IdentityService.getBatchmatesInCity()'s
+   * own privacy-rule comment.
+   */
+  @Get('batchmates-in-city')
+  @ApiOperation({ summary: "Verified batchmates (shared verified classroom) in the caller's own city — [] if the caller hasn't set one" })
+  async batchmatesInCity(@CurrentUser() authToken: AuthTokenPayload) {
+    return this.identityService.getBatchmatesInCity(authToken.sub);
+  }
 }

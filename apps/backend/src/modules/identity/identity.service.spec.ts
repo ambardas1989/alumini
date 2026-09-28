@@ -482,4 +482,77 @@ describe('IdentityService', () => {
       expect(result).toEqual([{ id: 'u2', fullName: 'Priya Sharma', avatarUrl: null, sharedClassroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }]);
     });
   });
+
+  // TASKS_09 TASK 28 — batchmates-in-city discovery.
+  describe('getBatchmatesInCity()', () => {
+    it('returns [] when the caller has not set their own location_city', async () => {
+      mockTables({ profiles: chain({ data: { location_city: null }, error: null }) });
+      const result = await service.getBatchmatesInCity('user-1');
+      expect(result).toEqual([]);
+    });
+
+    it('returns [] when the caller has no verified memberships', async () => {
+      mockTables({
+        profiles: chain({ data: { location_city: 'Mumbai' }, error: null }),
+        memberships: chain({ data: [], error: null }),
+      });
+      const result = await service.getBatchmatesInCity('user-1');
+      expect(result).toEqual([]);
+    });
+
+    it('matches location_city case-insensitively and trimmed, excludes the caller, and dedupes', async () => {
+      mockTables({
+        profiles: chain({ data: { location_city: ' Mumbai ' }, error: null }),
+        memberships: chain(
+          { data: [{ classroom_id: 'class-1', classroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }], error: null },
+          {
+            data: [
+              { user_id: 'u2', classroom_id: 'class-1', profile: { id: 'u2', full_name: 'Priya Sharma', avatar_url: null, location_city: 'MUMBAI' } },
+              { user_id: 'u3', classroom_id: 'class-1', profile: { id: 'u3', full_name: 'Raj Kumar', avatar_url: null, location_city: 'Delhi' } },
+              { user_id: 'u4', classroom_id: 'class-1', profile: { id: 'u4', full_name: 'No City', avatar_url: null, location_city: null } },
+            ],
+            error: null,
+          },
+        ),
+      });
+
+      const result = await service.getBatchmatesInCity('user-1');
+      expect(result).toEqual([{ id: 'u2', fullName: 'Priya Sharma', avatarUrl: null, sharedClassroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }]);
+    });
+  });
+
+  describe('updateProfile() — batchmates-in-city trigger', () => {
+    it('creates a one-shot notification for the caller when updating their city finds matches', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({
+        profiles: chain({ data: { id: 'user-1', location_city: 'Mumbai' }, error: null }), // the update() itself — notifyBatchmatesInCity() takes city from the dto, not a re-fetch
+        memberships: chain(
+          { data: [{ classroom_id: 'class-1', classroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }], error: null },
+          { data: [{ user_id: 'u2', classroom_id: 'class-1', profile: { id: 'u2', full_name: 'Priya Sharma', avatar_url: null, location_city: 'Mumbai' } }], error: null },
+        ),
+        notifications: notificationsChain,
+      });
+
+      await service.updateProfile('user-1', { locationCity: 'Mumbai' } as any);
+      // notifyBatchmatesInCity() is fire-and-forget (.catch()), so let its microtasks flush.
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(notificationsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ user_id: 'user-1', type: 'batchmates_in_city', data: expect.objectContaining({ city: 'Mumbai', count: 1 }) }),
+      );
+    });
+
+    it('does not query for matches when locationCity is not part of the patch', async () => {
+      const membershipsSpy = jest.fn(() => chain({ data: [], error: null }));
+      mockTables({
+        profiles: chain({ data: { id: 'user-1', full_name: 'New Name' }, error: null }),
+        memberships: { select: membershipsSpy } as any,
+      });
+
+      await service.updateProfile('user-1', { fullName: 'New Name' } as any);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(membershipsSpy).not.toHaveBeenCalled();
+    });
+  });
 });

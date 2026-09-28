@@ -292,6 +292,98 @@
   border-inline-start-color: var(--color-success, #16a34a);
 }
 
+/* TASKS_09 TASK 28 — "batchmates in your city" discovery card. */
+.cityDiscoveryCard {
+  position: relative;
+  width: 100%;
+  margin-block-end: 8px;
+  border-inline-start-width: 3px;
+  border-inline-start-color: var(--color-primary);
+}
+
+.cityDiscoveryDismiss {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-end: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  background: none;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cityDiscoveryTitle {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-inline-end: 24px;
+}
+
+.cityDiscoveryAvatarRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-block-start: 8px;
+}
+
+.cityDiscoveryAvatars {
+  display: flex;
+}
+
+.cityDiscoveryAvatar {
+  display: block;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-surface);
+}
+
+.cityDiscoveryMore {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.cityDiscoveryBottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-start: 6px;
+}
+
+.cityDiscoveryMeta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.cityDiscoveryList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cityDiscoveryRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 8px;
+  border-block-end: 1px solid var(--color-border);
+}
+
+.cityDiscoveryRow:last-child {
+  border-block-end: none;
+}
+
+.cityDiscoveryRowInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .newMemberInfo {
   flex: 1;
   min-width: 0;

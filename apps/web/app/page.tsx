@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Classroom, Institution, VerificationStatus } from '@alumini/types';
 import * as api from '@/lib/api';
-import type { NotificationRow, ClassroomSearchResult, BirthdayToday, AnnouncementFeedItem, VisitingCityFeedItem } from '@/lib/api';
+import type { NotificationRow, ClassroomSearchResult, BirthdayToday, AnnouncementFeedItem, VisitingCityFeedItem, BatchmateInCity } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useToast } from '@/components/providers/ToastProvider';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +20,7 @@ import { SkeletonCard } from '@/components/ui/SkeletonCard';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { ClassroomCard, type ClassroomCardData } from '@/components/ClassroomCard';
 import { Avatar } from '@/components/ui/Avatar';
+import { SheetModal } from '@/components/ui/SheetModal';
 import { NewUserLanding, type LandingVariant } from './NewUserLanding';
 import styles from './page.module.css';
 
@@ -103,6 +104,11 @@ export default function HomePage() {
   const [announcements, setAnnouncements] = useState<AnnouncementFeedItem[]>([]);
   // TASKS_09 TASK 25 — home feed visiting-city cards.
   const [visitingCityPosts, setVisitingCityPosts] = useState<VisitingCityFeedItem[]>([]);
+  // TASKS_09 TASK 28 — "batchmates in your city" discovery card.
+  const [batchmatesInCity, setBatchmatesInCity] = useState<BatchmateInCity[]>([]);
+  const [myCity, setMyCity] = useState<string | null>(null);
+  const [cityCardDismissed, setCityCardDismissed] = useState(false);
+  const [showCityDiscoverySheet, setShowCityDiscoverySheet] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -114,13 +120,14 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const [myClassrooms, notifications, profile, birthdays, recentAnnouncements, recentVisitingCity] = await Promise.all([
+      const [myClassrooms, notifications, profile, birthdays, recentAnnouncements, recentVisitingCity, cityMatches] = await Promise.all([
         api.getMyClassrooms(),
         api.getNotifications(20),
         api.getProfile(),
         api.getBirthdaysToday().catch(() => []), // non-fatal — the birthday cards just don't show if this fails
         api.getRecentAnnouncements().catch(() => []), // non-fatal, same reasoning
         api.getRecentVisitingCityPosts().catch(() => []), // non-fatal, same reasoning
+        api.getBatchmatesInCity().catch(() => []), // non-fatal, same reasoning — also [] whenever the caller hasn't set their own city
       ]);
       const flat = flatten(myClassrooms);
       setClassrooms(flat);
@@ -129,6 +136,15 @@ export default function HomePage() {
       setBirthdaysToday(birthdays);
       setAnnouncements(recentAnnouncements);
       setVisitingCityPosts(recentVisitingCity);
+      setBatchmatesInCity(cityMatches);
+      setMyCity(profile.locationCity ?? null);
+      if (profile.locationCity) {
+        try {
+          setCityCardDismissed(window.localStorage.getItem(`dismissed_city_discovery_${profile.locationCity}`) === '1');
+        } catch {
+          // localStorage unavailable — card just stays visible every load, not fatal.
+        }
+      }
 
       Promise.allSettled(flat.map((c) => api.getEvents(c.globalId))).then((results) => {
         const counts: Record<string, number> = {};
@@ -191,6 +207,19 @@ export default function HomePage() {
     } catch (err) {
       setVisitingCityPosts(previous);
       showToast(getErrorMessage(err), 'error');
+    }
+  };
+
+  // TASKS_09 TASK 28 — dismissing the city-discovery card is per-city and
+  // permanent (until the caller changes their city again, which resets
+  // localStorage's key along with it since the key itself is city-scoped).
+  const handleDismissCityCard = () => {
+    setCityCardDismissed(true);
+    if (!myCity) return;
+    try {
+      window.localStorage.setItem(`dismissed_city_discovery_${myCity}`, '1');
+    } catch {
+      // Best-effort — worst case it reappears next visit.
     }
   };
 
@@ -373,6 +402,34 @@ export default function HomePage() {
               </>
             )}
 
+            {/* TASKS_09 TASK 28 — "batchmates in your city" discovery card. */}
+            {!cityCardDismissed && batchmatesInCity.length > 0 && (
+              <div className={`card card-sm ${styles.cityDiscoveryCard}`}>
+                <button type="button" className={styles.cityDiscoveryDismiss} onClick={handleDismissCityCard} aria-label={tCommon('dismiss')}>
+                  ×
+                </button>
+                <p className={styles.cityDiscoveryTitle}>
+                  📍 {t('cityDiscovery.title', { count: batchmatesInCity.length, city: myCity ?? '' })}
+                </p>
+                <div className={styles.cityDiscoveryAvatarRow}>
+                  <div className={styles.cityDiscoveryAvatars}>
+                    {batchmatesInCity.slice(0, 3).map((m, i) => (
+                      <span key={m.id} className={styles.cityDiscoveryAvatar} style={{ zIndex: 3 - i, marginInlineStart: i === 0 ? 0 : -8 }}>
+                        <Avatar avatarUrl={m.avatarUrl} fullName={m.fullName} sizePx={28} />
+                      </span>
+                    ))}
+                  </div>
+                  {batchmatesInCity.length > 3 && <span className={styles.cityDiscoveryMore}>+{batchmatesInCity.length - 3} {tCommon('more')}</span>}
+                </div>
+                <div className={styles.cityDiscoveryBottomRow}>
+                  <span className={styles.cityDiscoveryMeta}>{t('cityDiscovery.fromClassrooms', { city: myCity ?? '' })}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setShowCityDiscoverySheet(true)}>
+                    {t('cityDiscovery.seeWho')}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {loading && (
               <>
                 <SkeletonCard />
@@ -537,6 +594,32 @@ export default function HomePage() {
           </>
         )}
       </PageContainer>
+
+      {showCityDiscoverySheet && (
+        <SheetModal title={t('cityDiscovery.sheetTitle', { city: myCity ?? '' })} onClose={() => setShowCityDiscoverySheet(false)}>
+          <div className={styles.cityDiscoveryList}>
+            {batchmatesInCity.map((m) => (
+              <div key={m.id} className={styles.cityDiscoveryRow}>
+                <Avatar avatarUrl={m.avatarUrl} fullName={m.fullName} size="md" />
+                <div className={styles.cityDiscoveryRowInfo}>
+                  <span className={styles.newMemberTitle}>{m.fullName}</span>
+                  {m.sharedClassroom && <span className={styles.newMemberMeta}>{m.sharedClassroom.name}</span>}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowCityDiscoverySheet(false);
+                    router.push(`/messages?userId=${m.id}`);
+                  }}
+                >
+                  {t('cityDiscovery.messageButton')}
+                </Button>
+              </div>
+            ))}
+          </div>
+        </SheetModal>
+      )}
     </AppShell>
   );
 }

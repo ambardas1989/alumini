@@ -1259,6 +1259,18 @@ export function getBirthdaysToday(): Promise<BirthdayToday[]> {
   return request('/users/birthdays-today');
 }
 
+/** TASKS_09 TASK 28 — [] when the caller hasn't set their own locationCity. */
+export interface BatchmateInCity {
+  id: string;
+  fullName: string;
+  avatarUrl: string | null;
+  sharedClassroom: { name: string; globalId: string } | null;
+}
+
+export function getBatchmatesInCity(): Promise<BatchmateInCity[]> {
+  return request('/users/batchmates-in-city');
+}
+
 export function getDmMessages(userId: string, page = 0): Promise<DmMessage[]> {
   return request(`/dm/conversations/${userId}`, { query: { page } });
 }

@@ -1785,7 +1785,8 @@ notification at 8am IST"
 
 ---
 
-## TASK 28 — Feature: batchmates in your city discovery card [PENDING]
+## TASK 28 — Feature: batchmates in your city discovery card [DONE]
+Note: No migration needed — location_city already exists (TASK 22). IdentityService.updateProfile() now fires a fire-and-forget notifyBatchmatesInCity() whenever locationCity is part of the patch and non-empty (never on someone else's update — one-directional per the privacy rules), creating a single 'batchmates_in_city' notification for the caller only when matches exist. New GET /users/batchmates-in-city ([] if the caller hasn't set their own city — the privacy boundary) and a shared private findBatchmatesInCity() used by both: verified batchmates in shared verified classrooms whose own location_city matches (case-insensitive, trimmed, matched in application code since the city lives on the joined profiles row), ordered by verified_at desc, max 20. Home feed fetches the live list directly (not by parsing the notification's own data) and renders a dismissible card (overlapping avatars, "+N more", "See who" opening a SheetModal with the full list + per-row Message buttons); dismissal is stored in localStorage keyed by city, matching the task's own key format. Builds + full test suite (16 backend suites/424 tests + utils) pass.
 
 When a user sets or updates their city on their profile,
 show a one-time feed card: "X batchmates from your
@@ -1887,13 +1888,15 @@ triggered on profile city update"
 
 ## COMPLETION SUMMARY
 
-(Claude Code fills this in when all tasks are [DONE])
-
-Date completed:
-Tasks completed:
-Tests passing:
-Build status:
+Date completed: 2026-09-28
+Tasks completed: TASK 01–28, all [DONE] (TASK 01 and TASK 09/10/11 etc. were already [DONE] from prior sessions; this run covered TASK 02–07 and TASK 12–28 in one continuous pass, one commit per task, no push until now).
+Tests passing: 16 backend suites / 424 tests + the shared utils package's 37 tests — green after every single task's own build+test cycle, not just at the end.
+Build status: apps/backend (`npm run build`) and apps/web (`next build`) both clean after every task.
 Notes:
+- 5 new Supabase migrations were added as files only (027_birthday_field.sql, 028_message_announcement_type.sql, 029_message_visiting_city_type.sql, 030_work_anniversary.sql, plus TASK 22's job_title/company/location_city columns recorded in fileUpdates.md instead of a migration file per that task's own instruction) — none were run against a live database; supabase/migrations/README.md and fileUpdates.md both note what's pending manual application.
+- Several tasks' own literal instructions didn't match this codebase's actual state (e.g. TASK 03/06's fixes were already correct, TASK 17's FIX C/D were already correct, "poll" message type never existed for TASK 24/25's migrations, next-available migration numbers differed from what the tasks assumed) — each such case is called out in that task's own [DONE] note above rather than silently followed.
+- "feed_item" doesn't exist as a table anywhere in this schema — every task that asked for one (23, 24, 25, 26, 28) reuses the existing `notifications` table, which the home feed already reads via GET /notifications; this is documented in each task's own note and in the relevant service code.
+- TASK 21 read docs/mockups/alumni-demo.html's #s2 screen directly as ground truth where its own prose disagreed with the actual mockup markup.
 
 ---
 

@@ -214,7 +214,125 @@ export class IdentityService {
 
     this.appLogger.info('[IDENTITY:update] success', { userId });
 
+    // TASKS_09 TASK 28 — fire-and-forget: a failure here must never fail
+    // the profile update that already succeeded (same "never roll back
+    // the action that triggered it" convention NotificationService's own
+    // module comment documents).
+    if (dto.locationCity !== undefined && dto.locationCity.trim()) {
+      this.notifyBatchmatesInCity(userId, dto.locationCity.trim()).catch((err) => {
+        this.appLogger.error('[USERS:city_discovery] failed', { error: err });
+      });
+    }
+
     return data;
+  }
+
+  /**
+   * TASKS_09 TASK 28 — one-shot "X batchmates are also in [city]" feed
+   * card, triggered only by the user updating their OWN location_city
+   * (never by someone else's update — "discovery is one-directional",
+   * per the task's own privacy rules). Reuses the same query
+   * findBatchmatesInCity() below shares with GET /users/batchmates-in-city.
+   */
+  private async notifyBatchmatesInCity(userId: string, city: string): Promise<void> {
+    this.appLogger.debug('[USERS:city_discovery] triggered', { userId, city, count: 0 });
+
+    const matches = await this.findBatchmatesInCity(userId, city, 20);
+    if (matches.length === 0) return;
+
+    const { error } = await this.supabase.from('notifications').insert({
+      user_id: userId,
+      type: 'batchmates_in_city',
+      title: `${matches.length} batchmates in ${city}`,
+      body: 'From your classrooms',
+      data: { city, count: matches.length, sample_user_ids: matches.slice(0, 3).map((m) => m.id) },
+    });
+
+    if (error) {
+      this.appLogger.error('[USERS:city_discovery] failed', { error });
+      return;
+    }
+
+    this.appLogger.debug('[USERS:city_discovery] triggered', { userId, city, count: matches.length });
+  }
+
+  /**
+   * TASKS_09 TASK 28 — GET /users/batchmates-in-city. Privacy rule: only a
+   * caller who has set their OWN location_city can see this at all — an
+   * empty caller city returns [] rather than falling back to some other
+   * city, since there is no "current city" to discover batchmates in.
+   */
+  async getBatchmatesInCity(userId: string) {
+    const { data: me } = await this.supabase.from('profiles').select('location_city').eq('id', userId).maybeSingle();
+    const myCity = me?.location_city?.trim();
+    if (!myCity) return [];
+
+    return this.findBatchmatesInCity(userId, myCity, 20);
+  }
+
+  /**
+   * Shared by notifyBatchmatesInCity() and getBatchmatesInCity() — verified
+   * batchmates (shared VERIFIED classroom, both directions) whose own
+   * location_city matches `city` (case-insensitive, trimmed), excluding
+   * the caller. City matching happens in application code, not a
+   * database ILIKE — same "aggregate in JS" reasoning this codebase
+   * already uses for other cross-table filters (e.g. DmService's own
+   * searchRecipients()), since the city lives on the JOINED profiles row,
+   * not the memberships table this query is rooted at. Ordered by the
+   * batchmate's own verified_at (most recently verified first), per the
+   * task's explicit ordering requirement.
+   */
+  private async findBatchmatesInCity(
+    userId: string,
+    city: string,
+    limit: number,
+  ): Promise<Array<{ id: string; fullName: string; avatarUrl: string | null; sharedClassroom: { name: string; globalId: string } | null }>> {
+    const { data: mine } = await this.supabase
+      .from('memberships')
+      .select('classroom_id, classroom:classrooms(name, globalId:global_id)')
+      .eq('user_id', userId)
+      .eq('verification_status', 'verified');
+
+    const myClassroomIds = Array.from(new Set((mine ?? []).map((m) => m.classroom_id)));
+    if (myClassroomIds.length === 0) return [];
+
+    const myClassroomById = new Map((mine ?? []).map((m: any) => [m.classroom_id, m.classroom]));
+    const targetCity = city.trim().toLowerCase();
+
+    const { data: rows, error } = await this.supabase
+      .from('memberships')
+      .select('user_id, classroom_id, verified_at, profile:profiles(id, full_name, avatar_url, location_city)')
+      .in('classroom_id', myClassroomIds)
+      .eq('verification_status', 'verified')
+      .neq('user_id', userId)
+      .order('verified_at', { ascending: false });
+
+    if (error) {
+      this.appLogger.error('[USERS:city_discovery] failed', { error });
+      throw new BadRequestException('Failed to load batchmates in your city');
+    }
+
+    const seen = new Set<string>();
+    const results: Array<{ id: string; fullName: string; avatarUrl: string | null; sharedClassroom: { name: string; globalId: string } | null }> = [];
+
+    for (const row of (rows ?? []) as any[]) {
+      const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+      if (!profile?.location_city || profile.location_city.trim().toLowerCase() !== targetCity) continue;
+      if (seen.has(row.user_id)) continue;
+      seen.add(row.user_id);
+
+      const classroom = myClassroomById.get(row.classroom_id);
+      results.push({
+        id: profile.id,
+        fullName: profile.full_name,
+        avatarUrl: profile.avatar_url,
+        sharedClassroom: classroom ? { name: classroom.name, globalId: classroom.globalId } : null,
+      });
+
+      if (results.length >= limit) break;
+    }
+
+    return results;
   }
 
   /**

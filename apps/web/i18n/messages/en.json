@@ -16,6 +16,7 @@
     "dismissNotification": "Dismiss notification",
     "goBack": "Go back",
     "dismiss": "Dismiss",
+    "more": "more",
     "change": "Change",
     "close": "Close",
     "all": "All",
@@ -363,6 +364,13 @@
     "workAnniversary": {
       "congratsButton": "Congrats",
       "prefillMessage": "Congratulations on {years} years! 🎉"
+    },
+    "cityDiscovery": {
+      "title": "{count, plural, one {# batchmate} other {# batchmates}} in {city}",
+      "fromClassrooms": "From your classrooms · also in {city}",
+      "seeWho": "See who",
+      "sheetTitle": "Batchmates in {city}",
+      "messageButton": "Message"
     },
     "landing": {
       "headerWelcome": "Welcome, {name}",
