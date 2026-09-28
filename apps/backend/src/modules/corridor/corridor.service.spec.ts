@@ -85,6 +85,8 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // ── Test suite ───────────────────────────────────────────────────────────────
 
+const future = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+
 const mockAppLogger = { setContext: jest.fn().mockReturnThis(), debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 
 describe('CorridorService', () => {
@@ -350,11 +352,138 @@ describe('CorridorService', () => {
       expect(mockEventEmit).not.toHaveBeenCalledWith('corridor.announcement.sent', expect.anything());
     });
 
-    // TASKS_08 TASK 08 — regression test: the insert's own .select() used to
-    // omit the sender join entirely, so the response the frontend uses to
-    // replace its optimistic placeholder had sender: undefined, flipping a
-    // just-sent message to NOT-own (left-aligned) until a reload re-fetched
-    // it via getMessages()'s correctly-joined query.
+    // TASKS_09 TASK 25 — visiting_city cross-field validation.
+    it('rejects a visiting_city post missing city/fromDate/toDate', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      await expect(
+        service.sendMessage('user-1', 'class-1', ChannelType.CLASSROOM, { content: 'Visiting', messageType: MessageType.VISITING_CITY } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects fromDate after toDate', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      await expect(
+        service.sendMessage('user-1', 'class-1', ChannelType.CLASSROOM, {
+          content: 'Visiting',
+          messageType: MessageType.VISITING_CITY,
+          city: 'Mumbai',
+          fromDate: '2026-06-10',
+          toDate: '2026-06-01',
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a fromDate more than 30 days in the past', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      await expect(
+        service.sendMessage('user-1', 'class-1', ChannelType.CLASSROOM, {
+          content: 'Visiting',
+          messageType: MessageType.VISITING_CITY,
+          city: 'Mumbai',
+          fromDate: '2020-01-01',
+          toDate: '2020-01-05',
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('saves metadata {city, from_date, to_date, responders: []} for a valid visiting_city post', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      const messagesChain = chain({ data: { id: 'msg-4', message_type: 'visiting_city' }, error: null });
+      mockTables({ messages: messagesChain });
+
+      const fromDate = future(5);
+      const toDate = future(9);
+
+      await service.sendMessage('user-1', 'class-1', ChannelType.CLASSROOM, {
+        content: 'Visiting Mumbai',
+        messageType: MessageType.VISITING_CITY,
+        city: 'Mumbai',
+        fromDate,
+        toDate,
+      } as any);
+
+      expect(messagesChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: { city: 'Mumbai', from_date: fromDate, to_date: toDate, responders: [] } }),
+      );
+    });
+  });
+
+  // TASKS_09 TASK 25 — "I'm there too".
+  describe('respondImThere()', () => {
+    it('throws NotFoundException when the message is not a visiting_city post', async () => {
+      mockTables({ messages: chain({ data: { id: 'msg-1', sender_id: 'poster-1', message_type: 'text', metadata: null }, error: null }) });
+      await expect(service.respondImThere('user-2', 'msg-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('adds the responder, emits corridor.visiting_city.response, and returns the count', async () => {
+      mockTables({
+        messages: chain(
+          { data: { id: 'msg-1', sender_id: 'poster-1', message_type: 'visiting_city', metadata: { city: 'Mumbai', responders: [] } }, error: null },
+          { data: null, error: null },
+        ),
+      });
+
+      const result = await service.respondImThere('user-2', 'msg-1');
+
+      expect(result).toEqual({ respondersCount: 1 });
+      expect(mockEventEmit).toHaveBeenCalledWith(
+        'corridor.visiting_city.response',
+        expect.objectContaining({ messageId: 'msg-1', posterId: 'poster-1', responderId: 'user-2', city: 'Mumbai' }),
+      );
+    });
+
+    it('is idempotent — a second response from the same user does not re-add or re-notify', async () => {
+      mockTables({
+        messages: chain({ data: { id: 'msg-1', sender_id: 'poster-1', message_type: 'visiting_city', metadata: { city: 'Mumbai', responders: ['user-2'] } }, error: null }),
+      });
+
+      const result = await service.respondImThere('user-2', 'msg-1');
+
+      expect(result).toEqual({ respondersCount: 1 });
+      expect(mockEventEmit).not.toHaveBeenCalledWith('corridor.visiting_city.response', expect.anything());
+    });
+  });
+
+  // TASKS_09 TASK 25 — home feed's visiting-city cards.
+  describe('getRecentVisitingCityPosts()', () => {
+    it('returns [] for a caller with no memberships', async () => {
+      mockTables({ memberships: chain({ data: [], error: null }) });
+      const result = await service.getRecentVisitingCityPosts('user-1', 10);
+      expect(result).toEqual([]);
+    });
+
+    it('includes metadata (city/dates/responders) for a verified member', async () => {
+      mockTables({
+        memberships: chain({
+          data: [{ classroom_id: 'class-1', role: 'student', verification_status: 'verified', joined_at: '2025-01-01', classroom: { name: 'Grade 9A', globalId: 'IN-KOL-X-9A-2012' } }],
+          error: null,
+        }),
+        messages: chain({
+          data: [{
+            id: 'msg-1',
+            classroom_id: 'class-1',
+            channel: ChannelType.CLASSROOM,
+            content: 'Visiting Mumbai',
+            metadata: { city: 'Mumbai', from_date: '2026-06-01', to_date: '2026-06-05', responders: [] },
+            created_at: '2026-01-01T00:00:00Z',
+            sender: { id: 'sender-1', full_name: 'Priya Sharma', avatar_url: null },
+          }],
+          error: null,
+        }),
+      });
+
+      const result = await service.getRecentVisitingCityPosts('user-1', 10);
+      expect(result[0]!.metadata).toEqual({ city: 'Mumbai', from_date: '2026-06-01', to_date: '2026-06-05', responders: [] });
+      expect(result[0]!.isRedacted).toBe(false);
+    });
+  });
+
+  // TASKS_08 TASK 08 — regression test: the insert's own .select() used to
+  // omit the sender join entirely, so the response the frontend uses to
+  // replace its optimistic placeholder had sender: undefined, flipping a
+  // just-sent message to NOT-own (left-aligned) until a reload re-fetched
+  // it via getMessages()'s correctly-joined query.
+  describe('sendMessage() — sender join regression', () => {
     it('returns the joined sender (camelCased), not just sender_id, so the frontend can tell the message is its own', async () => {
       mockCanAccessChannel.mockResolvedValue(true);
       mockTables({
@@ -526,7 +655,7 @@ describe('CorridorService', () => {
           error: null,
         }),
         messages: chain({
-          data: [{ id: 'msg-1', classroom_id: 'class-1', channel: ChannelType.CLASSROOM, content: 'Big news', created_at: '2026-01-01T00:00:00Z', sender: { id: 'sender-1', full_name: 'Priya Sharma', avatar_url: null } }],
+          data: [{ id: 'msg-1', classroom_id: 'class-1', channel: ChannelType.CLASSROOM, content: 'Big news', metadata: null, created_at: '2026-01-01T00:00:00Z', sender: { id: 'sender-1', full_name: 'Priya Sharma', avatar_url: null } }],
           error: null,
         }),
       });
@@ -541,6 +670,7 @@ describe('CorridorService', () => {
           channel: ChannelType.CLASSROOM,
           sender: { id: 'sender-1', fullName: 'Priya Sharma', avatarUrl: null },
           content: 'Big news',
+          metadata: null,
           isRedacted: false,
           createdAt: '2026-01-01T00:00:00Z',
         },

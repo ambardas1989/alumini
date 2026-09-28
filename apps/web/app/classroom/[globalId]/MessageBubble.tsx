@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { MessageType } from '@alumini/types';
-import { safeRelativeTime } from '@/lib/format';
+import { safeRelativeTime, safeFormatDate } from '@/lib/format';
 import { useTranslations } from '@/lib/useTranslations';
 import { Avatar } from '@/components/ui/Avatar';
 import { Modal } from '@/components/ui/Modal';
@@ -15,8 +15,11 @@ interface MessageBubbleProps {
   isOwn: boolean;
   /** TASKS_09 TASK 21 FIX C — the sender's role in THIS classroom, looked up from the already-loaded member roster; undefined/null (unknown, or a redacted sender) falls back to the plain short-name format. */
   senderRole?: string | null;
+  /** TASKS_09 TASK 25 — used to tell whether the current viewer already responded "I'm there too" to a visiting_city post. */
+  currentUserId?: string;
   onDelete: (messageId: string) => void;
   onRetry: (message: UiMessage) => void;
+  onImThere?: (messageId: string) => void;
 }
 
 const LONG_PRESS_MS = 500;
@@ -28,7 +31,7 @@ function shortName(fullName: string): string {
   return `${parts[0]} ${parts[parts.length - 1]![0]}.`;
 }
 
-export function MessageBubble({ message, isOwn, senderRole, onDelete, onRetry }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, senderRole, currentUserId, onDelete, onRetry, onImThere }: MessageBubbleProps) {
   const t = useTranslations('classroom.messages');
   const tRole = useTranslations('status');
   const isStaff = senderRole === 'teacher' || senderRole === 'admin';
@@ -74,6 +77,47 @@ export function MessageBubble({ message, isOwn, senderRole, onDelete, onRetry }:
           </>
         ) : (
           <p className={styles.announcementText}>{message.content}</p>
+        )}
+      </div>
+    );
+  }
+
+  // TASKS_09 TASK 25 — visiting-city card. Same isRedacted-driven blur as
+  // the announcement card above.
+  if (message.messageType === MessageType.VISITING_CITY) {
+    const meta = message.metadata as { city?: string; from_date?: string; to_date?: string; responders?: string[] } | null;
+    const responders = meta?.responders ?? [];
+    const alreadyResponded = !!currentUserId && responders.includes(currentUserId);
+    const dateRange = meta?.from_date && meta?.to_date ? `${safeFormatDate(meta.from_date, { month: 'short', day: 'numeric' })} - ${safeFormatDate(meta.to_date, { month: 'short', day: 'numeric' })}` : '';
+
+    return (
+      <div className={styles.visitingCityCard}>
+        <p className={styles.visitingCitySenderLine}>{t('visitingCityIsVisiting', { name: message.sender?.fullName ?? '?' })}</p>
+        {message.isRedacted ? (
+          <>
+            <p className={styles.visitingCityBlurred} aria-hidden="true">
+              📍 {meta?.city} · {dateRange}
+            </p>
+            <div className={styles.announcementVerifyNudge}>🔒 {t('announcementVerifyNudge')}</div>
+          </>
+        ) : (
+          <>
+            <p className={styles.visitingCityCity}>📍 {meta?.city}</p>
+            <p className={styles.visitingCityDates}>{dateRange}</p>
+            <div className={styles.visitingCityResponseRow}>
+              {!isOwn && (
+                <button
+                  type="button"
+                  className={`${styles.imThereButton} ${alreadyResponded ? styles.imThereButtonActive : ''}`}
+                  disabled={alreadyResponded}
+                  onClick={() => onImThere?.(message.id)}
+                >
+                  {alreadyResponded ? t('visitingCityGoing') : t('visitingCityImThere')}
+                </button>
+              )}
+              {responders.length > 0 && <span className={styles.visitingCityResponderCount}>{t('visitingCityResponderCount', { count: responders.length })}</span>}
+            </div>
+          </>
         )}
       </div>
     );

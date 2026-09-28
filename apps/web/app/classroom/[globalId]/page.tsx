@@ -24,7 +24,7 @@ import { MessageBubble } from './MessageBubble';
 import messageBubbleStyles from './MessageBubble.module.css';
 import { EventMessageCard } from './EventMessageCard';
 import { EventDetailSheet } from './EventDetailSheet';
-import { MessageInput } from './MessageInput';
+import { MessageInput, type VisitingCityInput } from './MessageInput';
 import { ClassInfoSheet } from './ClassInfoSheet';
 import { ClassroomPreview } from './ClassroomPreview';
 import { EventCreateModal } from './EventCreateModal';
@@ -441,10 +441,10 @@ export default function ClassroomPage() {
   };
 
   // ── Send / retry / delete ────────────────────────────────────────────────
-  // TASKS_09 TASK 24 — isAnnouncement threads through to both the
-  // optimistic bubble's own messageType (so it renders with the
-  // announcement styling immediately) and the actual API call.
-  const handleSend = async (content: string, isAnnouncement = false) => {
+  // TASKS_09 TASK 24/25 — isAnnouncement/visitingCity thread through to
+  // both the optimistic bubble's own messageType/metadata (so it renders
+  // with the right styling immediately) and the actual API call.
+  const handleSend = async (content: string, isAnnouncement = false, visitingCity?: VisitingCityInput) => {
     if (!classroom || !user) return;
     const clientId = `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const optimistic: UiMessage = {
@@ -452,8 +452,8 @@ export default function ClassroomPage() {
       clientId,
       classroomId: classroom.id,
       channel: activeChannel,
-      messageType: isAnnouncement ? MessageType.ANNOUNCEMENT : MessageType.TEXT,
-      metadata: null,
+      messageType: visitingCity ? MessageType.VISITING_CITY : isAnnouncement ? MessageType.ANNOUNCEMENT : MessageType.TEXT,
+      metadata: visitingCity ? { city: visitingCity.city, from_date: visitingCity.fromDate, to_date: visitingCity.toDate, responders: [] } : null,
       isDeleted: false,
       deletedAt: null,
       createdAt: new Date().toISOString(),
@@ -468,7 +468,8 @@ export default function ClassroomPage() {
     });
 
     try {
-      const sent = await api.sendMessage(classroom.id, activeChannel, content, isAnnouncement ? 'announcement' : 'text');
+      const messageType = visitingCity ? 'visiting_city' : isAnnouncement ? 'announcement' : 'text';
+      const sent = await api.sendMessage(classroom.id, activeChannel, content, messageType, visitingCity);
       setMessages((prev) =>
         prev.map((m) => (m.clientId === clientId ? toUiMessage(sent, classroom.id, activeChannel) : m)),
       );
@@ -480,7 +481,12 @@ export default function ClassroomPage() {
   const handleRetry = (message: UiMessage) => {
     if (!message.content) return;
     setMessages((prev) => prev.filter((m) => m.clientId !== message.clientId));
-    handleSend(message.content, message.messageType === MessageType.ANNOUNCEMENT);
+    const meta = message.metadata as { city?: string; from_date?: string; to_date?: string } | null;
+    const visitingCity =
+      message.messageType === MessageType.VISITING_CITY && meta?.city && meta.from_date && meta.to_date
+        ? { city: meta.city, fromDate: meta.from_date, toDate: meta.to_date }
+        : undefined;
+    handleSend(message.content, message.messageType === MessageType.ANNOUNCEMENT, visitingCity);
   };
 
   const handleDelete = async (messageId: string) => {
@@ -491,6 +497,29 @@ export default function ClassroomPage() {
     );
     try {
       await api.deleteMessage(classroom.id, messageId);
+    } catch (err) {
+      setMessages(previous);
+      showToast(getErrorMessage(err), 'error');
+    }
+  };
+
+  // TASKS_09 TASK 25 — "I'm there too", optimistic (button disables
+  // immediately) with rollback on failure. Idempotent server-side too, so
+  // a double-click racing this optimistic update is harmless either way.
+  const handleImThere = async (messageId: string) => {
+    if (!user) return;
+    const previous = messagesRef.current;
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId) return m;
+        const meta = (m.metadata as { responders?: string[] } | null) ?? {};
+        const responders = meta.responders ?? [];
+        if (responders.includes(user.id)) return m;
+        return { ...m, metadata: { ...meta, responders: [...responders, user.id] } };
+      }),
+    );
+    try {
+      await api.imThere(messageId);
     } catch (err) {
       setMessages(previous);
       showToast(getErrorMessage(err), 'error');
@@ -774,8 +803,10 @@ export default function ClassroomPage() {
                   message={message}
                   isOwn={message.sender?.id === user?.id}
                   senderRole={message.sender ? roleById.get(message.sender.id) : undefined}
+                  currentUserId={user?.id}
                   onDelete={handleDelete}
                   onRetry={handleRetry}
+                  onImThere={handleImThere}
                 />
               ),
             )}

@@ -779,9 +779,15 @@ export function getMessages(
   return request(`/corridor/${classroomId}/${channel}`, { query: { page } });
 }
 
-/** TASKS_09 TASK 24 — messageType defaults to plain text server-side; pass 'announcement' for the announcement-mode compose flow. */
-export function sendMessage(classroomId: string, channel: ChannelType, content: string, messageType?: 'text' | 'announcement'): Promise<Message> {
-  return request(`/corridor/${classroomId}/${channel}`, { method: 'POST', body: { content, messageType } });
+/** TASKS_09 TASK 24/25 — messageType defaults to plain text server-side; pass 'announcement' for the announcement-mode compose flow, or 'visiting_city' + city/fromDate/toDate for a visiting-city post. */
+export function sendMessage(
+  classroomId: string,
+  channel: ChannelType,
+  content: string,
+  messageType?: 'text' | 'announcement' | 'visiting_city',
+  visitingCity?: { city: string; fromDate: string; toDate: string },
+): Promise<Message> {
+  return request(`/corridor/${classroomId}/${channel}`, { method: 'POST', body: { content, messageType, ...visitingCity } });
 }
 
 /** TASKS_09 TASK 24 — home feed's announcement cards, across all of the caller's classrooms. Redacted (isRedacted:true, no content) for an unverified/pending viewer of a classroom-channel announcement. */
@@ -799,6 +805,28 @@ export interface AnnouncementFeedItem {
 
 export function getRecentAnnouncements(limit = 10): Promise<AnnouncementFeedItem[]> {
   return request('/corridor/announcements', { query: { limit } });
+}
+
+/** TASKS_09 TASK 25 — visiting-city posts (chat + home feed). metadata is null when isRedacted (unverified/pending viewer, classroom channel only). */
+export interface VisitingCityFeedItem {
+  id: string;
+  classroomId: string;
+  classroomName: string;
+  classroomGlobalId: string;
+  channel: ChannelType;
+  sender: { id: string; fullName: string; avatarUrl: string | null } | null;
+  content: string | null;
+  metadata: { city: string; from_date: string; to_date: string; responders: string[] } | null;
+  isRedacted: boolean;
+  createdAt: string;
+}
+
+export function getRecentVisitingCityPosts(limit = 10): Promise<VisitingCityFeedItem[]> {
+  return request('/corridor/visiting-city', { query: { limit } });
+}
+
+export function imThere(messageId: string): Promise<{ respondersCount: number }> {
+  return request(`/corridor/message/${messageId}/im-there`, { method: 'POST' });
 }
 
 /** DELETE /corridor/:classroomId/message/:messageId needs classroomId too — added ahead of messageId. */

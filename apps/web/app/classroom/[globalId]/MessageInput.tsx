@@ -3,23 +3,36 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslations } from '@/lib/useTranslations';
 import { useToast } from '@/components/providers/ToastProvider';
+import { safeFormatDate } from '@/lib/format';
 import styles from './MessageInput.module.css';
 
+export interface VisitingCityInput {
+  city: string;
+  fromDate: string;
+  toDate: string;
+}
+
 interface MessageInputProps {
-  /** TASKS_09 TASK 24 — isAnnouncement is only ever true when this compose box's own "Announcement" mode is active. */
-  onSend: (content: string, isAnnouncement?: boolean) => void;
+  /** TASKS_09 TASK 24/25 — isAnnouncement/visitingCity are only ever set when this compose box's own matching mode is active. */
+  onSend: (content: string, isAnnouncement?: boolean, visitingCity?: VisitingCityInput) => void;
   disabled?: boolean;
 }
 
 const MAX_ROWS = 4;
 
+function todayIso(offsetDays = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
 /**
- * TASKS_09 TASK 24 — MessageInput only ever renders when the caller can
+ * TASKS_09 TASK 24/25 — MessageInput only ever renders when the caller can
  * already post in this channel (page.tsx's canPostActive gate), and
  * posting in ANY channel already requires verification_status='verified'
- * (MembershipService.canAccessChannel()) — so "Announcement is verified-
- * members-and-admins-only" is already true for every render of this
- * component without a separate prop/check.
+ * (MembershipService.canAccessChannel()) — so "Announcement/Visiting a
+ * city are verified-members-and-admins-only" is already true for every
+ * render of this component without a separate prop/check.
  */
 export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
   const t = useTranslations('classroom.messages');
@@ -28,6 +41,14 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [isAnnouncementMode, setIsAnnouncementMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // TASKS_09 TASK 25 — visiting-city inline form, replacing the normal bar
+  // while open (its 3 fields don't fit into the single-line text input the
+  // way announcement mode's does).
+  const [showVisitingCityForm, setShowVisitingCityForm] = useState(false);
+  const [vcCity, setVcCity] = useState('');
+  const [vcFromDate, setVcFromDate] = useState(todayIso());
+  const [vcToDate, setVcToDate] = useState(todayIso(2));
 
   const autoGrow = () => {
     const el = textareaRef.current;
@@ -54,6 +75,55 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
     }
   };
 
+  const closeVisitingCityForm = () => {
+    setShowVisitingCityForm(false);
+    setVcCity('');
+    setVcFromDate(todayIso());
+    setVcToDate(todayIso(2));
+  };
+
+  const canShareVisitingCity = !!vcCity.trim() && !!vcFromDate && !!vcToDate;
+
+  const handleShareVisitingCity = () => {
+    if (!canShareVisitingCity || disabled) return;
+    const content = t('visitingCity.fallbackContent', {
+      city: vcCity.trim(),
+      from: safeFormatDate(vcFromDate, { month: 'short', day: 'numeric' }),
+      to: safeFormatDate(vcToDate, { month: 'short', day: 'numeric' }),
+    });
+    onSend(content, false, { city: vcCity.trim(), fromDate: vcFromDate, toDate: vcToDate });
+    closeVisitingCityForm();
+  };
+
+  if (showVisitingCityForm) {
+    return (
+      <div className={styles.wrap}>
+        <div className={styles.visitingCityForm}>
+          <div className={styles.visitingCityHeader}>
+            <span className={styles.announcementLabel}>{t('visitingCity.formLabel')}</span>
+            <button type="button" className={styles.announcementCancel} onClick={closeVisitingCityForm} aria-label={t('visitingCity.cancel')}>
+              ✕
+            </button>
+          </div>
+          <input
+            type="text"
+            className={styles.visitingCityInput}
+            placeholder={t('visitingCity.cityPlaceholder')}
+            value={vcCity}
+            onChange={(e) => setVcCity(e.target.value)}
+          />
+          <div className={styles.visitingCityDateRow}>
+            <input type="date" className={styles.visitingCityInput} value={vcFromDate} onChange={(e) => setVcFromDate(e.target.value)} />
+            <input type="date" className={styles.visitingCityInput} value={vcToDate} onChange={(e) => setVcToDate(e.target.value)} />
+          </div>
+          <button type="button" className={styles.visitingCityShareButton} disabled={!canShareVisitingCity} onClick={handleShareVisitingCity}>
+            {t('visitingCity.shareButton')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.wrap}>
       {isAnnouncementMode && (
@@ -67,7 +137,7 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
 
       <div className={`${styles.bar} ${isAnnouncementMode ? styles.barAnnouncement : ''}`}>
         <div className={styles.attachWrap}>
-          {/* TASKS_09 TASK 21 FIX E / TASKS_09 TASK 24 — attachments themselves are still TASKS_08 TASK 09, deferred; Photo/File stay "coming soon" toasts, Announcement is the one functional menu item. */}
+          {/* TASKS_09 TASK 21 FIX E / TASKS_09 TASK 24/25 — attachments themselves are still TASKS_08 TASK 09, deferred; Photo/File stay "coming soon" toasts, Announcement/Visiting a city are the functional menu items. */}
           <button
             type="button"
             className={styles.attachButton}
@@ -114,6 +184,16 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
                   }}
                 >
                   📢 {t('attachMenu.announcement')}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.attachMenuItem} ${styles.attachMenuItemPro}`}
+                  onClick={() => {
+                    setShowAttachMenu(false);
+                    setShowVisitingCityForm(true);
+                  }}
+                >
+                  📍 {t('attachMenu.visitingCity')}
                 </button>
               </div>
             </>

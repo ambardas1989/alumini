@@ -378,15 +378,35 @@ export class CorridorService {
 
   /**
    * TASKS_09 TASK 24 — home feed's announcement cards, across every
-   * classroom the caller belongs to. Redaction mirrors getMessages()
-   * exactly: classroom-channel announcements are blurred client-side for
-   * an unverified/pending viewer (content still withheld server-side, same
-   * REDACTED_CONTENT_PLACEHOLDER every other redacted message uses);
-   * staff_room/student_alley are hard-locked to the right role, so an
-   * announcement in either only ever appears here for someone who could
-   * already read that channel in full.
+   * classroom the caller belongs to. Thin wrapper around getRecentPostsByType()
+   * — see its own doc comment for the redaction rules, shared identically
+   * by TASK 25's getRecentVisitingCityPosts() below.
    */
-  async getRecentAnnouncements(userId: string, limit: number): Promise<
+  async getRecentAnnouncements(userId: string, limit: number) {
+    return this.getRecentPostsByType(userId, MessageType.ANNOUNCEMENT, limit);
+  }
+
+  /** TASKS_09 TASK 25 — home feed's visiting-city cards. Same audience/redaction rules as announcements — see getRecentPostsByType(). */
+  async getRecentVisitingCityPosts(userId: string, limit: number) {
+    return this.getRecentPostsByType(userId, MessageType.VISITING_CITY, limit);
+  }
+
+  /**
+   * Shared by getRecentAnnouncements()/getRecentVisitingCityPosts() — home
+   * feed cards for a given non-text message_type, across every classroom
+   * the caller belongs to. Redaction mirrors getMessages() exactly:
+   * classroom-channel posts are blurred client-side for an unverified/
+   * pending viewer (content still withheld server-side, same
+   * REDACTED_CONTENT_PLACEHOLDER every other redacted message uses);
+   * staff_room/student_alley are hard-locked to the right role, so a post
+   * in either only ever appears here for someone who could already read
+   * that channel in full.
+   */
+  private async getRecentPostsByType(
+    userId: string,
+    messageType: MessageType,
+    limit: number,
+  ): Promise<
     Array<{
       id: string;
       classroomId: string;
@@ -395,6 +415,7 @@ export class CorridorService {
       channel: ChannelType;
       sender: { id: string; fullName: string; avatarUrl: string | null } | null;
       content: string | null;
+      metadata: Record<string, unknown> | null;
       isRedacted: boolean;
       createdAt: string;
     }>
@@ -415,6 +436,7 @@ export class CorridorService {
       channel: ChannelType;
       sender: { id: string; fullName: string; avatarUrl: string | null } | null;
       content: string | null;
+      metadata: Record<string, unknown> | null;
       isRedacted: boolean;
       createdAt: string;
     }> = [];
@@ -425,21 +447,21 @@ export class CorridorService {
       if (hasFullAccess && (m.role === MemberRole.TEACHER || m.role === MemberRole.ADMIN)) readableChannels.push(ChannelType.STAFF_ROOM);
       if (hasFullAccess && m.role === MemberRole.STUDENT) readableChannels.push(ChannelType.STUDENT_ALLEY);
 
-      const { data: announcements } = await this.supabase
+      const { data: posts } = await this.supabase
         .from('messages')
         .select(
-          'id, classroom_id, channel, content, created_at, ' +
+          'id, classroom_id, channel, content, metadata, created_at, ' +
             'sender:profiles!messages_sender_id_fkey(id, full_name, avatar_url)',
         )
         .eq('classroom_id', m.classroom_id)
-        .eq('message_type', MessageType.ANNOUNCEMENT)
+        .eq('message_type', messageType)
         .eq('is_deleted', false)
         .in('channel', readableChannels)
         .gte('created_at', m.joined_at)
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      for (const a of (announcements ?? []) as any[]) {
+      for (const a of (posts ?? []) as any[]) {
         const redact = a.channel === ChannelType.CLASSROOM && !hasFullAccess;
         results.push({
           id:                a.id,
@@ -450,9 +472,10 @@ export class CorridorService {
           sender: a.sender
             ? { id: a.sender.id, fullName: redact ? redactName(a.sender.full_name) : a.sender.full_name, avatarUrl: redact ? null : a.sender.avatar_url }
             : null,
-          content:   redact ? appConfig.REDACTED_CONTENT_PLACEHOLDER : a.content,
+          content:    redact ? appConfig.REDACTED_CONTENT_PLACEHOLDER : a.content,
+          metadata:   redact ? null : a.metadata,
           isRedacted: redact,
-          createdAt: a.created_at,
+          createdAt:  a.created_at,
         });
       }
     }
@@ -501,6 +524,26 @@ export class CorridorService {
       });
     }
 
+    // TASKS_09 TASK 25 — visiting_city cross-field validation (all three
+    // fields present, from <= to, from not more than 30 days in the past)
+    // lives here rather than in the DTO — see SendMessageDto's own comment.
+    let metadata = dto.metadata ?? null;
+    if (dto.messageType === MessageType.VISITING_CITY) {
+      if (!dto.city || !dto.fromDate || !dto.toDate) {
+        throw new BadRequestException('city, fromDate, and toDate are all required for a visiting_city post');
+      }
+      const from = new Date(dto.fromDate);
+      const to = new Date(dto.toDate);
+      if (from.getTime() > to.getTime()) {
+        throw new BadRequestException('fromDate must not be after toDate');
+      }
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      if (from.getTime() < thirtyDaysAgo) {
+        throw new BadRequestException('fromDate cannot be more than 30 days in the past');
+      }
+      metadata = { city: dto.city, from_date: dto.fromDate, to_date: dto.toDate, responders: [] };
+    }
+
     // `as any` on the same combination Supabase's own generated types choke
     // on here (a dynamic select string mixing plain columns with a `!fkey`
     // embed loses proper inference on .single(), same as getMessages()'s
@@ -513,7 +556,7 @@ export class CorridorService {
         sender_id:    userId,
         content:      dto.content,
         message_type: dto.messageType ?? MessageType.TEXT,
-        metadata:     dto.metadata ?? null,
+        metadata,
       })
       .select(
         'id, classroom_id, channel, sender_id, content, message_type, metadata, ' +
@@ -564,10 +607,73 @@ export class CorridorService {
       });
     }
 
+    // TASKS_09 TASK 25 — same fan-out shape as announcements above, via
+    // its own event (handleAnnouncementSent()'s audience logic doesn't
+    // apply here — a visiting_city post has no push/feed fan-out per the
+    // task's own spec, only the "I'm there too" responder notification
+    // below, so no emit here beyond this log line).
+    if (dto.messageType === MessageType.VISITING_CITY) {
+      this.appLogger.info('[CORRIDOR:visiting_city] posted', { senderId: userId, classroomId, corridor: channel, city: dto.city });
+    }
+
     // redact=false — the sender is always shown their own message
     // unredacted regardless of verification status; canAccessChannel()
     // above already required full access to post in the first place.
     return this.presentMessage(message, false);
+  }
+
+  /**
+   * TASKS_09 TASK 25 — "I'm there too": adds the caller to a visiting_city
+   * post's metadata.responders array, idempotently (a second tap is a
+   * no-op, not an error — "Cannot un-tap" per the task's own spec, so
+   * there's no remove path either). Notifies the original poster once,
+   * only on the FIRST time this responder is added (an idempotent repeat
+   * tap shouldn't re-notify).
+   */
+  async respondImThere(userId: string, messageId: string): Promise<{ respondersCount: number }> {
+    const { data: message, error: fetchError } = await this.supabase
+      .from('messages')
+      .select('id, sender_id, classroom_id, message_type, metadata')
+      .eq('id', messageId)
+      .maybeSingle();
+
+    if (fetchError) {
+      this.appLogger.error('[CORRIDOR:visiting_city] failed', { error: fetchError });
+      throw new BadRequestException('Failed to record your response. Please try again.');
+    }
+    if (!message || message.message_type !== MessageType.VISITING_CITY) {
+      throw new NotFoundException('Visiting-city post not found');
+    }
+
+    const metadata = (message.metadata ?? {}) as { city?: string; responders?: string[] };
+    const responders: string[] = Array.isArray(metadata.responders) ? metadata.responders : [];
+    const alreadyResponded = responders.includes(userId);
+    const updatedResponders = alreadyResponded ? responders : [...responders, userId];
+
+    if (!alreadyResponded) {
+      const { error: updateError } = await this.supabase
+        .from('messages')
+        .update({ metadata: { ...metadata, responders: updatedResponders } })
+        .eq('id', messageId);
+
+      if (updateError) {
+        this.appLogger.error('[CORRIDOR:visiting_city] failed', { error: updateError });
+        throw new BadRequestException('Failed to record your response. Please try again.');
+      }
+
+      this.appLogger.info('[CORRIDOR:visiting_city] response', { responderId: userId, posterId: message.sender_id, city: metadata.city });
+
+      if (message.sender_id && message.sender_id !== userId) {
+        this.eventEmitter.emit('corridor.visiting_city.response', {
+          messageId,
+          posterId: message.sender_id,
+          responderId: userId,
+          city: metadata.city,
+        });
+      }
+    }
+
+    return { respondersCount: updatedResponders.length };
   }
 
   // ── Delete (soft only) ───────────────────────────────────────────────────

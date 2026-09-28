@@ -53,6 +53,14 @@ export class CorridorController {
     return this.corridorService.getRecentAnnouncements(authToken.sub, limitNumber);
   }
 
+  /** TASKS_09 TASK 25 — home feed's visiting-city cards, same shape/route-ordering reasoning as GET 'announcements' above. */
+  @Get('visiting-city')
+  @ApiOperation({ summary: "Recent visiting-city posts across the caller's own classrooms, redacted per the same rules as the classroom channel itself" })
+  async getRecentVisitingCityPosts(@CurrentUser() authToken: AuthTokenPayload, @Query('limit') limit?: string) {
+    const limitNumber = limit ? Math.min(parseInt(limit, 10) || 10, 30) : 10;
+    return this.corridorService.getRecentVisitingCityPosts(authToken.sub, limitNumber);
+  }
+
   @Get(':classroomId/:channel')
   @ApiOperation({ summary: 'Paginated messages for one channel — redacted for unverified members' })
   async getMessages(
@@ -75,6 +83,18 @@ export class CorridorController {
     @Req() req: Request,
   ) {
     return this.corridorService.sendMessage(authToken.sub, classroomId, channel, dto, req);
+  }
+
+  /**
+   * TASKS_09 TASK 25 — "I'm there too" response to a visiting_city post.
+   * 3-segment literal-first path ('message'), same shape as the DELETE
+   * route below but a different HTTP method — no route-ordering ambiguity.
+   */
+  @Post('message/:messageId/im-there')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: "Add the caller to a visiting_city post's responders (idempotent) — returns the updated responder count" })
+  async imThere(@CurrentUser() authToken: AuthTokenPayload, @Param('messageId') messageId: string) {
+    return this.corridorService.respondImThere(authToken.sub, messageId);
   }
 
   @Delete(':classroomId/message/:messageId')

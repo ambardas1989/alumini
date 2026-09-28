@@ -88,6 +88,49 @@
   background: var(--color-primary-light);
 }
 
+/* TASKS_09 TASK 25 — visiting-city inline form, replacing the normal bar while open. */
+.visitingCityForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  padding-block-end: calc(10px + var(--safe-area-bottom));
+  border-inline-start: 3px solid var(--color-primary);
+}
+
+.visitingCityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.visitingCityInput {
+  flex: 1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--color-border);
+  background: #f9f9f9;
+}
+
+.visitingCityDateRow {
+  display: flex;
+  gap: 8px;
+}
+
+.visitingCityShareButton {
+  border-radius: 10px;
+  padding: 10px;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.visitingCityShareButton:disabled {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
 .textarea {
   flex: 1;
   resize: none;

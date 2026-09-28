@@ -43,6 +43,7 @@ database has NOT been verified against Supabase itself. Run the query in
 | 026_events_pending_future_visibility.sql | ⚠️ Check | Updates `events_*_read` RLS to match EventsService.canSeeEvent() — future events visible to any member, past events verified-only and only after joined_at (TASKS_09 TASK 08) | Yes — `DROP POLICY IF EXISTS` before each `CREATE POLICY` |
 | 027_birthday_field.sql | ⚠️ Check | `profiles.birthday_month`/`birthday_day` (no year, by design — TASKS_09 TASK 23) | Yes — `ADD COLUMN IF NOT EXISTS` |
 | 028_message_announcement_type.sql | ⚠️ Check | Widens `messages_message_type_check` to add `'announcement'` (TASKS_09 TASK 24) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
+| 029_message_visiting_city_type.sql | ⚠️ Check | Widens `messages_message_type_check` to add `'visiting_city'` (TASKS_09 TASK 25) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
 
 ⚠️ Check = not verified against the live database from this environment —
 run the query below and confirm before relying on this table.

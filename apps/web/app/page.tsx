@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Classroom, Institution, VerificationStatus } from '@alumini/types';
 import * as api from '@/lib/api';
-import type { NotificationRow, ClassroomSearchResult, BirthdayToday, AnnouncementFeedItem } from '@/lib/api';
+import type { NotificationRow, ClassroomSearchResult, BirthdayToday, AnnouncementFeedItem, VisitingCityFeedItem } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { useToast } from '@/components/providers/ToastProvider';
 import { Button } from '@/components/ui/Button';
-import { safeRelativeTime } from '@/lib/format';
+import { safeRelativeTime, safeFormatDate } from '@/lib/format';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useTranslations } from '@/lib/useTranslations';
@@ -101,6 +101,8 @@ export default function HomePage() {
   const [birthdaysToday, setBirthdaysToday] = useState<BirthdayToday[]>([]);
   // TASKS_09 TASK 24 — home feed announcement cards.
   const [announcements, setAnnouncements] = useState<AnnouncementFeedItem[]>([]);
+  // TASKS_09 TASK 25 — home feed visiting-city cards.
+  const [visitingCityPosts, setVisitingCityPosts] = useState<VisitingCityFeedItem[]>([]);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -112,12 +114,13 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const [myClassrooms, notifications, profile, birthdays, recentAnnouncements] = await Promise.all([
+      const [myClassrooms, notifications, profile, birthdays, recentAnnouncements, recentVisitingCity] = await Promise.all([
         api.getMyClassrooms(),
         api.getNotifications(20),
         api.getProfile(),
         api.getBirthdaysToday().catch(() => []), // non-fatal — the birthday cards just don't show if this fails
         api.getRecentAnnouncements().catch(() => []), // non-fatal, same reasoning
+        api.getRecentVisitingCityPosts().catch(() => []), // non-fatal, same reasoning
       ]);
       const flat = flatten(myClassrooms);
       setClassrooms(flat);
@@ -125,6 +128,7 @@ export default function HomePage() {
       setIsPlatformAdmin(profile.isPlatformAdmin);
       setBirthdaysToday(birthdays);
       setAnnouncements(recentAnnouncements);
+      setVisitingCityPosts(recentVisitingCity);
 
       Promise.allSettled(flat.map((c) => api.getEvents(c.globalId))).then((results) => {
         const counts: Record<string, number> = {};
@@ -169,6 +173,25 @@ export default function HomePage() {
     setBirthdaysToday((prev) => prev.filter((p) => p.id !== person.id));
     const firstName = person.fullName.split(/\s+/)[0] ?? person.fullName;
     router.push(`/messages?userId=${person.id}&prefill=${encodeURIComponent(t('birthday.prefillMessage', { name: firstName }))}`);
+  };
+
+  // TASKS_09 TASK 25 — "I'm there too" from a home-feed visiting-city card. Optimistic, with rollback on failure — same shape as the classroom chat's own handleImThere().
+  const handleFeedImThere = async (postId: string) => {
+    if (!user) return;
+    const previous = visitingCityPosts;
+    setVisitingCityPosts((prev) =>
+      prev.map((p) => {
+        if (p.id !== postId || !p.metadata) return p;
+        if (p.metadata.responders.includes(user.id)) return p;
+        return { ...p, metadata: { ...p.metadata, responders: [...p.metadata.responders, user.id] } };
+      }),
+    );
+    try {
+      await api.imThere(postId);
+    } catch (err) {
+      setVisitingCityPosts(previous);
+      showToast(getErrorMessage(err), 'error');
+    }
   };
 
   const handleJoinSuggested = async (result: ClassroomSearchResult) => {
@@ -297,6 +320,56 @@ export default function HomePage() {
                     <span className={styles.announcementTime}>{safeRelativeTime(item.createdAt)}</span>
                   </div>
                 ))}
+              </>
+            )}
+
+            {/* TASKS_09 TASK 25 — visiting-city cards from the caller's classrooms. */}
+            {visitingCityPosts.length > 0 && (
+              <>
+                {visitingCityPosts.map((post) => {
+                  const alreadyResponded = !!user && !!post.metadata?.responders.includes(user.id);
+                  return (
+                    <div key={post.id} className={`card card-sm ${styles.announcementCard}`}>
+                      <div className={styles.announcementTopRow}>
+                        <Avatar avatarUrl={post.sender?.avatarUrl ?? null} fullName={post.sender?.fullName ?? '?'} size="sm" />
+                        <span className={styles.announcementSenderName}>{t('visitingCity.isVisiting', { name: post.sender?.fullName ?? '?' })}</span>
+                        <span className={styles.announcementClassroomName}>{post.classroomName}</span>
+                      </div>
+                      {post.isRedacted ? (
+                        <>
+                          <p className={styles.announcementBodyBlurred} aria-hidden="true">
+                            📍 {post.metadata?.city}
+                          </p>
+                          <div className={styles.announcementVerifyNudge}>🔒 {t('announcement.verifyNudge')}</div>
+                        </>
+                      ) : (
+                        <>
+                          <p className={styles.visitingCityFeedCity}>📍 {post.metadata?.city}</p>
+                          {post.metadata && (
+                            <p className={styles.announcementBody}>
+                              {safeFormatDate(post.metadata.from_date, { month: 'short', day: 'numeric' })} - {safeFormatDate(post.metadata.to_date, { month: 'short', day: 'numeric' })}
+                            </p>
+                          )}
+                          <div className={styles.visitingCityFeedResponseRow}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={alreadyResponded}
+                              className={alreadyResponded ? styles.visitingCityFeedButtonActive : undefined}
+                              onClick={() => handleFeedImThere(post.id)}
+                            >
+                              {alreadyResponded ? t('visitingCity.going') : t('visitingCity.imThere')}
+                            </Button>
+                            {!!post.metadata?.responders.length && (
+                              <span className={styles.announcementTime}>{t('visitingCity.responderCount', { count: post.metadata.responders.length })}</span>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      <span className={styles.announcementTime}>{safeRelativeTime(post.createdAt)}</span>
+                    </div>
+                  );
+                })}
               </>
             )}
 

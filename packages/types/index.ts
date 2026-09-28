@@ -85,6 +85,8 @@ export const MessageType = {
   ATTACHMENT: 'attachment',
   /** TASKS_09 TASK 24 — verified members/admins only (canAccessChannel() already enforces this for every post, so no extra gate is needed for this type specifically). */
   ANNOUNCEMENT: 'announcement',
+  /** TASKS_09 TASK 25 — same posting gate as ANNOUNCEMENT. content is a human-readable fallback string; the structured {city, from_date, to_date, responders} lives in metadata. */
+  VISITING_CITY: 'visiting_city',
 } as const;
 export type MessageType = (typeof MessageType)[keyof typeof MessageType];
 

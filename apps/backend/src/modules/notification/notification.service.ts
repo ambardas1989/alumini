@@ -659,6 +659,29 @@ export class NotificationService {
   }
 
   /**
+   * TASKS_09 TASK 25 — tells a visiting_city post's original poster that
+   * someone tapped "I'm there too". Only fired once per responder (see
+   * CorridorService.respondImThere()'s own idempotency guard) — a repeat
+   * tap never re-emits this event.
+   */
+  @OnEvent('corridor.visiting_city.response')
+  async handleVisitingCityResponse(payload: {
+    messageId: string;
+    posterId: string;
+    responderId: string;
+    city?: string;
+  }): Promise<void> {
+    const { data: responder } = await this.supabase.from('profiles').select('full_name').eq('id', payload.responderId).maybeSingle();
+    const name = responder?.full_name ?? 'Someone';
+    const city = payload.city ?? 'your city';
+
+    await this.sendInApp(payload.posterId, 'visiting_city_response', `${name} is also in ${city}!`, 'Tap to message them', {
+      message_id: payload.messageId,
+      responder_id: payload.responderId,
+    });
+  }
+
+  /**
    * TASKS_09 TASK 23 — daily in-app notification for every verified member
    * who shares a verified classroom with someone whose birthday is today
    * (IST). Runs at 2:30 AM UTC = 8:00 AM IST. Deliberately NOT wrapped in

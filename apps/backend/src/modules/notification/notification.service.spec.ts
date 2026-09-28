@@ -533,6 +533,35 @@ describe('NotificationService', () => {
     });
   });
 
+  // TASKS_09 TASK 25 — "I'm there too" responder notification.
+  describe('handleVisitingCityResponse()', () => {
+    it('notifies the original poster, naming the responder and city, without exposing implementation detail', async () => {
+      const notificationsChain = chain({ data: null, error: null });
+      mockTables({
+        profiles: chain({ data: { full_name: 'Rahul Agarwal' }, error: null }),
+        notifications: notificationsChain,
+      });
+
+      const service = await createService();
+      await service.handleVisitingCityResponse({
+        messageId: 'msg-1',
+        posterId: 'poster-1',
+        responderId: 'responder-1',
+        city: 'Mumbai',
+      });
+
+      expect(notificationsChain.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: 'poster-1',
+          type: 'visiting_city_response',
+          title: expect.stringContaining('Rahul'),
+        }),
+      );
+      const insertedBody = notificationsChain.insert.mock.calls[0][0];
+      expect(insertedBody.title).toContain('Mumbai');
+    });
+  });
+
   // TASKS_09 TASK 23 — daily birthday notification cron.
   describe('sendBirthdayNotifications()', () => {
     it('notifies every verified batchmate for each classroom the birthday person shares with them', async () => {
