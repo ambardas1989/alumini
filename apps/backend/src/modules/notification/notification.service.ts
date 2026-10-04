@@ -33,6 +33,7 @@
  *   institution.claim.rejected       → in-app to the requester (TASKS_11 TASK 01)
  *   institution.subscription.upgrade_requested → in-app fan-out to platform admins (TASKS_11 TASK 04)
  *   institution.subscription.updated → in-app to the institution's own admin(s) (TASKS_11 TASK 04)
+ *   institution.announcement.sent    → in-app + push fan-out to every verified recipient (TASKS_11 TASK 08)
  *
  * classroom.joined is deliberately NOT handled here (any more) — TASK 02's
  * original "new_member on JOIN, any verification status" listener was
@@ -630,6 +631,40 @@ export class NotificationService {
     await this.sendInApp(payload.userId, 'institution_classroom_admin_role_changed', title, body, {
       classroom_id: payload.classroomId,
     });
+  }
+
+  /**
+   * TASKS_11 TASK 08 — fan out to every recipient InstitutionService
+   * already resolved (verified members, deduplicated). Push body
+   * deliberately omits the announcement's own body — just title + "from
+   * [Institution]" — per the task's explicit "unverified members see
+   * something but not content" requirement; in-app gets the full body
+   * since that's only visible once the member opens the notification.
+   */
+  @OnEvent('institution.announcement.sent')
+  async handleInstitutionAnnouncementSent(payload: {
+    institutionId: string;
+    institutionName?: string;
+    announcementId: string;
+    title: string;
+    body: string;
+    recipientUserIds: string[];
+  }): Promise<void> {
+    const institutionName = payload.institutionName ?? 'your institution';
+    const pushBody = `From ${institutionName}`;
+
+    for (const userId of payload.recipientUserIds) {
+      await this.sendInApp(userId, 'institution_announcement', payload.title, payload.body.slice(0, 100), {
+        institution_id: payload.institutionId,
+        announcement_id: payload.announcementId,
+      });
+
+      await this.sendPush(userId, `${brand.name}: ${payload.title}`, pushBody, {
+        type: 'institution_announcement',
+        institution_id: payload.institutionId,
+        announcement_id: payload.announcementId,
+      });
+    }
   }
 
   // classroom.created — deliberately NOT handled. CorridorService already

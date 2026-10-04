@@ -1133,6 +1133,8 @@
       "admins": "Admins",
       "settings": "Settings",
       "subscription": "Subscription",
+      "announcements": "Announcements",
+      "members": "Members",
       "requests": "Requests ({count})",
       "adminAccess": "Admin Access"
     },
@@ -1241,6 +1243,73 @@
       "requestSentLine": "Request sent. Our team will reach out.",
       "contactSupportLine": "Contact support for billing queries."
     },
+    "announcements": {
+      "pastAnnouncements": "Past announcements",
+      "newCta": "New announcement",
+      "sentToast": "Announcement sent",
+      "recipientCount": "{count} recipients",
+      "empty": {
+        "title": "No announcements yet",
+        "description": "Announcements you send will appear here."
+      },
+      "composeModal": {
+        "title": "New announcement",
+        "titleLabel": "Title",
+        "bodyLabel": "Message",
+        "targetLabel": "Send to",
+        "targetAll": "All members",
+        "targetSpecific": "Specific classrooms",
+        "recipientUnknown": "Checking recipients...",
+        "recipientPreview": "Will reach {count} members",
+        "sendCta": "Send announcement"
+      },
+      "confirmModal": {
+        "title": "Send this announcement?",
+        "message": "Send to {count} members? This cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Send"
+      }
+    },
+    "members": {
+      "searchLabel": "Search",
+      "searchPlaceholder": "Name or email...",
+      "classroomLabel": "Classroom",
+      "allClassrooms": "All classrooms",
+      "roleLabel": "Role",
+      "roleAll": "All roles",
+      "roleStudent": "Students",
+      "roleTeacher": "Teachers",
+      "roleAdmin": "Admins",
+      "verificationLabel": "Verification",
+      "verificationAll": "All",
+      "verificationVerified": "Verified",
+      "verificationPending": "Pending",
+      "verificationRejected": "Rejected",
+      "unknownMember": "Unknown member",
+      "roleLabels": {
+        "student": "Student",
+        "teacher": "Teacher",
+        "admin": "Admin"
+      },
+      "verificationLabels": {
+        "verified": "Verified",
+        "pending": "Pending",
+        "pending_auto": "Pending",
+        "rejected": "Rejected"
+      },
+      "prevPage": "Previous",
+      "nextPage": "Next",
+      "pageLabel": "Page {page} of {totalPages}",
+      "empty": {
+        "title": "No members found",
+        "description": "Try different filters."
+      },
+      "detailModal": {
+        "title": "Member profile",
+        "loadError": "Failed to load this member's profile.",
+        "membershipsLabel": "Classrooms"
+      }
+    },
     "institutionRequests": {
       "empty": {
         "title": "No pending institution requests.",
@@ -1303,10 +1372,32 @@
     },
     "verify": {
       "empty": {
-        "title": "✓ No pending verifications. All caught up.",
-        "description": "No document verifications are waiting for review."
+        "pendingTitle": "✓ No pending verifications. All caught up.",
+        "pendingDescription": "No document verifications are waiting for review.",
+        "approvedTitle": "No approved verifications",
+        "approvedDescription": "Approved verifications will appear here.",
+        "rejectedTitle": "No rejected verifications",
+        "rejectedDescription": "Rejected verifications will appear here."
       },
       "methodBadge": "Document",
+      "methodLabels": {
+        "email": "Email",
+        "peer_vouch": "Peer vouch",
+        "document": "Document",
+        "linkedin": "LinkedIn",
+        "personal_code": "Personal code",
+        "batch_code": "Batch code"
+      },
+      "statusTabs": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "classroomFilterLabel": "Classroom",
+      "allClassrooms": "All classrooms",
+      "unknownUser": "Unknown user",
+      "approveSelected": "Approve selected ({count})",
+      "rejectionReasonLabel": "Reason: {reason}",
       "submitted": "Submitted {time}",
       "viewDocument": "View document",
       "reject": "Reject",

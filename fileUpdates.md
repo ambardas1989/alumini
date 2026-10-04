@@ -328,6 +328,15 @@ ADD COLUMN IF NOT EXISTS archived_at timestamptz;
 
 ---
 
+## UPDATE 18 — institution_announcements table (TASKS_11 TASK 08)
+
+File: supabase/migrations/036_institution_announcements.sql
+
+Not yet applied in Supabase. Run manually — full CREATE TABLE in that
+file.
+
+---
+
 ## HOW TO APPLY
 
 When tokens are available, paste this into Claude Code:

@@ -630,6 +630,115 @@ export function previewInstitutionAdminInvite(token: string): Promise<{ institut
   return request('/institution-admin/invite-preview', { query: { token } });
 }
 
+// ── INSTITUTION ANNOUNCEMENTS (TASKS_11 TASK 08) ──────────────────────────
+
+export interface InstitutionAnnouncement {
+  id: string;
+  title: string;
+  body: string;
+  target: 'all' | 'specific';
+  target_classroom_ids: string[];
+  sent_at: string;
+  recipient_count: number;
+}
+
+export function listInstitutionAnnouncements(institutionId: string): Promise<InstitutionAnnouncement[]> {
+  return request(`/institution-admin/${institutionId}/announcements`);
+}
+
+export function getAnnouncementRecipientCount(
+  institutionId: string,
+  target: 'all' | 'specific',
+  classroomIds?: string[],
+): Promise<{ recipientCount: number }> {
+  return request(`/institution-admin/${institutionId}/announcements/recipient-count`, {
+    query: { target, classroomIds: classroomIds?.join(',') },
+  });
+}
+
+// ── INSTITUTION MEMBERS (TASKS_11 TASK 09) ────────────────────────────────
+
+export interface InstitutionMemberRow {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+  avatarUrl: string | null;
+  role: string;
+  verificationStatus: string;
+  verificationMethod: string | null;
+  joinedAt: string;
+  classroom: { id: string; global_id: string; name: string } | null;
+}
+
+export interface ListInstitutionMembersParams {
+  classroomId?: string;
+  role?: 'student' | 'teacher' | 'admin';
+  verificationStatus?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function listInstitutionMembers(
+  institutionId: string,
+  params: ListInstitutionMembersParams,
+): Promise<{ members: InstitutionMemberRow[]; total: number }> {
+  return request(`/institution-admin/${institutionId}/members`, { query: { ...params } });
+}
+
+export interface InstitutionMemberDetail {
+  profile: { id: string; full_name: string | null; email: string | null; avatar_url: string | null; bio: string | null };
+  memberships: Array<{
+    classroom: { id: string; global_id: string; name: string } | null;
+    role: string;
+    verificationStatus: string;
+    verificationMethod: string | null;
+    joinedAt: string;
+  }>;
+}
+
+export function getInstitutionMemberDetail(institutionId: string, userId: string): Promise<InstitutionMemberDetail> {
+  return request(`/institution-admin/${institutionId}/members/${userId}`);
+}
+
+// ── INSTITUTION VERIFICATIONS (TASKS_11 TASK 10) ──────────────────────────
+
+export interface InstitutionVerificationRow {
+  id: string;
+  userId: string;
+  user: { id: string; full_name: string | null; avatar_url: string | null; email: string | null } | null;
+  classroom: { id: string; global_id: string; name: string } | null;
+  method: string;
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
+  hasDocument: boolean;
+  vouches: Array<{ userId: string; fullName: string | null; role: string; vouchedAt: string }>;
+  submittedAt: string;
+  reviewedAt: string | null;
+  rejectionReason: string | null;
+}
+
+export interface ListInstitutionVerificationsParams {
+  status?: string;
+  classroomId?: string;
+  method?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function listInstitutionVerifications(
+  institutionId: string,
+  params: ListInstitutionVerificationsParams,
+): Promise<{ verifications: InstitutionVerificationRow[]; total: number }> {
+  return request(`/institution-admin/${institutionId}/verifications`, { query: { ...params } });
+}
+
+export function sendInstitutionAnnouncement(
+  institutionId: string,
+  input: { title: string; body: string; target: 'all' | 'specific'; targetClassroomIds?: string[] },
+): Promise<{ announcementId: string; recipientCount: number }> {
+  return request(`/institution-admin/${institutionId}/announcements`, { method: 'POST', body: input });
+}
+
 // ── INSTITUTION REQUESTS ─────────────────────────────────────────────────
 
 export interface RequestInstitutionInput {

@@ -50,6 +50,7 @@ database has NOT been verified against Supabase itself. Run the query in
 | 033_institution_subscriptions.sql | ⚠️ Check | `institution_subscriptions` table (TASKS_11 TASK 04) | No — plain `CREATE TABLE IF NOT EXISTS` |
 | 034_institution_codes_revoke.sql | ⚠️ Check | `institution_codes.is_active` (TASKS_11 TASK 06) | Yes — `ADD COLUMN IF NOT EXISTS` |
 | 035_classroom_archive.sql | ⚠️ Check | `classrooms.archived_at` (TASKS_11 TASK 07) | Yes — `ADD COLUMN IF NOT EXISTS` |
+| 036_institution_announcements.sql | ⚠️ Check | `institution_announcements` table (TASKS_11 TASK 08) | No — plain `CREATE TABLE IF NOT EXISTS` |
 
 ⚠️ Check = not verified against the live database from this environment —
 run the query below and confirm before relying on this table.

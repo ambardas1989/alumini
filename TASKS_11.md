@@ -779,7 +779,7 @@ Push.
 
 ---
 
-## TASK 08 — Institution admin — announcements [PENDING]
+## TASK 08 — Institution admin — announcements [DONE] — Genuinely new (no existing overlap). New institution_announcements table (036_institution_announcements.sql). InstitutionService.sendAnnouncement() resolves verified members across all-or-specific classrooms (deduplicated), emits institution.announcement.sent; a new NotificationService handler fans out in-app (full title + 100-char-truncated body) and push (title + "From [Institution]" only, no content) per recipient. "feed_item" requirement satisfied via sendInApp() — this schema has no separate feed_item table (see notification.service.ts's own module comment, same adaptation as TASK 01). Adapted onto a new Announcements tab on /admin rather than a separate route.
 
 Institution admin can broadcast announcements to all
 members across all classrooms in their institution,
@@ -877,7 +877,7 @@ Push.
 
 ---
 
-## TASK 09 — Institution admin — member management [PENDING]
+## TASK 09 — Institution admin — member management [DONE] — Genuinely new (AdminsTab only covered admin-level members; no institution-wide member search existed). New GET /institution-admin/:institutionId/members(/:userId) on InstitutionService — search is applied in application code (Supabase JS can't ilike an embedded relation's column in one query), fine at this scale. Adapted onto a new Members tab on /admin with filter bar, pagination, and a detail sheet, rather than a separate route.
 
 Institution admin can view all members across all classrooms
 under their institution. Search, filter, view profile.
@@ -940,7 +940,7 @@ Push.
 
 ---
 
-## TASK 10 — Institution admin — verification management [PENDING]
+## TASK 10 — Institution admin — verification management [DONE] — VerifyTab already covered document-method/pending-only review with MFA-gated approve/reject + signed document URLs (AdminService, reused as-is). Added the missing breadth: new InstitutionService.listVerifications() across every method/status with classroom filtering and voucher full-name enrichment for peer_vouch rows (vouches jsonb intentionally excludes names — joined at read time). Approve/reject stay on the existing document-specific MFA-gated routes since the other methods (email/peer_vouch/code) resolve themselves without admin review — only document rows get Approve/Reject buttons and bulk-approve checkboxes. Added Pending/Approved/Rejected status tabs and a classroom filter to the existing Verify tab rather than a separate route.
 
 Institution admin can review and approve/reject document
 verification requests across all classrooms in their

@@ -72,3 +72,52 @@
 .rejectButton {
   color: var(--color-error) !important;
 }
+
+.filterBar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block-end: 12px;
+}
+
+.statusTabs {
+  display: flex;
+  gap: 6px;
+}
+
+.statusTab {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.statusTabActive {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.vouchList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-block-start: 8px;
+}
+
+.vouchItem {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-cream);
+  border-radius: 20px;
+  padding: 3px 8px;
+}
+
+.rejectionReason {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  margin-block-start: 8px;
+}

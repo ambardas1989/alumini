@@ -56,7 +56,7 @@ import { Request } from 'express';
 import { AuditService } from '../audit/audit.service';
 import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, ErrorCode, MemberRole, PersonaType } from '@alumini/types';
-import { isExpired } from '@alumini/utils';
+import { isExpired, getRange } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
 
 import { SearchInstitutionsDto } from './dto/search-institutions.dto';
@@ -75,6 +75,9 @@ import { UpdateInstitutionSubscriptionDto } from './dto/update-institution-subsc
 import { SetClassroomAdminRoleDto } from './dto/set-classroom-admin-role.dto';
 import { CreateClassroomForInstitutionDto } from './dto/create-classroom-for-institution.dto';
 import { UpdateClassroomForInstitutionDto } from './dto/update-classroom-for-institution.dto';
+import { SendInstitutionAnnouncementDto } from './dto/send-institution-announcement.dto';
+import { ListInstitutionMembersDto } from './dto/list-institution-members.dto';
+import { ListInstitutionVerificationsDto } from './dto/list-institution-verifications.dto';
 import { ClassroomService } from '../classroom/classroom.service';
 
 /** Payload of the signed co-admin invitation JWT ("magic link" token). */
@@ -1621,5 +1624,293 @@ export class InstitutionService {
     });
 
     return data;
+  }
+
+  // ── Announcements (TASKS_11 TASK 08) ─────────────────────────────────────
+
+  async listAnnouncements(userId: string, institutionId: string) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    const { data, error } = await this.supabase
+      .from('institution_announcements')
+      .select('id, title, body, target, target_classroom_ids, sent_at, recipient_count')
+      .eq('institution_id', institutionId)
+      .order('sent_at', { ascending: false });
+
+    if (error) {
+      this.appLogger.error('[INST-ADMIN:announce] failed', { institutionId, error: error.message });
+      throw new BadRequestException('Failed to load announcements');
+    }
+
+    return data ?? [];
+  }
+
+  /** Verified members across the institution's classrooms, deduplicated by user_id — optionally scoped to specific classrooms. Shared by both the "preview recipient count" call and the actual send. */
+  private async resolveAnnouncementRecipients(institutionId: string, target: 'all' | 'specific', classroomIds?: string[]): Promise<string[]> {
+    let classroomQuery = this.supabase.from('classrooms').select('id').eq('institution_id', institutionId);
+    if (target === 'specific' && classroomIds) {
+      classroomQuery = classroomQuery.in('id', classroomIds);
+    }
+    const { data: classrooms } = await classroomQuery;
+    const scopedClassroomIds = (classrooms ?? []).map((c) => c.id);
+    if (scopedClassroomIds.length === 0) return [];
+
+    const { data: memberships } = await this.supabase
+      .from('memberships')
+      .select('user_id')
+      .in('classroom_id', scopedClassroomIds)
+      .eq('verification_status', 'verified');
+
+    return [...new Set((memberships ?? []).map((m) => m.user_id))];
+  }
+
+  async getAnnouncementRecipientCount(userId: string, institutionId: string, target: 'all' | 'specific', classroomIds?: string[]) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+    const recipients = await this.resolveAnnouncementRecipients(institutionId, target, classroomIds);
+    return { recipientCount: recipients.length };
+  }
+
+  async sendAnnouncement(userId: string, institutionId: string, dto: SendInstitutionAnnouncementDto, req?: Request) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    const recipients = await this.resolveAnnouncementRecipients(institutionId, dto.target, dto.targetClassroomIds);
+
+    const { data: announcement, error } = await this.supabase
+      .from('institution_announcements')
+      .insert({
+        institution_id: institutionId,
+        created_by: userId,
+        title: dto.title,
+        body: dto.body,
+        target: dto.target,
+        target_classroom_ids: dto.target === 'specific' ? dto.targetClassroomIds : [],
+        recipient_count: recipients.length,
+      })
+      .select('id')
+      .single();
+
+    if (error || !announcement) {
+      this.appLogger.error('[INST-ADMIN:announce] failed', { institutionId, error: error?.message });
+      throw new BadRequestException('Failed to send this announcement. Please try again.');
+    }
+
+    const { data: institution } = await this.supabase.from('institutions').select('name').eq('id', institutionId).maybeSingle();
+
+    this.appLogger.info('[INST-ADMIN:announce] sent', { institutionId, announcementId: announcement.id, recipientCount: recipients.length });
+
+    // Hand-off to NotificationService — same "this module doesn't deliver
+    // notifications itself" pattern every other emit site in this
+    // codebase follows. Fan-out to potentially hundreds of recipients
+    // happens in the listener, not here, so this request returns quickly.
+    this.eventEmitter.emit('institution.announcement.sent', {
+      institutionId,
+      institutionName: institution?.name ?? null,
+      announcementId: announcement.id,
+      title: dto.title,
+      body: dto.body,
+      recipientUserIds: recipients,
+    });
+
+    await this.audit.log({
+      eventType: AuditEventType.INSTITUTION_ANNOUNCEMENT_SENT,
+      actorId: userId,
+      targetId: announcement.id,
+      // 'institution' — AuditLogParams.targetType has no dedicated
+      // 'institution_announcement' category and announcement rows have no
+      // other audit-trail entry type to share; the announcement_id is
+      // still in targetId and institution_id in metadata below.
+      targetType: 'institution',
+      metadata: { institution_id: institutionId, target: dto.target, recipient_count: recipients.length },
+      req,
+    });
+
+    return { announcementId: announcement.id, recipientCount: recipients.length };
+  }
+
+  // ── Member management (TASKS_11 TASK 09) ─────────────────────────────────
+
+  /**
+   * search (name/email) is applied in application code, not the DB query —
+   * Supabase's JS client can't `.ilike()` a column on an embedded relation
+   * (profile.full_name/email) in one query. Fine at this scale (an
+   * institution-admin tool, not a user-facing hot path); ordering and the
+   * other filters still happen server-side first.
+   */
+  async listMembers(userId: string, institutionId: string, dto: ListInstitutionMembersDto) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    let classroomQuery = this.supabase.from('classrooms').select('id, global_id, name').eq('institution_id', institutionId);
+    if (dto.classroomId) {
+      classroomQuery = classroomQuery.eq('id', dto.classroomId);
+    }
+    const { data: classrooms } = await classroomQuery;
+    const classroomIds = (classrooms ?? []).map((c) => c.id);
+    if (classroomIds.length === 0) return { members: [], total: 0 };
+
+    const classroomById = new Map((classrooms ?? []).map((c) => [c.id, c]));
+
+    let query = this.supabase
+      .from('memberships')
+      .select('user_id, classroom_id, role, verification_status, verification_method, joined_at, profile:profiles(id, full_name, avatar_url, email)')
+      .in('classroom_id', classroomIds)
+      .order('joined_at', { ascending: false });
+
+    if (dto.role) query = query.eq('role', dto.role);
+    if (dto.verificationStatus) query = query.eq('verification_status', dto.verificationStatus);
+
+    const { data, error } = (await query) as any;
+
+    if (error) {
+      this.appLogger.error('[INST-ADMIN:members] failed', { institutionId, error: error.message });
+      throw new BadRequestException('Failed to load members');
+    }
+
+    const searchLower = dto.search?.trim().toLowerCase();
+    const filtered = searchLower
+      ? (data ?? []).filter(
+          (m: any) =>
+            m.profile?.full_name?.toLowerCase().includes(searchLower) || m.profile?.email?.toLowerCase().includes(searchLower),
+        )
+      : data ?? [];
+
+    const { from, to } = getRange(dto.page ?? 0, dto.limit ?? 50);
+    const page = filtered.slice(from, to + 1);
+
+    this.appLogger.debug('[INST-ADMIN:members] query', { institutionId, filters: dto, count: filtered.length });
+
+    return {
+      members: page.map((m: any) => ({
+        id: m.profile?.id,
+        fullName: m.profile?.full_name ?? null,
+        email: m.profile?.email ?? null,
+        avatarUrl: m.profile?.avatar_url ?? null,
+        role: m.role,
+        verificationStatus: m.verification_status,
+        verificationMethod: m.verification_method,
+        joinedAt: m.joined_at,
+        classroom: classroomById.get(m.classroom_id) ?? null,
+      })),
+      total: filtered.length,
+    };
+  }
+
+  async getMemberDetail(userId: string, institutionId: string, targetUserId: string) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('id, full_name, email, avatar_url, bio')
+      .eq('id', targetUserId)
+      .maybeSingle();
+
+    if (!profile) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const { data: classrooms } = await this.supabase.from('classrooms').select('id, global_id, name').eq('institution_id', institutionId);
+    const classroomIds = (classrooms ?? []).map((c) => c.id);
+    const classroomById = new Map((classrooms ?? []).map((c) => [c.id, c]));
+
+    const { data: memberships } = await this.supabase
+      .from('memberships')
+      .select('classroom_id, role, verification_status, verification_method, joined_at')
+      .eq('user_id', targetUserId)
+      .in('classroom_id', classroomIds.length > 0 ? classroomIds : ['00000000-0000-0000-0000-000000000000']);
+
+    return {
+      profile,
+      memberships: (memberships ?? []).map((m) => ({
+        classroom: classroomById.get(m.classroom_id) ?? null,
+        role: m.role,
+        verificationStatus: m.verification_status,
+        verificationMethod: m.verification_method,
+        joinedAt: m.joined_at,
+      })),
+    };
+  }
+
+  // ── Verification management (TASKS_11 TASK 10) ───────────────────────────
+  // Broader than AdminService.getPendingDocumentVerifications() (method=
+  // 'document', status='pending' only) — this covers every method/status,
+  // for the history view and filters this task wants. The actual
+  // approve/reject ACTIONS for document verifications stay on
+  // AdminController's existing MFA-gated routes (AdminService.
+  // approveVerificationDocument()/rejectVerificationDocument(), which
+  // already correctly update both tables and notify the applicant) —
+  // not duplicated here. Document signed URLs are likewise still fetched
+  // on demand via the existing GET .../verifications/:id/document route,
+  // not eagerly embedded in this list (avoids generating signed URLs for
+  // rows nobody actually opens).
+  async listVerifications(userId: string, institutionId: string, dto: ListInstitutionVerificationsDto) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    let classroomQuery = this.supabase.from('classrooms').select('id, global_id, name').eq('institution_id', institutionId);
+    if (dto.classroomId) classroomQuery = classroomQuery.eq('id', dto.classroomId);
+    const { data: classrooms } = await classroomQuery;
+    const classroomIds = (classrooms ?? []).map((c) => c.id);
+    if (classroomIds.length === 0) return { verifications: [], total: 0 };
+    const classroomById = new Map((classrooms ?? []).map((c) => [c.id, c]));
+
+    let query = this.supabase
+      .from('verifications')
+      .select(
+        'id, user_id, classroom_id, method, status, document_storage_path, vouches, created_at, reviewed_at, rejection_reason, ' +
+          'profile:profiles(id, full_name, avatar_url, email)',
+      )
+      .in('classroom_id', classroomIds);
+
+    if (dto.status) query = query.eq('status', dto.status);
+    if (dto.method) query = query.eq('method', dto.method);
+
+    const { data, error } = (await query) as any;
+
+    if (error) {
+      this.appLogger.error('[INST-ADMIN:verify] failed', { institutionId, error: error.message });
+      throw new BadRequestException('Failed to load verifications');
+    }
+
+    // Pending first, then by submitted_at ASC within each group — a
+    // single .order() can't express "pending first" without a second,
+    // non-column sort key, so this sorts in application code instead.
+    const sorted = [...(data ?? [])].sort((a: any, b: any) => {
+      if (a.status === 'pending' && b.status !== 'pending') return -1;
+      if (a.status !== 'pending' && b.status === 'pending') return 1;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+
+    const { from, to } = getRange(dto.page ?? 0, dto.limit ?? 50);
+    const page = sorted.slice(from, to + 1);
+
+    // Voucher full names — vouches jsonb intentionally excludes full_name
+    // (see 001_initial_schema.sql's own column comment), joined here at
+    // read time instead.
+    const voucherIds = [...new Set(page.flatMap((v: any) => (v.vouches ?? []).map((voucher: any) => voucher.user_id)))];
+    let voucherNameById = new Map<string, string>();
+    if (voucherIds.length > 0) {
+      const { data: voucherProfiles } = await this.supabase.from('profiles').select('id, full_name').in('id', voucherIds);
+      voucherNameById = new Map((voucherProfiles ?? []).map((p) => [p.id, p.full_name]));
+    }
+
+    return {
+      verifications: page.map((v: any) => ({
+        id: v.id,
+        userId: v.user_id,
+        user: v.profile,
+        classroom: classroomById.get(v.classroom_id) ?? null,
+        method: v.method,
+        status: v.status,
+        hasDocument: !!v.document_storage_path,
+        vouches: (v.vouches ?? []).map((voucher: any) => ({
+          userId: voucher.user_id,
+          fullName: voucherNameById.get(voucher.user_id) ?? null,
+          role: voucher.role,
+          vouchedAt: voucher.vouched_at,
+        })),
+        submittedAt: v.created_at,
+        reviewedAt: v.reviewed_at,
+        rejectionReason: v.rejection_reason,
+      })),
+      total: sorted.length,
+    };
   }
 }
