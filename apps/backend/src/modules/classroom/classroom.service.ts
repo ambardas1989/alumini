@@ -472,13 +472,13 @@ export class ClassroomService {
    */
   async searchClassroomsByFilters(
     userId: string,
-    filters: { institutionId?: string; country?: string; city?: string; year?: number; section?: string },
+    filters: { institutionId?: string; country?: string; city?: string; year?: number; grade?: string; section?: string; program?: string },
     limit: number,
   ) {
-    const { institutionId, country, city, year, section } = filters;
+    const { institutionId, country, city, year, grade, section, program } = filters;
     this.appLogger.debug('[CLASSROOM:searchFiltered] entry', { userId, filters, limit });
 
-    if (!institutionId && !country && !city && !year && !section) return [];
+    if (!institutionId && !country && !city && !year && !grade && !section && !program) return [];
 
     let institutionIds: string[] | null = null;
     if (institutionId) {
@@ -498,7 +498,13 @@ export class ClassroomService {
     if (institutionIds) query = query.in('institution_id', institutionIds);
     if (city) query = query.ilike('city', `%${city}%`);
     if (year) query = query.eq('batch_year', year);
-    if (section) query = query.or(`section.ilike.%${section}%,program.ilike.%${section}%`);
+    // TASKS_10 TASK 06 — grade is an exact match on its own column (was
+    // previously conflated with section — see searchFiltered()'s comment),
+    // section is an exact match (not ilike — "C" must not match "ABC"),
+    // program stays an ilike since it's free text ("MBA", "B.Tech CSE").
+    if (grade) query = query.eq('grade', grade.trim());
+    if (section) query = query.eq('section', section.trim().toUpperCase());
+    if (program) query = query.ilike('program', `%${program}%`);
 
     const { data, error } = await query.limit(limit * 3);
 

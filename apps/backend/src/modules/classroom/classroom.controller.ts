@@ -136,13 +136,19 @@ export class ClassroomController {
     @Query('country') country?: string,
     @Query('city') city?: string,
     @Query('year') year?: string,
+    // TASKS_10 TASK 06 — grade and section are now separate params instead
+    // of a single free-text 'section' field that was really "grade+section
+    // or program" all crammed together (e.g. "9A" or "MBA") and matched
+    // against the section/program columns with no concept of grade at all.
+    @Query('grade') grade?: string,
     @Query('section') section?: string,
+    @Query('program') program?: string,
     @Query('limit') limit?: string,
   ) {
     const limitNumber = limit ? Math.min(parseInt(limit, 10) || 10, 50) : 10;
     return this.classroomService.searchClassroomsByFilters(
       authToken.sub,
-      { institutionId, country, city, year: year ? parseInt(year, 10) : undefined, section },
+      { institutionId, country, city, year: year ? parseInt(year, 10) : undefined, grade, section, program },
       limitNumber,
     );
   }

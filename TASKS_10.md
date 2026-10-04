@@ -280,7 +280,7 @@ Push.
 
 ---
 
-## TASK 06 — Fix: classroom search grade and section split [PENDING]
+## TASK 06 — Fix: classroom search grade and section split [DONE] — connect/page.tsx's "Find your batch" form had one combined "Section / Program" field (placeholder "e.g. 9A or MBA") sent wholesale as the `section` param. Split into Grade+Section inputs for schools / Program input for colleges (same type-based split ClassroomCreateForm already uses). Backend search-filtered endpoint now takes grade/section/program as separate params and filters with exact eq() on the classrooms.grade/section columns (which already existed) instead of ilike-ing a combined string against section/program — simpler and more correct than the ILIKE-on-name fallback the task suggested, since a real grade column was already there.
 
 The classroom search is sending the grade number as the
 section value. e.g. searching "Grade 10, Section C" sends

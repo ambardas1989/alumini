@@ -675,7 +675,9 @@ export interface ClassroomFilterSearchParams {
   country?: string;
   city?: string;
   year?: number;
+  grade?: string;
   section?: string;
+  program?: string;
   limit?: number;
 }
 

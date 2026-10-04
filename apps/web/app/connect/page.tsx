@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { InstitutionType } from '@alumini/types';
 import type { Institution } from '@alumini/types';
 import * as api from '@/lib/api';
 import type { ClassroomFilterSearchResult } from '@/lib/api';
@@ -50,7 +51,13 @@ export default function ConnectPage() {
   const [country, setCountry] = useState('IN');
   const [city, setCity] = useState('');
   const [year, setYear] = useState('');
+  // TASKS_10 TASK 06 — grade and section (schools) / program (colleges)
+  // used to be one free-text field sent wholesale as `section`, so a grade
+  // number ended up being matched against the section column. Split per
+  // institution type, same split ClassroomCreateForm already uses.
+  const [grade, setGrade] = useState('');
   const [section, setSection] = useState('');
+  const [program, setProgram] = useState('');
 
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -98,7 +105,9 @@ export default function ConnectPage() {
         country: country || undefined,
         city: city.trim() || undefined,
         year: year ? parseInt(year, 10) : undefined,
-        section: section.trim() || undefined,
+        grade: selectedInstitution.type === InstitutionType.SCHOOL ? grade.trim() || undefined : undefined,
+        section: selectedInstitution.type === InstitutionType.SCHOOL ? section.trim() || undefined : undefined,
+        program: selectedInstitution.type === InstitutionType.SCHOOL ? undefined : program.trim() || undefined,
         limit: 20,
       });
       setResults(data);
@@ -214,12 +223,29 @@ export default function ConnectPage() {
                 ))}
               </Select>
 
-              <Input
-                label={t('find.sectionLabel')}
-                placeholder={t('find.sectionPlaceholder')}
-                value={section}
-                onChange={(e) => setSection(e.target.value)}
-              />
+              {selectedInstitution?.type === InstitutionType.SCHOOL ? (
+                <>
+                  <Input
+                    label={t('find.gradeLabel')}
+                    placeholder={t('find.gradePlaceholder')}
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                  />
+                  <Input
+                    label={t('find.sectionLabel')}
+                    placeholder={t('find.sectionPlaceholder')}
+                    value={section}
+                    onChange={(e) => setSection(e.target.value)}
+                  />
+                </>
+              ) : (
+                <Input
+                  label={t('find.programLabel')}
+                  placeholder={t('find.programPlaceholder')}
+                  value={program}
+                  onChange={(e) => setProgram(e.target.value)}
+                />
+              )}
 
               <Button variant="primary" size="lg" fullWidth disabled={!selectedInstitution} loading={searching} onClick={handleSearch}>
                 {t('find.searchButton')}
