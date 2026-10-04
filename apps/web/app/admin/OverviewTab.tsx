@@ -42,6 +42,7 @@ export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) 
   const [error, setError] = useState<string | null>(null);
   const [overview, setOverview] = useState<api.AdminOverview | null>(null);
   const [yearGroups, setYearGroups] = useState<api.AdminClassroomYearGroup[]>([]);
+  const [memberGrowth, setMemberGrowth] = useState<api.AdminAnalytics['memberGrowth']>([]);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [logoUploading, setLogoUploading] = useState(false);
@@ -50,12 +51,18 @@ export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) 
     setLoading(true);
     setError(null);
     try {
-      const [overviewData, classroomData] = await Promise.all([
+      const [overviewData, classroomData, analyticsData] = await Promise.all([
         api.getOverview(institutionId),
         api.getClassrooms(institutionId),
+        // TASKS_11 TASK 11 — memberGrowth is already computed by
+        // getAnalytics() for StatsTab; reused here for this tab's line
+        // chart rather than duplicating that aggregation in a second
+        // endpoint.
+        api.getAnalytics(institutionId),
       ]);
       setOverview(overviewData);
       setYearGroups(classroomData);
+      setMemberGrowth(analyticsData.memberGrowth);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -162,6 +169,10 @@ export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) 
           <p className={styles.statValue}>{formatNumber(overview.activeClassrooms)}</p>
           <p className={styles.statLabel}>{t('activeClassrooms')}</p>
         </div>
+        <div className={styles.statCard}>
+          <p className={styles.statValue}>{formatNumber(overview.newMembersThisMonth)}</p>
+          <p className={styles.statLabel}>{t('newMembersThisMonth')}</p>
+        </div>
       </div>
 
       {onNavigateTab && (
@@ -173,6 +184,62 @@ export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) 
             {t('quickActions.generateCodes')}
           </Button>
         </div>
+      )}
+
+      {/* TASKS_11 TASK 11 — top 10 most active classrooms by message count in the last 30 days. */}
+      <p className={tabStyles.sectionLabel}>{t('mostActiveClassrooms')}</p>
+      {overview.topActiveClassrooms.length === 0 ? (
+        <p className={styles.emptyHint}>{t('noActivity')}</p>
+      ) : (
+        <div className={styles.table}>
+          <div className={styles.activeClassroomsHeaderRow}>
+            <span>{t('classroomCol')}</span>
+            <span>{t('membersCol')}</span>
+            <span>{t('messages30dCol')}</span>
+          </div>
+          {overview.topActiveClassrooms.map((c) => (
+            <button
+              key={c.globalId}
+              type="button"
+              className={styles.activeClassroomRow}
+              onClick={() => router.push(`/classroom/${c.globalId}`)}
+            >
+              <span className={styles.className}>{c.name}</span>
+              <span>{formatNumber(c.memberCount)}</span>
+              <span>{formatNumber(c.messageCount30d)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* TASKS_11 TASK 11 — hand-rolled SVG line chart, not recharts/a charting lib — none is installed in this project yet (see this file's own ICON_PROPS-style precedent elsewhere in the codebase for preferring a small inline implementation over a new dependency for one chart). */}
+      <p className={tabStyles.sectionLabel}>{t('memberGrowth')}</p>
+      {memberGrowth.length === 0 ? (
+        <p className={styles.emptyHint}>{t('noData')}</p>
+      ) : (
+        <MemberGrowthChart data={memberGrowth} />
+      )}
+
+      {/* TASKS_11 TASK 11 — verification approval stats, link back to the Verify tab. */}
+      <p className={tabStyles.sectionLabel}>{t('verificationStatsLabel')}</p>
+      <div className={styles.statsRow}>
+        <div className={styles.statCard}>
+          <p className={styles.statValue}>{formatNumber(overview.verificationStats.approvedThisMonth)}</p>
+          <p className={styles.statLabel}>{t('approvedThisMonth')}</p>
+        </div>
+        <div className={styles.statCard}>
+          <p className={styles.statValue}>{formatNumber(overview.verificationStats.pending)}</p>
+          <p className={styles.statLabel}>{t('pendingVerifications')}</p>
+        </div>
+        <div className={styles.statCard}>
+          <p className={styles.statValue}>{overview.verificationStats.approvalRatePercent}%</p>
+          <p className={styles.statLabel}>{t('approvalRate')}</p>
+        </div>
+      </div>
+      {onNavigateTab && (
+        <button type="button" className={styles.addClassLink} onClick={() => onNavigateTab('verify')}>
+          {t('quickActions.reviewVerifications')}
+        </button>
       )}
 
       <div className={tabStyles.sectionHeader}>
@@ -221,5 +288,34 @@ export function OverviewTab({ institutionId, onNavigateTab }: OverviewTabProps) 
         </>
       )}
     </>
+  );
+}
+
+/** TASKS_11 TASK 11 — minimal inline SVG polyline chart, X axis = month, Y axis = cumulative member count. */
+function MemberGrowthChart({ data }: { data: api.AdminAnalytics['memberGrowth'] }) {
+  const width = 300;
+  const height = 100;
+  const padding = 10;
+  const maxValue = Math.max(...data.map((d) => d.cumulative), 1);
+
+  const points = data.map((d, i) => {
+    const x = padding + (i / Math.max(data.length - 1, 1)) * (width - padding * 2);
+    const y = height - padding - (d.cumulative / maxValue) * (height - padding * 2);
+    return `${x},${y}`;
+  });
+
+  return (
+    <div className={styles.chartWrap}>
+      <svg viewBox={`0 0 ${width} ${height}`} className={styles.chartSvg} preserveAspectRatio="none">
+        <polyline points={points.join(' ')} fill="none" stroke="var(--color-primary)" strokeWidth={2} />
+      </svg>
+      <div className={styles.chartLabels}>
+        {data.map((d) => (
+          <span key={d.month} className={styles.chartLabel}>
+            {d.month.slice(5)}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }

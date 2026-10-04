@@ -1368,7 +1368,18 @@
         "reviewVerifications": "Review verifications",
         "generateCodes": "Generate codes"
       },
-      "institutionSelectorLabel": "Institution"
+      "institutionSelectorLabel": "Institution",
+      "newMembersThisMonth": "New members this month",
+      "mostActiveClassrooms": "Most active classrooms",
+      "noActivity": "No classroom activity in the last 30 days.",
+      "classroomCol": "Classroom",
+      "membersCol": "Members",
+      "messages30dCol": "Messages (30d)",
+      "memberGrowth": "Member growth",
+      "noData": "Not enough data yet.",
+      "verificationStatsLabel": "Verification stats",
+      "approvedThisMonth": "Approved this month",
+      "approvalRate": "Approval rate"
     },
     "verify": {
       "empty": {

@@ -153,9 +153,12 @@ export class AdminService {
     let totalMembers = 0;
     let totalVerifiedMembers = 0;
     let pendingVerifications = 0;
+    let newMembersThisMonth = 0;
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     if (classroomIds.length > 0) {
-      const [totalMembersResult, verifiedResult, pendingResult] = await Promise.all([
+      const [totalMembersResult, verifiedResult, pendingResult, newMembersResult] = await Promise.all([
         this.supabase.from('memberships').select('id', { count: 'exact', head: true }).in('classroom_id', classroomIds),
         this.supabase
           .from('memberships')
@@ -167,10 +170,19 @@ export class AdminService {
           .select('id', { count: 'exact', head: true })
           .in('classroom_id', classroomIds)
           .eq('status', 'pending'),
+        // TASKS_11 TASK 11 — "new_members_this_month". Same 30-day window
+        // StatsTab's getAnalytics() already uses for its own
+        // newMembersThisMonth, not a rolling calendar month.
+        this.supabase
+          .from('memberships')
+          .select('id', { count: 'exact', head: true })
+          .in('classroom_id', classroomIds)
+          .gte('joined_at', thirtyDaysAgo),
       ]);
       totalMembers = totalMembersResult.count ?? 0;
       totalVerifiedMembers = verifiedResult.count ?? 0;
       pendingVerifications = pendingResult.count ?? 0;
+      newMembersThisMonth = newMembersResult.count ?? 0;
     }
 
     const stats = {
@@ -179,14 +191,105 @@ export class AdminService {
       totalMembers,
       totalVerifiedMembers,
       pendingVerifications,
+      newMembersThisMonth,
       activeCodes:        await this.countActiveCodes(institutionId),
       totalAdmins:        totalAdminsResult.count ?? 0,
       recentActivity:     await this.getRecentActivity(classroomIds),
       logoUrl:            institutionResult.data?.logo_url ?? null,
+      // TASKS_11 TASK 11 — top-10-most-active classrooms and verification
+      // approval-rate stats, for the "overview/home" dashboard this task
+      // asks for (OverviewTab already IS that home screen — see TASKS_11
+      // TASK 11's own frontend comment for why these two are added here
+      // instead of a new page).
+      topActiveClassrooms: await this.getTopActiveClassrooms(institutionId, classroomIds),
+      verificationStats:   await this.getVerificationStats(classroomIds),
     };
 
     this.appLogger.debug('[ADMIN:overview] stats result', { stats });
     return stats;
+  }
+
+  /** Top 10 classrooms by message count in the last 30 days. */
+  private async getTopActiveClassrooms(institutionId: string, classroomIds: string[]) {
+    if (classroomIds.length === 0) return [];
+
+    const { data: classrooms } = await this.supabase
+      .from('classrooms')
+      .select('id, global_id, name, member_count')
+      .eq('institution_id', institutionId);
+
+    const { data: verifiedCounts } = await this.supabase
+      .from('memberships')
+      .select('classroom_id')
+      .in('classroom_id', classroomIds)
+      .eq('verification_status', 'verified');
+    const verifiedCountByClassroom = new Map<string, number>();
+    for (const row of verifiedCounts ?? []) {
+      verifiedCountByClassroom.set(row.classroom_id, (verifiedCountByClassroom.get(row.classroom_id) ?? 0) + 1);
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentMessages } = await this.supabase
+      .from('messages')
+      .select('classroom_id, created_at')
+      .in('classroom_id', classroomIds)
+      .gte('created_at', thirtyDaysAgo);
+
+    const messageCountByClassroom = new Map<string, number>();
+    const lastActivityByClassroom = new Map<string, string>();
+    for (const row of recentMessages ?? []) {
+      messageCountByClassroom.set(row.classroom_id, (messageCountByClassroom.get(row.classroom_id) ?? 0) + 1);
+      const existing = lastActivityByClassroom.get(row.classroom_id);
+      if (!existing || row.created_at > existing) {
+        lastActivityByClassroom.set(row.classroom_id, row.created_at);
+      }
+    }
+
+    return (classrooms ?? [])
+      .map((c) => ({
+        globalId: c.global_id,
+        name: c.name,
+        memberCount: c.member_count,
+        verifiedCount: verifiedCountByClassroom.get(c.id) ?? 0,
+        messageCount30d: messageCountByClassroom.get(c.id) ?? 0,
+        lastActivityAt: lastActivityByClassroom.get(c.id) ?? null,
+      }))
+      .sort((a, b) => b.messageCount30d - a.messageCount30d)
+      .slice(0, 10);
+  }
+
+  /** approved_this_month/rejected_this_month use reviewed_at — same 30-day window the rest of this method uses, not a rolling calendar month. */
+  private async getVerificationStats(classroomIds: string[]) {
+    if (classroomIds.length === 0) return { pending: 0, approvedThisMonth: 0, rejectedThisMonth: 0, approvalRatePercent: 0 };
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [pendingResult, approvedResult, rejectedResult] = await Promise.all([
+      this.supabase.from('verifications').select('id', { count: 'exact', head: true }).in('classroom_id', classroomIds).eq('status', 'pending'),
+      this.supabase
+        .from('verifications')
+        .select('id', { count: 'exact', head: true })
+        .in('classroom_id', classroomIds)
+        .eq('status', 'approved')
+        .gte('reviewed_at', thirtyDaysAgo),
+      this.supabase
+        .from('verifications')
+        .select('id', { count: 'exact', head: true })
+        .in('classroom_id', classroomIds)
+        .eq('status', 'rejected')
+        .gte('reviewed_at', thirtyDaysAgo),
+    ]);
+
+    const approvedThisMonth = approvedResult.count ?? 0;
+    const rejectedThisMonth = rejectedResult.count ?? 0;
+    const reviewedTotal = approvedThisMonth + rejectedThisMonth;
+
+    return {
+      pending: pendingResult.count ?? 0,
+      approvedThisMonth,
+      rejectedThisMonth,
+      approvalRatePercent: reviewedTotal > 0 ? Math.round((approvedThisMonth / reviewedTotal) * 100) : 0,
+    };
   }
 
   /**

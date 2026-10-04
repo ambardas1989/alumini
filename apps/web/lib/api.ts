@@ -1229,16 +1229,38 @@ export interface AdminActivityEntry {
   createdAt: string;
 }
 
+export interface TopActiveClassroom {
+  globalId: string;
+  name: string;
+  memberCount: number;
+  verifiedCount: number;
+  messageCount30d: number;
+  lastActivityAt: string | null;
+}
+
+export interface OverviewVerificationStats {
+  pending: number;
+  approvedThisMonth: number;
+  rejectedThisMonth: number;
+  approvalRatePercent: number;
+}
+
 export interface AdminOverview {
   totalClassrooms: number;
   activeClassrooms: number;
   totalMembers: number;
   totalVerifiedMembers: number;
   pendingVerifications: number;
+  /** TASKS_11 TASK 11 */
+  newMembersThisMonth: number;
   activeCodes: number;
   totalAdmins: number;
   recentActivity: AdminActivityEntry[];
   logoUrl: string | null;
+  /** TASKS_11 TASK 11 — top 10 by message count in the last 30 days. */
+  topActiveClassrooms: TopActiveClassroom[];
+  /** TASKS_11 TASK 11 */
+  verificationStats: OverviewVerificationStats;
 }
 
 export function getOverview(institutionId: string): Promise<AdminOverview> {

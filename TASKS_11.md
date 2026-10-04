@@ -1023,7 +1023,7 @@ Push.
 
 ---
 
-## TASK 11 — Institution admin — analytics dashboard [PENDING]
+## TASK 11 — Institution admin — analytics dashboard [DONE] — OverviewTab already WAS the overview/home tab TASK 11 asked for (TASK 11's own frontend section literally describes it: "this is the overview/home of the admin portal"), with 5 of the requested stat cards already present. Extended AdminService.getOverview() with newMembersThisMonth, topActiveClassrooms (top 10 by message count in the last 30 days — new), and verificationStats (approved/rejected this month + approval rate — new). Member growth chart reuses StatsTab's existing getAnalytics() data (no duplicated aggregation) via a hand-rolled inline SVG polyline — no charting library (recharts etc.) is installed in this project, and adding one for a single line chart was a disproportionate footprint; same "small inline implementation over a new dependency" precedent this codebase already follows for icons. "Tap row → go to that classroom" and "link to verifications" both wired via router.push()/the existing onNavigateTab callback.
 
 Institution admin gets a high-level view of their
 institution's activity and growth on AlumTribe.
@@ -1098,13 +1098,39 @@ Push.
 
 ## COMPLETION SUMMARY
 
-(Claude Code fills this in when all tasks are [DONE])
-
-Date completed:
-Tasks completed:
-Tests passing:
-Build status:
-Notes:
+Date completed: 2026-10-05
+Tasks completed: 11/11 (TASK 01 through TASK 11, all [DONE])
+Tests passing: yes — full backend suite (429 tests, 16 suites) green after
+every task
+Build status: yes — `next build` green after every task (this entire batch
+touches the frontend)
+Notes: TASKS_11.md's own spec called for a brand-new `/institution-admin/
+[institutionId]/...` route tree with its own layout. Early into TASK 01 it
+became clear this would duplicate a LOT of what already existed —
+InstitutionService's personas/school_admin claim+invite system (TASK 01),
+and especially /admin's existing tab-based dashboard (Overview/Verify/
+Classrooms/Codes/Stats/Admins), which TASK 02's own spec even calls "the
+overview/home of the admin portal" once you reach TASK 11. Per explicit
+product direction (confirmed with the user after TASK 01 and again before
+TASK 02), every task was adapted onto the EXISTING /admin dashboard and
+InstitutionService/InstitutionController instead of the new route tree —
+new tabs (Settings, Subscription, Announcements, Members) where no
+existing tab fit, and extensions to existing tabs (Admins, Codes,
+Classrooms, Verify, Overview) where TASK 03/05/06/07/10/11's requirements
+mostly already existed and only needed a missing piece added. Two tasks
+(02's guard requirement, 04's platform-admin-only PATCH) described
+behavior that was already correct in the current code — documented as
+audit findings rather than skipped. A few scope calls worth flagging for
+whoever reviews this: TASK 06's "unlimited" max-uses / "never" expiry
+were not added (would require loosening institution_codes' DB
+constraints, which also feed the atomic redeem_batch_code() RPC); TASK 07's
+institution-admin classroom edit/archive is a new, additive capability
+deliberately layered alongside — not merged into — ClassroomService's
+existing per-classroom-admin-only update rule; TASK 11's line chart is a
+hand-rolled inline SVG rather than a new charting-library dependency.
+Six new migrations (031-036) are written but NOT applied to Supabase —
+see fileUpdates.md UPDATE 13-18 and supabase/migrations/README.md for
+exactly what to run and in what order.
 
 ---
 

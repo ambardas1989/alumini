@@ -149,10 +149,13 @@ describe('AdminService', () => {
         totalMembers: 0,
         totalVerifiedMembers: 0,
         pendingVerifications: 0,
+        newMembersThisMonth: 0,
         activeCodes: 0,
         totalAdmins: 3,
         recentActivity: [],
         logoUrl: null,
+        topActiveClassrooms: [],
+        verificationStats: { pending: 0, approvedThisMonth: 0, rejectedThisMonth: 0, approvalRatePercent: 0 },
       });
     });
 
