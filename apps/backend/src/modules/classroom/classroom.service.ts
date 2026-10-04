@@ -1000,11 +1000,15 @@ export class ClassroomService {
   // ── Cover photo ──────────────────────────────────────────────────────────
 
   /**
-   * TASKS_09 TASK 15 FIX C — widened from admin-only to any VERIFIED
-   * member (plus the creator/admin, who may not have re-verified since
-   * creating it) — the mockup's camera-icon overlay is meant to be a
-   * casual "anyone can freshen up the cover photo" action, not an admin
-   * setting like updateClassroom()'s other fields.
+   * TASKS_10 TASK 04 — narrowed back from TASKS_09 TASK 15 FIX C's "any
+   * verified member" to a verified admin or the classroom's creator.
+   * Audited this guard, the controller route (JwtAuthGuard only, no
+   * verification-review guard attached), and VerificationService's own
+   * assertClassroomAdmin() (a private method on a different module,
+   * unreachable from this upload path) — found no code path that could
+   * actually surface that method's "...can review verification requests"
+   * message from cover upload, so this change is an intentional policy
+   * tightening the task asked for, not a reproduction of the reported 403.
    */
   private async assertCanUploadCover(actorId: string, classroomId: string): Promise<void> {
     const { data: membership } = await this.supabase
@@ -1016,10 +1020,11 @@ export class ClassroomService {
 
     const allowed =
       !!membership &&
-      (membership.verification_status === 'verified' || membership.role === 'admin' || membership.is_creator);
+      membership.verification_status === 'verified' &&
+      (membership.role === 'admin' || membership.is_creator);
 
     if (!allowed) {
-      throw new ForbiddenException('Only a verified member of this classroom can do this');
+      throw new ForbiddenException('Only a verified admin of this classroom, or its creator, can upload a cover photo');
     }
   }
 
@@ -1043,7 +1048,7 @@ export class ClassroomService {
       .upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
 
     if (uploadError) {
-      this.appLogger.error('[CLASSROOM:cover] upload failed', { classroomId, error: uploadError });
+      this.appLogger.error('[CLASSROOM:coverPhoto] failed', { error: uploadError });
       throw new BadRequestException('Failed to upload cover photo. Please try again.');
     }
 
@@ -1058,11 +1063,11 @@ export class ClassroomService {
       .maybeSingle();
 
     if (error || !data) {
-      this.appLogger.error('[CLASSROOM:cover] upload failed', { classroomId, error });
+      this.appLogger.error('[CLASSROOM:coverPhoto] failed', { error });
       throw new BadRequestException('Failed to update cover photo. Please try again.');
     }
 
-    this.appLogger.info('[CLASSROOM:cover] upload success', { classroomId, coverUrl });
+    this.appLogger.info('[CLASSROOM:coverPhoto] uploaded', { classroomId, userId: actorId, url: coverUrl });
     return { coverUrl: data.coverUrl as string };
   }
 }

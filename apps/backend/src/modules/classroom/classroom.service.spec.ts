@@ -797,11 +797,11 @@ describe('ClassroomService', () => {
     });
   });
 
-  // TASKS_09 TASK 15 FIX C — cover upload widened from admin-only to any
-  // verified member (or the creator/admin). Only the permission check is
-  // exercised here (throws before reaching Storage, which this spec's
-  // Supabase mock doesn't simulate) — same scoping as updateClassroom()'s
-  // own tests above.
+  // TASKS_10 TASK 04 — narrowed back from TASKS_09 TASK 15 FIX C's "any
+  // verified member" to a verified admin or the classroom's creator. Only
+  // the permission check is exercised here (throws before reaching
+  // Storage, which this spec's Supabase mock doesn't simulate) — same
+  // scoping as updateClassroom()'s own tests above.
   describe('uploadCover() — permission check', () => {
     it('throws ForbiddenException when the caller has no membership', async () => {
       mockTables({ memberships: chain({ data: null, error: null }) });
@@ -811,9 +811,9 @@ describe('ClassroomService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('throws ForbiddenException for an unverified, non-admin, non-creator member', async () => {
+    it('throws ForbiddenException for a verified, non-admin, non-creator member', async () => {
       mockTables({
-        memberships: chain({ data: { role: 'student', verification_status: 'pending', is_creator: false }, error: null }),
+        memberships: chain({ data: { role: 'student', verification_status: 'verified', is_creator: false }, error: null }),
       });
 
       await expect(
@@ -821,9 +821,29 @@ describe('ClassroomService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('allows an unverified creator (creator/admin no longer needs verified status)', async () => {
+    it('throws ForbiddenException for an unverified creator (verification is now required too)', async () => {
       mockTables({
         memberships: chain({ data: { role: 'student', verification_status: 'pending', is_creator: true }, error: null }),
+      });
+
+      await expect(
+        service.uploadCover('class-001', 'user-1', { buffer: Buffer.from(''), mimetype: 'image/png', size: 1 }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows a verified creator', async () => {
+      mockTables({
+        memberships: chain({ data: { role: 'student', verification_status: 'verified', is_creator: true }, error: null }),
+      });
+
+      await expect(
+        service.uploadCover('class-001', 'user-1', { buffer: Buffer.from(''), mimetype: 'image/png', size: 1 }),
+      ).rejects.not.toThrow(ForbiddenException);
+    });
+
+    it('allows a verified admin', async () => {
+      mockTables({
+        memberships: chain({ data: { role: 'admin', verification_status: 'verified', is_creator: false }, error: null }),
       });
 
       await expect(

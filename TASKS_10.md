@@ -206,7 +206,7 @@ Push.
 
 ---
 
-## TASK 04 — Fix: cover photo upload 403 [PENDING]
+## TASK 04 — Fix: cover photo upload 403 [DONE] — audited the controller route and the guard: the reported error text only exists in VerificationService.assertClassroomAdmin() (a private method on a different module, unreachable from this upload path), and the existing guard already always passed for admin/creator, so the described 403 couldn't reproduce as-is. Applied the requested tightening anyway: assertCanUploadCover() now requires verified + (role='admin' OR is_creator) instead of TASKS_09 TASK 15 FIX C's "any verified member", and renamed the upload success/failure logs to the requested [CLASSROOM:coverPhoto] tag. Storage upload already used the service-role client.
 
 Uploading a cover photo to a classroom returns 403:
 "Only a verified admin of this classroom, or an active
