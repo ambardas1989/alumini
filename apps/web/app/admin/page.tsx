@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Persona } from '@alumini/types';
+import type { Institution, Persona } from '@alumini/types';
 import * as api from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
+import { useDebounce } from '@/lib/useDebounce';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRequireAuth } from '@/lib/useRequireAuth';
 import { useTranslations } from '@/lib/useTranslations';
@@ -15,6 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { OverviewTab } from './OverviewTab';
 import { VerifyTab } from './VerifyTab';
@@ -44,6 +46,16 @@ export default function AdminDashboardPage() {
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const [pendingVerificationCount, setPendingVerificationCount] = useState(0);
   const [tab, setTab] = useState<Tab>('overview');
+
+  // TASKS_11 TASK 02 — a platform admin can now view ANY institution's
+  // full tab set (assertSchoolAdmin()'s platform-admin bypass, see
+  // admin.service.ts), not just the institutions they personally
+  // school_admin. This picker is how they get there when they have no
+  // school_admin persona of their own.
+  const [platformInstitution, setPlatformInstitution] = useState<Institution | null>(null);
+  const [institutionQuery, setInstitutionQuery] = useState('');
+  const debouncedInstitutionQuery = useDebounce(institutionQuery, 300);
+  const [institutionResults, setInstitutionResults] = useState<Institution[]>([]);
 
   const adminPersona = adminPersonas.find((p) => p.id === selectedPersonaId) ?? adminPersonas[0] ?? null;
 
@@ -96,6 +108,25 @@ export default function AdminDashboardPage() {
     load();
   }, [ready, load]);
 
+  useEffect(() => {
+    if (platformInstitution || debouncedInstitutionQuery.trim().length < 2) {
+      setInstitutionResults([]);
+      return;
+    }
+    let cancelled = false;
+    api
+      .searchInstitutions(debouncedInstitutionQuery.trim())
+      .then((data) => {
+        if (!cancelled) setInstitutionResults(data.slice(0, 8));
+      })
+      .catch(() => {
+        if (!cancelled) setInstitutionResults([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedInstitutionQuery, platformInstitution]);
+
   const changeTab = (next: Tab) => {
     setTab(next);
     if (typeof window !== 'undefined') window.sessionStorage.setItem(TAB_KEY, next);
@@ -142,7 +173,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (!adminPersona && isPlatformAdmin) {
+  if (!adminPersona && isPlatformAdmin && !platformInstitution) {
     return (
       <AppShell showNav={false}>
         <div className={styles.topBar}>
@@ -164,12 +195,32 @@ export default function AdminDashboardPage() {
         </div>
         <PageContainer>
           {tab === 'adminAccess' ? <InstitutionAdminAccessTab /> : <InstitutionRequestsTab />}
+
+          <div className={styles.institutionSelectorWrap}>
+            <Input
+              label={t('viewInstitution.searchLabel')}
+              placeholder={t('viewInstitution.searchPlaceholder')}
+              value={institutionQuery}
+              onChange={(e) => setInstitutionQuery(e.target.value)}
+            />
+            {institutionResults.length > 0 && (
+              <ul className={styles.institutionResults}>
+                {institutionResults.map((institution) => (
+                  <li key={institution.id}>
+                    <button type="button" className={styles.institutionResultRow} onClick={() => setPlatformInstitution(institution)}>
+                      {institution.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </PageContainer>
       </AppShell>
     );
   }
 
-  if (adminPersona!.status !== 'active') {
+  if (!platformInstitution && adminPersona!.status !== 'active') {
     return (
       <AppShell showNav={false}>
         <PageContainer noPadding>
@@ -189,7 +240,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const institutionId = adminPersona!.institutionId;
+  const institutionId = platformInstitution?.id ?? adminPersona!.institutionId;
   if (!institutionId) return null;
 
   return (
@@ -198,7 +249,18 @@ export default function AdminDashboardPage() {
         <h1 className={styles.topBarTitle}>{t('title')}</h1>
       </div>
 
-      {adminPersonas.length > 1 && (
+      {platformInstitution && (
+        <div className={styles.institutionSelectorWrap}>
+          <div className={styles.institutionBanner}>
+            <span>{t('viewInstitution.viewing', { name: platformInstitution.name })}</span>
+            <button type="button" className={styles.institutionChangeLink} onClick={() => setPlatformInstitution(null)}>
+              {t('viewInstitution.changeLink')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!platformInstitution && adminPersonas.length > 1 && (
         <div className={styles.institutionSelectorWrap}>
           <Select
             label={t('overview.institutionSelectorLabel')}

@@ -252,7 +252,7 @@ Push.
 
 ---
 
-## TASK 02 — Institution admin — auth guard and layout [PENDING]
+## TASK 02 — Institution admin — auth guard and layout [DONE] — ADAPTED per explicit product direction: skipped the new /institution-admin/[institutionId]/layout.tsx route tree entirely — /admin already has an equivalent layout (top bar + tab bar, Overview/Verify/Classrooms/Codes/Stats/Admins). Guard requirement ("approved institution admin for this institution OR platform admin") implemented as a private assertX() method per this codebase's house convention (no shared Guard class exists anywhere for role checks) — AdminService.assertSchoolAdmin() now also accepts a platform admin, purely additive. Added an institution search/picker on /admin so a platform admin without their own school_admin persona can view any institution's full tab set.
 
 Create the auth guard and shared layout for all institution
 admin pages. Any route under /institution-admin/[institutionId]

@@ -15,6 +15,47 @@
   background: var(--color-surface);
 }
 
+.institutionResults {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-block-start: 8px;
+}
+
+.institutionResultRow {
+  width: 100%;
+  text-align: start;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+}
+
+.institutionBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-primary);
+  background: var(--color-primary-light);
+  font-size: var(--text-sm);
+  margin-block-end: 10px;
+}
+
+.institutionChangeLink {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 .tabBar {
   display: flex;
   gap: 6px;

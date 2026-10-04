@@ -110,6 +110,26 @@ describe('AdminService', () => {
       await expect(service.getOverview('user-1', 'inst-1')).rejects.toThrow(ForbiddenException);
     });
 
+    // TASKS_11 TASK 02 — assertSchoolAdmin() now also accepts a platform
+    // admin, without needing a persona at this institution at all.
+    it('allows a platform admin through even with no school_admin persona here', async () => {
+      mockTables({
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
+        // Only one entry needed (vs. the next test's two) — the platform-admin
+        // bypass in assertSchoolAdmin() skips its own personas query entirely,
+        // so the only remaining personas call is Promise.all's admin count.
+        personas: chain({ data: null, error: null, count: 0 }),
+        classrooms: chain(
+          { data: [], error: null },
+          { data: null, error: null, count: 0 },
+          { data: null, error: null, count: 0 },
+        ),
+        institution_codes: chain({ data: [], error: null }),
+      });
+
+      await expect(service.getOverview('platform-admin-1', 'inst-1')).resolves.toMatchObject({ totalAdmins: 0 });
+    });
+
     it('returns zeroed counts for an institution with no classrooms', async () => {
       mockTables({
         personas: chain({ data: { id: 'p1' }, error: null }, { data: null, error: null, count: 3 }),

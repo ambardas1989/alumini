@@ -714,7 +714,26 @@ export class AdminService {
 
   // ── Internal: access control ─────────────────────────────────────────────
 
+  /**
+   * TASKS_11 TASK 02 — widened to also accept a platform admin, not just
+   * an active school_admin persona for this specific institution. Adapted
+   * from TASK 02's literal "institution-admin.guard.ts" ask (a new shared
+   * Guard class) — this codebase's house convention is a private
+   * assertX() per service instead of a shared Guard (every other
+   * institution-scoped service already does this; see
+   * InstitutionService.assertPlatformAdmin()). Purely additive: an
+   * existing school admin's access is unaffected, this only adds a second
+   * way to pass.
+   */
   private async assertSchoolAdmin(userId: string, institutionId: string): Promise<void> {
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('is_platform_admin')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (profile?.is_platform_admin) return;
+
     const { data } = await this.supabase
       .from('personas')
       .select('id')
@@ -725,7 +744,7 @@ export class AdminService {
       .maybeSingle();
 
     if (!data) {
-      throw new ForbiddenException('Only an active school admin of this institution can perform this action');
+      throw new ForbiddenException('Only an active school admin of this institution, or a platform admin, can perform this action');
     }
   }
 

@@ -1134,6 +1134,12 @@
       "requests": "Requests ({count})",
       "adminAccess": "Admin Access"
     },
+    "viewInstitution": {
+      "searchLabel": "View an institution's dashboard",
+      "searchPlaceholder": "Search institutions...",
+      "viewing": "Viewing {name}",
+      "changeLink": "Change"
+    },
     "institutionAdminAccess": {
       "filterTabs": {
         "pending": "Pending",
