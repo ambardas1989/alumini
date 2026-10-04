@@ -87,8 +87,10 @@ export class CreateClassroomDto {
   // own persona instead of always being forced to 'admin' (see
   // ClassroomService.createClassroom()'s doc comment). Defaults to
   // 'student' when omitted, same default the service used before.
-  @ApiPropertyOptional({ enum: ['student', 'teacher'], description: "Creator's persona — determines their channel-access role" })
+  // TASKS_10 TASK 03 — widened to also accept 'admin', for a creator whose
+  // active persona is school_admin.
+  @ApiPropertyOptional({ enum: ['student', 'teacher', 'admin'], description: "Creator's persona — determines their channel-access role" })
   @IsOptional()
-  @IsIn(['student', 'teacher'])
-  creatorRole?: 'student' | 'teacher';
+  @IsIn(['student', 'teacher', 'admin'])
+  creatorRole?: 'student' | 'teacher' | 'admin';
 }

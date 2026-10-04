@@ -396,7 +396,12 @@ export function ClassroomCreateForm({ onDone }: ClassroomCreateFormProps) {
         city: city.trim() || undefined,
         state: state.trim() || undefined,
         countryCode,
-        creatorRole: user?.activePersona === 'teacher' ? 'teacher' : 'student',
+        creatorRole:
+          user?.activePersona === 'teacher'
+            ? 'teacher'
+            : user?.activePersona === 'school_admin'
+              ? 'admin'
+              : 'student',
       });
       showToast(t('successToast'), 'success');
       onDone(classroom.globalId);

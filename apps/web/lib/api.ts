@@ -706,7 +706,7 @@ export interface CreateClassroomData {
   city?: string;
   state?: string;
   countryCode?: string;
-  creatorRole?: 'student' | 'teacher';
+  creatorRole?: 'student' | 'teacher' | 'admin';
 }
 
 /**

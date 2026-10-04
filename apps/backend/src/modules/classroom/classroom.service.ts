@@ -222,7 +222,7 @@ export class ClassroomService {
     // frontend sends the caller's own active persona) when present,
     // otherwise falls back to the same active-teacher-persona-at-this-
     // institution check joinClassroom() uses above, then to 'student'.
-    let creatorRole: 'student' | 'teacher' = 'student';
+    let creatorRole: 'student' | 'teacher' | 'admin' = 'student';
     if (dto.creatorRole) {
       creatorRole = dto.creatorRole;
     } else {

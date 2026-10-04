@@ -152,7 +152,7 @@ Push.
 
 ---
 
-## TASK 03 — Fix: classroom creator role follows persona [PENDING]
+## TASK 03 — Fix: classroom creator role follows persona [DONE] — createClassroom() already honored dto.creatorRole from an earlier fix (TASKS_08 TASK 03) but only allowed 'student'/'teacher'; widened CreateClassroomDto, the service's creatorRole type, and apps/web/lib/api.ts to also accept 'admin', and ClassroomCreateForm now maps activePersona 'school_admin' to creatorRole 'admin' (previously fell through to 'student').
 
 When a user creates a classroom, their membership role must
 match the persona/role they selected during classroom creation,
