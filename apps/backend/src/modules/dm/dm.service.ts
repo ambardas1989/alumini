@@ -9,7 +9,7 @@
  * 2000 chars, and the recipient existing in `profiles`.
  */
 
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 import { getRange } from '@alumini/utils';
@@ -227,6 +227,28 @@ export class DmService {
 
     this.appLogger.info('[DM:messages] success', { userId, otherUserId, count: data?.length ?? 0 });
     return (data ?? []).reverse().map((m) => this.present(m));
+  }
+
+  /**
+   * TASKS_10 TASK 05 — the thread header's name/avatar used to come from
+   * SearchService.getStudentProfile(), which requires an active teacher
+   * persona (SPEC.md §12.2's recommendation-letter feature) and 403s for
+   * any other caller. DMs have no persona requirement at all (see this
+   * module's own header comment), so the thread header needs its own
+   * unrestricted lookup instead of borrowing the teacher-only one.
+   */
+  async getRecipientProfile(otherUserId: string): Promise<{ id: string; fullName: string | null; avatarUrl: string | null }> {
+    const { data: profile } = await this.supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .eq('id', otherUserId)
+      .maybeSingle();
+
+    if (!profile) {
+      throw new NotFoundException('User not found');
+    }
+
+    return { id: profile.id, fullName: profile.full_name ?? null, avatarUrl: profile.avatar_url ?? null };
   }
 
   /** senderId is always the caller — recipientId is the :userId route param. */

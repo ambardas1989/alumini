@@ -248,7 +248,7 @@ Push.
 
 ---
 
-## TASK 05 — Fix: message button on verification card [PENDING]
+## TASK 05 — Fix: message button on verification card [DONE] — the Message button itself (MemberListModal.tsx) already navigated directly with the known userId. The actual 403 was one level deeper: ThreadView.tsx (the shared /messages?userId= thread page every Message button lands on) called api.getStudentProfile(), which hits the teacher-only GET /search/students/:userId for every thread opened by any non-teacher. Added an unrestricted GET /dm/conversations/:userId/profile (DmService.getRecipientProfile()) and pointed ThreadView at it instead.
 
 Tapping "Message" on a student's verification/pending card
 calls GET /v1/search/students/:id which requires teacher

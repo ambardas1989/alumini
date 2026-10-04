@@ -27,6 +27,12 @@ export class DmController {
     return this.dmService.searchRecipients(authToken.sub, q ?? '');
   }
 
+  @Get('conversations/:userId/profile')
+  @ApiOperation({ summary: "The other user's basic display profile (name, avatar) for the thread header — no persona restriction, unlike SearchController's teacher-only student lookup" })
+  async getRecipientProfile(@Param('userId') userId: string) {
+    return this.dmService.getRecipientProfile(userId);
+  }
+
   @Get('conversations/:userId')
   @ApiOperation({ summary: 'Paginated thread with one other user' })
   async getMessages(

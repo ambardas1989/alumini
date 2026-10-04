@@ -1217,6 +1217,17 @@ export function getDmConversations(): Promise<DmConversation[]> {
   return request('/dm/conversations');
 }
 
+export interface DmRecipientProfile {
+  id: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+}
+
+/** TASKS_10 TASK 05 — replaces getStudentProfile() for the thread header, which required a teacher persona and 403'd for everyone else. */
+export function getDmRecipientProfile(userId: string): Promise<DmRecipientProfile> {
+  return request(`/dm/conversations/${userId}/profile`);
+}
+
 /**
  * TASKS_09 TASK 04's classmates-only search — kept for any other caller
  * that specifically wants "people I share a verified classroom with", but

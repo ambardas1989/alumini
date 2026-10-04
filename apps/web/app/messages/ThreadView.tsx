@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import * as api from '@/lib/api';
-import type { DmMessage, StudentProfile } from '@/lib/api';
+import type { DmMessage, DmRecipientProfile } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 import { safeFormatDate, safeRelativeTime } from '@/lib/format';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -31,7 +31,7 @@ export function ThreadView({ userId, initialValue }: ThreadViewProps) {
   const { showToast } = useToast();
   const t = useTranslations('messages.thread');
 
-  const [recipient, setRecipient] = useState<StudentProfile | null>(null);
+  const [recipient, setRecipient] = useState<DmRecipientProfile | null>(null);
   const [messages, setMessages] = useState<DmMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -47,7 +47,7 @@ export function ThreadView({ userId, initialValue }: ThreadViewProps) {
       setLoading(true);
       try {
         const [profile, thread] = await Promise.all([
-          api.getStudentProfile(userId),
+          api.getDmRecipientProfile(userId),
           api.getDmMessages(userId, 0),
         ]);
         if (cancelled) return;
