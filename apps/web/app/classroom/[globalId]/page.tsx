@@ -673,7 +673,7 @@ export default function ClassroomPage() {
   };
 
   return (
-    <AppShell showNav={false}>
+    <AppShell showNav={false} fixedHeight>
       <ClassroomHeader
         classroomId={classroom.id}
         name={classroom.name}

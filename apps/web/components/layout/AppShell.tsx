@@ -20,6 +20,13 @@ interface AppShellProps {
    * if AppShell ever does need to react to it.
    */
   showHeader?: boolean;
+  /**
+   * TASKS_10 TASK 08 — for a screen whose own content must scroll
+   * internally (e.g. a chat view's message list) instead of the page
+   * scrolling. See app-shell--fixed-height/app-content--flex in
+   * styles/layout.css for why this is opt-in rather than the default.
+   */
+  fixedHeight?: boolean;
 }
 
 /**
@@ -28,13 +35,13 @@ interface AppShellProps {
  * app keeps its phone-shell feel rather than stretching edge-to-edge on a
  * wide monitor — see --app-max-width / --app-margin in globals.css.
  */
-export function AppShell({ children, showNav = true }: AppShellProps) {
+export function AppShell({ children, showNav = true, fixedHeight = false }: AppShellProps) {
   const t = useTranslations('common.idleTimeout');
   const { showWarning, warningSecondsLeft, staySignedIn, signOutNow } = useIdleTimeout();
 
   return (
-    <div className="app-shell">
-      <main className="app-content">{children}</main>
+    <div className={`app-shell ${fixedHeight ? 'app-shell--fixed-height' : ''}`}>
+      <main className={`app-content ${fixedHeight ? 'app-content--flex' : ''}`}>{children}</main>
       {showNav && <BottomNav />}
 
       {showWarning && (

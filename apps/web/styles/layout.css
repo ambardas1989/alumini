@@ -30,6 +30,31 @@
   min-height: 0; /* allows children to scroll inside a flex column instead of overflowing it */
 }
 
+/*
+ * TASKS_10 TASK 08 — opt-in modifiers for a screen like the classroom chat
+ * view, where the message list must scroll internally and the page itself
+ * must never scroll. Plain min-height:100dvh/.app-content without
+ * display:flex (the defaults above) is exactly what every *other* screen
+ * wants — their content is meant to grow taller than the viewport and let
+ * the page scroll normally. Bounding .app-shell to height:100dvh and
+ * giving .app-content display:flex here (so a flex:1/min-height:0 child
+ * further down, e.g. the message list, has an actual bounded ancestor to
+ * scroll within instead of growing the whole page) would break that for
+ * everyone else, hence a separate modifier instead of changing the
+ * defaults above.
+ */
+.app-shell--fixed-height {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-content--flex {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* AppShell intentionally applies no padding of its own — PageHeader (if a
    screen renders one) and PageContainer own their own spacing, so a
    screen that wants edge-to-edge content (e.g. a chat view) isn't fighting

@@ -349,7 +349,7 @@ Push.
 
 ---
 
-## TASK 08 — Fix: message container scroll [PENDING]
+## TASK 08 — Fix: message container scroll [DONE] — .messageList/.channelBody/header/tabs/input-bar already had the correct flex:1/min-height:0/flex-shrink:0 CSS; the actual bug was two levels up in the shared layout.css: .app-shell only has min-height:100dvh (no height/overflow:hidden) and .app-content has no display:flex, so .channelBody's flex:1 had no bounded flex ancestor to size against and the whole page grew with the message list instead. Added opt-in .app-shell--fixed-height/.app-content--flex modifiers (AppShell's new `fixedHeight` prop) rather than changing the shared defaults, which every other page relies on for normal page scrolling. Applies to all three channel tabs since they share this one page's layout.
 
 When the message list gets long, the browser page scrolls
 instead of the message container scrolling internally.
