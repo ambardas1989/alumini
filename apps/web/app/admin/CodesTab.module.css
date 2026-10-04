@@ -75,6 +75,16 @@
   margin-block-end: 8px;
 }
 
+.codeRowRevoked {
+  opacity: 0.5;
+}
+
+.codeActions {
+  display: flex;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
 .codeValue {
   font-family: monospace;
   font-size: var(--text-sm);

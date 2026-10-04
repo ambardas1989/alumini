@@ -1300,13 +1300,19 @@ export interface CodeEntry {
   boundEmail: string | null;
   maxRedemptions: number | null;
   redemptionCount: number;
-  status: 'active' | 'redeemed' | 'exhausted' | 'expired';
+  status: 'active' | 'redeemed' | 'exhausted' | 'expired' | 'revoked';
   expiresAt: string;
   createdAt: string;
+  isActive: boolean;
 }
 
 export function listCodes(classroomId: string): Promise<CodeEntry[]> {
   return request(`/codes/${classroomId}`);
+}
+
+/** TASKS_11 TASK 06 — independent of expiry/redemption. */
+export function revokeCode(codeId: string): Promise<{ id: string; code: string; isActive: boolean }> {
+  return request(`/codes/${codeId}/revoke`, { method: 'PATCH' });
 }
 
 /**

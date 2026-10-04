@@ -6,7 +6,7 @@
  * controller level since there is no non-admin route in this module.
  */
 
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 
@@ -50,6 +50,12 @@ export class CodesController {
   @ApiOperation({ summary: 'List all codes for a classroom, with computed active/redeemed/exhausted/expired status' })
   async list(@CurrentUser() authToken: AuthTokenPayload, @Param('classroomId') classroomId: string) {
     return this.codesService.listCodes(authToken.sub, classroomId);
+  }
+
+  @Patch(':id/revoke')
+  @ApiOperation({ summary: 'Revoke a code (TASKS_11 TASK 06) — independent of expiry/redemption' })
+  async revoke(@CurrentUser() authToken: AuthTokenPayload, @Param('id') id: string, @Req() req: Request) {
+    return this.codesService.revokeCode(authToken.sub, id, req);
   }
 
   @Post('import')

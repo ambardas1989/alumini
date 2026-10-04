@@ -164,6 +164,7 @@ export const AuditEventType = {
   CODE_GENERATED: 'code.generated',
   CODE_REDEEMED: 'code.redeemed',
   CODE_EXPIRED: 'code.expired',
+  CODE_REVOKED: 'code.revoked',
 
   // Admin actions
   ADMIN_VERIFICATION_APPROVED: 'admin.verification.approved',

@@ -48,6 +48,7 @@ database has NOT been verified against Supabase itself. Run the query in
 | 031_institution_admin_requests.sql | ⚠️ Check | `personas.requested_role`/`requested_message` (TASKS_11 TASK 01) | Yes — `ADD COLUMN IF NOT EXISTS` |
 | 032_institution_profile.sql | ⚠️ Check | `institutions.cover_photo_url`/`address`/`website`/`description`/`founded_year`/`board`/`medium` (TASKS_11 TASK 03) | Yes — `ADD COLUMN IF NOT EXISTS` |
 | 033_institution_subscriptions.sql | ⚠️ Check | `institution_subscriptions` table (TASKS_11 TASK 04) | No — plain `CREATE TABLE IF NOT EXISTS` |
+| 034_institution_codes_revoke.sql | ⚠️ Check | `institution_codes.is_active` (TASKS_11 TASK 06) | Yes — `ADD COLUMN IF NOT EXISTS` |
 
 ⚠️ Check = not verified against the live database from this environment —
 run the query below and confirm before relying on this table.

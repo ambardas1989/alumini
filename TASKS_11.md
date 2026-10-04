@@ -582,7 +582,7 @@ Push.
 
 ---
 
-## TASK 06 — Institution admin — batch code management [PENDING]
+## TASK 06 — Institution admin — batch code management [DONE] — institution_codes already existed with generate personal/batch, CSV import, and status computation (CodesTab) covering nearly all of this task. Added the missing pieces: is_active column + revoke action (034_institution_codes_revoke.sql), classroom filter dropdown (client-side, tagging classroomId per code since no institution-wide list endpoint exists), copy button per row, revoked codes greyed out, and a WhatsApp share button + message on the generated-batch-code panel. Did not add "unlimited" max_uses or "never" expiry — both would require loosening institution_codes' batch_code_cap CHECK constraint and the expires_at NOT NULL constraint, which also feed the atomic redeem_batch_code() RPC; out of scope for a UI-facing task.
 
 Institution admin can generate, view, and revoke invite
 codes per classroom. Members use these codes to get

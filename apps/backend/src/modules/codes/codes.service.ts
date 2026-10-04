@@ -258,7 +258,7 @@ export class CodesService {
     // GenericStringError instead of the expected row shape.
     const { data: codes, error } = await this.supabase
       .from('institution_codes')
-      .select('id, code, type, bound_name, bound_email, max_redemptions, redemption_count, is_redeemed, redeemed_at, expires_at, expiry_logged_at, created_at')
+      .select('id, code, type, bound_name, bound_email, max_redemptions, redemption_count, is_redeemed, redeemed_at, expires_at, expiry_logged_at, created_at, is_active')
       .eq('classroom_id', classroomId)
       .order('created_at', { ascending: false });
 
@@ -278,9 +278,10 @@ export class CodesService {
       boundEmail: string | null;
       maxRedemptions: number | null;
       redemptionCount: number;
-      status: 'active' | 'redeemed' | 'exhausted' | 'expired';
+      status: 'active' | 'redeemed' | 'exhausted' | 'expired' | 'revoked';
       expiresAt: string;
       createdAt: string;
+      isActive: boolean;
     }> = [];
 
     for (const c of codes ?? []) {
@@ -301,6 +302,7 @@ export class CodesService {
         status:          this.computeStatus(c, expired),
         expiresAt:       c.expires_at,
         createdAt:       c.created_at,
+        isActive:        c.is_active,
       });
     }
 
@@ -308,15 +310,61 @@ export class CodesService {
   }
 
   private computeStatus(
-    c: { type: string; is_redeemed: boolean; redemption_count: number; max_redemptions: number | null },
+    c: { type: string; is_redeemed: boolean; redemption_count: number; max_redemptions: number | null; is_active: boolean },
     expired: boolean,
-  ): 'active' | 'redeemed' | 'exhausted' | 'expired' {
+  ): 'active' | 'redeemed' | 'exhausted' | 'expired' | 'revoked' {
+    // TASKS_11 TASK 06 — checked before expiry/redemption: a revoked code
+    // stays "revoked" in the admin's own view even if it also later
+    // expires, since revocation was the admin's deliberate action and
+    // shouldn't be masked by an unrelated later state. `=== false` (not
+    // `!c.is_active`) so a row from before this column existed, or test
+    // fixtures that don't set it, default to active rather than revoked.
+    if (c.is_active === false) return 'revoked';
     if (expired) return 'expired';
     if (c.type === 'personal' && c.is_redeemed) return 'redeemed';
     if (c.type === 'batch' && c.max_redemptions !== null && c.redemption_count >= c.max_redemptions) {
       return 'exhausted';
     }
     return 'active';
+  }
+
+  /** TASKS_11 TASK 06 — explicit revoke, independent of expires_at/redemption_count (see 034_institution_codes_revoke.sql's own comment). */
+  async revokeCode(userId: string, codeId: string, req?: Request) {
+    const { data: code } = await this.supabase
+      .from('institution_codes')
+      .select('id, classroom_id')
+      .eq('id', codeId)
+      .maybeSingle();
+
+    if (!code) {
+      throw new NotFoundException('Code not found');
+    }
+
+    const classroom = await this.getClassroom(code.classroom_id);
+    await this.assertSchoolAdmin(userId, classroom.institution_id);
+
+    const { data, error } = await this.supabase
+      .from('institution_codes')
+      .update({ is_active: false })
+      .eq('id', codeId)
+      .select('id, code, is_active')
+      .maybeSingle();
+
+    if (error || !data) {
+      this.logger.error('Failed to revoke code', { error, codeId });
+      throw new BadRequestException('Failed to revoke this code. Please try again.');
+    }
+
+    await this.audit.log({
+      eventType: AuditEventType.CODE_REVOKED,
+      actorId: userId,
+      targetId: codeId,
+      targetType: 'code',
+      metadata: { classroom_id: code.classroom_id },
+      req,
+    });
+
+    return { id: data.id, code: data.code, isActive: data.is_active as boolean };
   }
 
   private async logExpiryOnce(codeId: string, classroomId: string, codeType: string, observedBy: string): Promise<void> {

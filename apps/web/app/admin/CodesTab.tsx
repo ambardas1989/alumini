@@ -37,7 +37,9 @@ export function CodesTab({ institutionId }: CodesTabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [classrooms, setClassrooms] = useState<FlatClassroom[]>([]);
-  const [codes, setCodes] = useState<api.CodeEntry[]>([]);
+  const [codes, setCodes] = useState<Array<api.CodeEntry & { classroomId: string }>>([]);
+  const [filterClassroomId, setFilterClassroomId] = useState('');
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   const [personalClassroomId, setPersonalClassroomId] = useState('');
   const [boundName, setBoundName] = useState('');
@@ -68,8 +70,12 @@ export function CodesTab({ institutionId }: CodesTabProps) {
 
       // listCodes is per classroom — no institution-wide endpoint exists —
       // so failures on individual classrooms are swallowed rather than
-      // failing the whole tab.
-      const results = await Promise.allSettled(flat.map((c) => api.listCodes(c.id)));
+      // failing the whole tab. classroomId is tagged on here (client-side)
+      // so the TASKS_11 TASK 06 classroom filter dropdown below has
+      // something to filter on without a backend change.
+      const results = await Promise.allSettled(
+        flat.map((c) => api.listCodes(c.id).then((codeRows) => codeRows.map((code) => ({ ...code, classroomId: c.id })))),
+      );
       setCodes(results.flatMap((r) => (r.status === 'fulfilled' ? r.value : [])));
     } catch (err) {
       setError(getErrorMessage(err));
@@ -120,6 +126,33 @@ export function CodesTab({ institutionId }: CodesTabProps) {
   const handleCopyGeneratedCode = () => {
     if (!generatedCode) return;
     navigator.clipboard.writeText(generatedCode.code).then(() => showToast(t('batch.copiedToast'), 'success'));
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code).then(() => showToast(t('batch.copiedToast'), 'success'));
+  };
+
+  const generatedCodeClassroomName = generatedCode
+    ? classrooms.find((c) => c.id === batchClassroomId)?.name ?? ''
+    : '';
+
+  const handleShareWhatsapp = () => {
+    if (!generatedCode) return;
+    const message = t('batch.shareMessage', { code: generatedCode.code, classroom: generatedCodeClassroomName });
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  const handleRevoke = async (codeId: string) => {
+    setRevokingId(codeId);
+    try {
+      await api.revokeCode(codeId);
+      showToast(t('revokedToast'), 'success');
+      setCodes((prev) => prev.map((c) => (c.id === codeId ? { ...c, status: 'revoked', isActive: false } : c)));
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setRevokingId(null);
+    }
   };
 
   const handleFileSelect = async (file: File) => {
@@ -257,6 +290,9 @@ export function CodesTab({ institutionId }: CodesTabProps) {
                 {t('batch.copyCode')}
               </Button>
             </div>
+            <Button variant="secondary" size="sm" fullWidth onClick={handleShareWhatsapp}>
+              {t('batch.shareWhatsapp')}
+            </Button>
           </div>
         )}
       </div>
@@ -279,20 +315,42 @@ export function CodesTab({ institutionId }: CodesTabProps) {
         </Button>
       </div>
 
-      <p className={tabStyles.sectionLabel}>{t('activeCodes')}</p>
-      {codes.length === 0 ? (
+      <div className={tabStyles.sectionHeader}>
+        <span className={tabStyles.sectionLabel}>{t('activeCodes')}</span>
+        <Select label={t('filterClassroomLabel')} value={filterClassroomId} onChange={(e) => setFilterClassroomId(e.target.value)}>
+          <option value="">{t('filterClassroomAll')}</option>
+          {classrooms.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </Select>
+      </div>
+      {codes.filter((c) => !filterClassroomId || c.classroomId === filterClassroomId).length === 0 ? (
         <EmptyState icon="🔑" title={t('noCodes.title')} description={t('noCodes.description')} />
       ) : (
-        codes.map((code) => (
-          <div key={code.id} className={styles.codeRow}>
-            <span className={styles.codeValue}>{code.code}</span>
-            <span className={styles.codeMeta}>
-              {t(`type.${code.type}`)} · {t(`codeStatus.${code.status}`)}
-              {code.maxRedemptions ? ` · ${code.redemptionCount}/${code.maxRedemptions}` : ''}
-            </span>
-            <span className={styles.codeExpiry}>{t('expires', { date: safeFormatDate(code.expiresAt) })}</span>
-          </div>
-        ))
+        codes
+          .filter((c) => !filterClassroomId || c.classroomId === filterClassroomId)
+          .map((code) => (
+            <div key={code.id} className={`${styles.codeRow} ${!code.isActive ? styles.codeRowRevoked : ''}`}>
+              <span className={styles.codeValue}>{code.code}</span>
+              <span className={styles.codeMeta}>
+                {t(`type.${code.type}`)} · {t(`codeStatus.${code.status}`)}
+                {code.maxRedemptions ? ` · ${code.redemptionCount}/${code.maxRedemptions}` : ''}
+              </span>
+              <span className={styles.codeExpiry}>{t('expires', { date: safeFormatDate(code.expiresAt) })}</span>
+              <div className={styles.codeActions}>
+                <Button variant="ghost" size="sm" onClick={() => handleCopyCode(code.code)}>
+                  {t('copyAction')}
+                </Button>
+                {code.isActive && (
+                  <Button variant="ghost" size="sm" loading={revokingId === code.id} onClick={() => handleRevoke(code.id)}>
+                    {t('revokeAction')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))
       )}
 
       {csvContent && (

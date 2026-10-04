@@ -301,6 +301,22 @@ pre-seeded for every institution).
 
 ---
 
+## UPDATE 16 — institution_codes.is_active (TASKS_11 TASK 06)
+
+File: supabase/migrations/034_institution_codes_revoke.sql
+
+Not yet applied in Supabase. Run manually:
+
+ALTER TABLE public.institution_codes
+ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT true;
+
+Action: TASKS_11 TASK 06 asked for a new institution_codes table, but one
+already existed (001_initial_schema.sql) covering everything the task
+needed except an explicit revoke flag — added that one column instead of
+duplicating the table.
+
+---
+
 ## HOW TO APPLY
 
 When tokens are available, paste this into Claude Code:
