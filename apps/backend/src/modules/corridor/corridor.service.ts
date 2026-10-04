@@ -517,11 +517,42 @@ export class CorridorService {
     const canAccess = await this.membershipService.canAccessChannel(userId, classroomId, channel);
     this.appLogger.debug('[CORRIDOR:send] membership check', { canAccess });
     if (!canAccess) {
-      this.appLogger.warn('[CORRIDOR:send] access denied', { userId, classroomId, channel });
+      const deniedMembership = await this.membershipService.getMembership(userId, classroomId).catch(() => null);
+      this.appLogger.warn('[CORRIDOR:send] channel access denied', {
+        userId,
+        classroomId,
+        channel,
+        role: deniedMembership?.role,
+      });
       throw new ForbiddenException({
         message: 'You do not have access to post in this channel',
         error: ErrorCode.CHANNEL_ACCESS_DENIED,
       });
+    }
+
+    // TASKS_10 TASK 02 — explicit, redundant role re-check for staff_room.
+    // canAccessChannel() above already enforces this correctly (audited: the
+    // service layer, the read-side switch, the frontend gating, and both the
+    // messages RLS SELECT/INSERT policies all already match the channel
+    // matrix with no creator-based bypass). staff_room is still singled out
+    // for a second, explicit check here because a regression in the shared
+    // canAccessChannel() helper would otherwise silently leak a teacher-only
+    // room — a privacy failure, not just a UX one — so this does not rely on
+    // that single gate alone.
+    if (channel === ChannelType.STAFF_ROOM) {
+      const membership = await this.membershipService.getMembership(userId, classroomId);
+      if (membership.role !== MemberRole.TEACHER && membership.role !== MemberRole.ADMIN) {
+        this.appLogger.warn('[CORRIDOR:send] channel access denied', {
+          userId,
+          classroomId,
+          channel,
+          role: membership.role,
+        });
+        throw new ForbiddenException({
+          message: 'You do not have access to post in this channel',
+          error: ErrorCode.CHANNEL_ACCESS_DENIED,
+        });
+      }
     }
 
     // TASKS_09 TASK 25 — visiting_city cross-field validation (all three

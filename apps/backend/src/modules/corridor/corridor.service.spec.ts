@@ -94,6 +94,7 @@ describe('CorridorService', () => {
   const mockAuditLog = jest.fn().mockResolvedValue(undefined);
   const mockEventEmit = jest.fn();
   const mockCanAccessChannel = jest.fn();
+  const mockGetMembership = jest.fn();
 
   beforeEach(async () => {
     process.env.SUPABASE_URL = 'https://test.supabase.co';
@@ -107,7 +108,7 @@ describe('CorridorService', () => {
         CorridorService,
         { provide: AuditService, useValue: { log: mockAuditLog } },
         { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
-        { provide: MembershipService, useValue: { canAccessChannel: mockCanAccessChannel } },
+        { provide: MembershipService, useValue: { canAccessChannel: mockCanAccessChannel, getMembership: mockGetMembership } },
         { provide: AppLogger, useValue: mockAppLogger },
       ],
     }).compile();
@@ -299,10 +300,31 @@ describe('CorridorService', () => {
   describe('sendMessage()', () => {
     it('throws ForbiddenException when canAccessChannel is false', async () => {
       mockCanAccessChannel.mockResolvedValue(false);
+      mockGetMembership.mockResolvedValue({ role: 'student' });
 
       await expect(
         service.sendMessage('user-1', 'class-1', ChannelType.STUDENT_ALLEY, { content: 'hi' } as any),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws ForbiddenException on the explicit staff_room re-check even if canAccessChannel somehow returns true for a student (TASKS_10 TASK 02 defense-in-depth)', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      mockGetMembership.mockResolvedValue({ role: 'student' });
+
+      await expect(
+        service.sendMessage('user-1', 'class-1', ChannelType.STAFF_ROOM, { content: 'hi' } as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows a teacher through the explicit staff_room re-check', async () => {
+      mockCanAccessChannel.mockResolvedValue(true);
+      mockGetMembership.mockResolvedValue({ role: 'teacher' });
+      const messagesChain = chain({ data: { id: 'msg-1', content: 'hi', message_type: 'text' }, error: null });
+      mockTables({ messages: messagesChain });
+
+      const result = await service.sendMessage('user-1', 'class-1', ChannelType.STAFF_ROOM, { content: 'hi' } as any);
+
+      expect(result.id).toBe('msg-1');
     });
 
     it('inserts with message_type defaulted to text and emits corridor.message.sent', async () => {

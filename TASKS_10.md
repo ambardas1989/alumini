@@ -88,7 +88,7 @@ Push.
 
 ---
 
-## TASK 02 — Fix: Staff Room permission leak [PENDING]
+## TASK 02 — Fix: Staff Room permission leak [DONE] — audited canAccessChannel(), corridor's read switch, frontend gating, both RLS SELECT/INSERT policies, and createClassroom()'s creator-role assignment: all already matched the matrix correctly with no creator bypass (see fileUpdates.md UPDATE 12). Added an explicit redundant staff_room role re-check + the required warn log in corridor.service.ts sendMessage() as defense-in-depth per the task's literal instruction.
 
 CRITICAL SECURITY FIX. Do this before anything else after TASK 01.
 

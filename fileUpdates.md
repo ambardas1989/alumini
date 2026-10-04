@@ -237,6 +237,23 @@ them right now.
 
 ---
 
+## UPDATE 12 — Staff Room RLS audit (TASKS_10 TASK 02)
+
+No file change needed. Audited `supabase/migrations/001_initial_schema.sql`'s
+`messages_staff_room_read`/`messages_insert` policies and
+`011_pending_auto_status.sql`'s override of `messages_insert`: both already
+restrict staff_room to `role IN ('teacher', 'admin')` with
+`verification_status = 'verified'`, with no exception for `is_creator` or
+any other condition. `messages_student_alley_read`/the student_alley branch
+of `messages_insert` are likewise already role-locked to `'student'`. Also
+confirmed `ClassroomService.createClassroom()` already assigns the creator's
+`role` from their own persona (TASKS_08 TASK 03), not a hardcoded `'admin'`,
+so a student who creates a classroom does not get staff_room access that
+way either. Recorded here only so a future session doesn't re-open this
+investigation from scratch.
+
+---
+
 ## HOW TO APPLY
 
 When tokens are available, paste this into Claude Code:
