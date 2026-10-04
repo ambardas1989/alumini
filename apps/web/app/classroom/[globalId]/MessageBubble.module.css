@@ -147,12 +147,19 @@
 .announcementCard {
   max-width: 85%;
   margin-block-end: 10px;
+  margin-inline-end: auto;
   padding: 8px 10px;
   border: 0.5px solid var(--color-primary-light);
   border-inline-start-width: 3px;
   border-inline-start-color: var(--color-primary);
   border-radius: 10px;
   background: var(--color-surface);
+}
+
+/* TASKS_10 TASK 07 — same right-alignment text/visiting-city messages already get via .rowOwn, applied here since these cards render outside that flex row. Visual design (border, colors) unchanged per the task's own instruction — only placement moves. */
+.announcementCardOwn {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
 }
 
 .announcementSenderLine {
@@ -198,12 +205,19 @@
 .visitingCityCard {
   max-width: 85%;
   margin-block-end: 10px;
+  margin-inline-end: auto;
   padding: 8px 10px;
   border: 0.5px solid var(--color-primary-light);
   border-inline-start-width: 3px;
   border-inline-start-color: var(--color-primary);
   border-radius: 10px;
   background: var(--color-surface);
+}
+
+/* TASKS_10 TASK 07 — see .announcementCardOwn's comment above. */
+.visitingCityCardOwn {
+  margin-inline-start: auto;
+  margin-inline-end: 0;
 }
 
 .visitingCitySenderLine {

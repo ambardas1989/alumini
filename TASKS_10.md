@@ -318,7 +318,7 @@ Push.
 
 ---
 
-## TASK 07 — Fix: announcement and visiting city cards show on wrong side [PENDING]
+## TASK 07 — Fix: announcement and visiting city cards show on wrong side [DONE] — MessageBubble.tsx already received an `isOwn` prop (used by text/deleted messages) but the announcement/visiting_city branches rendered their card outside the row/rowOwn flex wrapper with no alignment at all, so they always sat flush-left. Added margin-inline-end:auto (default) / announcementCardOwn and visitingCityCardOwn modifier classes (margin-inline-start:auto) applied when isOwn, leaving the border/colors untouched.
 
 Announcement and visiting_city message cards always render
 on the left side of the chat regardless of who sent them.

@@ -64,7 +64,7 @@ export function MessageBubble({ message, isOwn, senderRole, currentUserId, onDel
   // for an unverified viewer regardless of message type.
   if (message.messageType === MessageType.ANNOUNCEMENT) {
     return (
-      <div className={styles.announcementCard}>
+      <div className={`${styles.announcementCard} ${isOwn ? styles.announcementCardOwn : ''}`}>
         <p className={styles.announcementSenderLine}>
           {message.sender?.fullName ?? '?'} · <span className={styles.announcementTag}>{t('announcementLabel')}</span>
         </p>
@@ -91,7 +91,7 @@ export function MessageBubble({ message, isOwn, senderRole, currentUserId, onDel
     const dateRange = meta?.from_date && meta?.to_date ? `${safeFormatDate(meta.from_date, { month: 'short', day: 'numeric' })} - ${safeFormatDate(meta.to_date, { month: 'short', day: 'numeric' })}` : '';
 
     return (
-      <div className={styles.visitingCityCard}>
+      <div className={`${styles.visitingCityCard} ${isOwn ? styles.visitingCityCardOwn : ''}`}>
         <p className={styles.visitingCitySenderLine}>{t('visitingCityIsVisiting', { name: message.sender?.fullName ?? '?' })}</p>
         {message.isRedacted ? (
           <>
