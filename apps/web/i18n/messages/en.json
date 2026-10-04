@@ -1131,8 +1131,35 @@
       "codes": "Batch Codes",
       "stats": "Analytics",
       "admins": "Admins",
+      "settings": "Settings",
       "requests": "Requests ({count})",
       "adminAccess": "Admin Access"
+    },
+    "settings": {
+      "brandingSection": "Branding",
+      "basicInfoSection": "Basic info",
+      "nameLabel": "Name",
+      "typeLabel": "Type",
+      "foundedYearLabel": "Founded year",
+      "boardLabel": "Board",
+      "mediumLabel": "Medium",
+      "selectPlaceholder": "Select...",
+      "addressLabel": "Address",
+      "websiteLabel": "Website",
+      "descriptionLabel": "Description",
+      "saveButton": "Save changes",
+      "savedToast": "Settings saved",
+      "cover": {
+        "noImage": "No cover photo",
+        "uploadButton": "Upload cover photo",
+        "changeButton": "Change cover photo",
+        "updatedToast": "Cover photo updated",
+        "errors": {
+          "wrongType": "Choose a JPEG, PNG, or WEBP image",
+          "tooLarge": "Image must be under 10MB",
+          "uploadFailedGeneric": "Upload failed. Please try again."
+        }
+      }
     },
     "viewInstitution": {
       "searchLabel": "View an institution's dashboard",

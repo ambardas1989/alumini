@@ -69,6 +69,7 @@ import { TransferPrimaryAdminDto } from './dto/transfer-admin.dto';
 import { RequestAdminAccessDto } from './dto/request-admin-access.dto';
 import { ReviewAdminRequestDto } from './dto/review-admin-request.dto';
 import { PlatformInviteAdminDto } from './dto/platform-invite-admin.dto';
+import { UpdateInstitutionProfileDto } from './dto/update-institution-profile.dto';
 
 /** Payload of the signed co-admin invitation JWT ("magic link" token). */
 interface AdminInviteTokenPayload {
@@ -1105,21 +1106,8 @@ export class InstitutionService {
     }
   }
 
-  // ── Logo ─────────────────────────────────────────────────────────────────
-
-  /**
-   * TASKS_05 TASK 05 — platform admin or an active institution admin.
-   * See UpdateLogoDto's own comment on why this takes a Storage URL rather
-   * than the file itself.
-   */
-  /**
-   * TASKS_08 TASK 04 — uploads to Storage using the service-role client
-   * (bypassing RLS, which can never pass for this app's custom-JWT
-   * sessions — same root cause as IdentityService.uploadAvatar()'s own
-   * comment) instead of the caller uploading directly to Storage and just
-   * POSTing the resulting URL here.
-   */
-  async uploadLogo(userId: string, institutionId: string, file: { buffer: Buffer; mimetype: string; size: number }) {
+  /** TASKS_05 TASK 05 — platform admin or an active institution admin. Factored out of uploadLogo() so TASK 03's profile/cover-photo methods below share the exact same check. */
+  private async assertActiveAdminOrPlatformAdmin(userId: string, institutionId: string): Promise<void> {
     const { data: profile } = await this.supabase
       .from('profiles')
       .select('is_platform_admin')
@@ -1129,6 +1117,19 @@ export class InstitutionService {
     if (!profile?.is_platform_admin) {
       await this.assertActiveAdmin(userId, institutionId);
     }
+  }
+
+  // ── Logo ─────────────────────────────────────────────────────────────────
+
+  /**
+   * TASKS_08 TASK 04 — uploads to Storage using the service-role client
+   * (bypassing RLS, which can never pass for this app's custom-JWT
+   * sessions — same root cause as IdentityService.uploadAvatar()'s own
+   * comment) instead of the caller uploading directly to Storage and just
+   * POSTing the resulting URL here.
+   */
+  async uploadLogo(userId: string, institutionId: string, file: { buffer: Buffer; mimetype: string; size: number }) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
 
     const ext = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
     const path = `institutions/${institutionId}/logo.${ext}`;
@@ -1158,5 +1159,101 @@ export class InstitutionService {
     }
 
     return { logoUrl: data.logoUrl as string };
+  }
+
+  // ── Profile / branding (TASKS_11 TASK 03) ────────────────────────────────
+
+  async getProfile(userId: string, institutionId: string) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    const { data, error } = await this.supabase
+      .from('institutions')
+      .select(
+        'id, name, slug, type, cityCode:city_code, countryCode:country_code, logoUrl:logo_url, ' +
+          'coverPhotoUrl:cover_photo_url, address, website, description, foundedYear:founded_year, board, medium',
+      )
+      .eq('id', institutionId)
+      .maybeSingle();
+
+    if (error || !data) {
+      this.appLogger.error('[INST-ADMIN:profile] failed', { institutionId, error: error?.message });
+      throw new NotFoundException('Institution not found');
+    }
+
+    return data;
+  }
+
+  async updateProfile(userId: string, institutionId: string, dto: UpdateInstitutionProfileDto, req?: Request) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    const patch: Record<string, unknown> = {};
+    if (dto.name !== undefined) patch.name = dto.name;
+    if (dto.address !== undefined) patch.address = dto.address;
+    if (dto.website !== undefined) patch.website = dto.website;
+    if (dto.description !== undefined) patch.description = dto.description;
+    if (dto.foundedYear !== undefined) patch.founded_year = dto.foundedYear;
+    if (dto.board !== undefined) patch.board = dto.board;
+    if (dto.medium !== undefined) patch.medium = dto.medium;
+
+    const { data, error } = await this.supabase
+      .from('institutions')
+      .update(patch)
+      .eq('id', institutionId)
+      .select(
+        'id, name, address, website, description, foundedYear:founded_year, board, medium',
+      )
+      .maybeSingle();
+
+    if (error || !data) {
+      this.appLogger.error('[INST-ADMIN:profile] failed', { institutionId, error: error?.message });
+      throw new BadRequestException('Failed to update institution profile. Please try again.');
+    }
+
+    this.appLogger.info('[INST-ADMIN:profile] updated', { institutionId });
+    await this.audit.log({
+      eventType: AuditEventType.INSTITUTION_PROFILE_UPDATED,
+      actorId: userId,
+      targetId: institutionId,
+      targetType: 'institution',
+      metadata: { fields: Object.keys(patch) },
+      req,
+    });
+
+    return data;
+  }
+
+  /** Same pattern as uploadLogo(), different Storage path/column. */
+  async uploadCoverPhoto(userId: string, institutionId: string, file: { buffer: Buffer; mimetype: string; size: number }) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    const ext = file.mimetype === 'image/png' ? 'png' : file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const path = `institutions/${institutionId}/cover.${ext}`;
+
+    const { error: uploadError } = await this.supabase.storage
+      .from('institution-assets')
+      .upload(path, file.buffer, { contentType: file.mimetype, upsert: true });
+
+    if (uploadError) {
+      this.appLogger.error('[INST-ADMIN:logo] failed', { institutionId, error: uploadError.message });
+      throw new BadRequestException('Failed to upload cover photo. Please try again.');
+    }
+
+    const { data: publicUrlData } = this.supabase.storage.from('institution-assets').getPublicUrl(path);
+    const coverPhotoUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+
+    const { data, error } = await this.supabase
+      .from('institutions')
+      .update({ cover_photo_url: coverPhotoUrl })
+      .eq('id', institutionId)
+      .select('id, coverPhotoUrl:cover_photo_url')
+      .maybeSingle();
+
+    if (error || !data) {
+      this.appLogger.error('[INST-ADMIN:logo] failed', { institutionId, error: error?.message });
+      throw new BadRequestException('Failed to update cover photo. Please try again.');
+    }
+
+    this.appLogger.info('[INST-ADMIN:logo] uploaded', { institutionId });
+    return { coverPhotoUrl: data.coverPhotoUrl as string };
   }
 }

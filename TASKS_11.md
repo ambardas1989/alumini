@@ -319,7 +319,7 @@ Push.
 
 ---
 
-## TASK 03 — Institution setup — profile and branding [PENDING]
+## TASK 03 — Institution setup — profile and branding [DONE] — ADAPTED per TASK 02's direction: new Settings tab on /admin (not a separate route). Migration added 032_institution_profile.sql (cover_photo_url/address/website/description/founded_year/board/medium — name/logo_url/type already existed). New GET/PATCH /institution/:id/profile and POST /institution/:id/cover-photo on the existing InstitutionController (same assertActiveAdminOrPlatformAdmin guard as the existing logo upload, factored out for reuse). Logo upload itself already existed on OverviewTab — not duplicated.
 
 Institution admin can view and edit their institution's
 profile: name, logo, cover photo, address, website, type.

@@ -274,6 +274,23 @@ request-access submission carries, for the platform-admin review UI.
 
 ---
 
+## UPDATE 14 — institutions profile/branding columns (TASKS_11 TASK 03)
+
+File: supabase/migrations/032_institution_profile.sql
+
+Not yet applied in Supabase. Run manually:
+
+ALTER TABLE public.institutions
+ADD COLUMN IF NOT EXISTS cover_photo_url text,
+ADD COLUMN IF NOT EXISTS address text,
+ADD COLUMN IF NOT EXISTS website text,
+ADD COLUMN IF NOT EXISTS description text,
+ADD COLUMN IF NOT EXISTS founded_year integer,
+ADD COLUMN IF NOT EXISTS board text,
+ADD COLUMN IF NOT EXISTS medium text;
+
+---
+
 ## HOW TO APPLY
 
 When tokens are available, paste this into Claude Code:

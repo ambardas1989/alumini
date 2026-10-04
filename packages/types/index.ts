@@ -156,6 +156,7 @@ export const AuditEventType = {
   INSTITUTION_ADMIN_ACCEPTED: 'institution.admin.accepted',
   INSTITUTION_ADMIN_REMOVED: 'institution.admin.removed',
   INSTITUTION_ADMIN_TRANSFERRED: 'institution.admin.transferred',
+  INSTITUTION_PROFILE_UPDATED: 'institution.profile.updated',
 
   // Codes
   CODE_GENERATED: 'code.generated',

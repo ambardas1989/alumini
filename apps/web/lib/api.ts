@@ -1117,6 +1117,47 @@ export function uploadInstitutionLogo(institutionId: string, file: File): Promis
   return uploadFile(`/institution/${institutionId}/logo`, 'logo', file);
 }
 
+// ── INSTITUTION PROFILE / BRANDING (TASKS_11 TASK 03) ─────────────────────
+
+export interface InstitutionProfile {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  cityCode: string | null;
+  countryCode: string;
+  logoUrl: string | null;
+  coverPhotoUrl: string | null;
+  address: string | null;
+  website: string | null;
+  description: string | null;
+  foundedYear: number | null;
+  board: string | null;
+  medium: string | null;
+}
+
+export function getInstitutionProfile(institutionId: string): Promise<InstitutionProfile> {
+  return request(`/institution/${institutionId}/profile`);
+}
+
+export interface UpdateInstitutionProfileInput {
+  name?: string;
+  address?: string;
+  website?: string;
+  description?: string;
+  foundedYear?: number;
+  board?: string;
+  medium?: string;
+}
+
+export function updateInstitutionProfile(institutionId: string, input: UpdateInstitutionProfileInput): Promise<unknown> {
+  return request(`/institution/${institutionId}/profile`, { method: 'PATCH', body: input });
+}
+
+export function uploadInstitutionCoverPhoto(institutionId: string, file: File): Promise<{ coverPhotoUrl: string }> {
+  return uploadFile(`/institution/${institutionId}/cover-photo`, 'coverPhoto', file);
+}
+
 export interface AdminClassroomEntry {
   id: string;
   globalId: string;

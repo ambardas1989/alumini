@@ -24,13 +24,14 @@ import { ClassroomsTab } from './ClassroomsTab';
 import { CodesTab } from './CodesTab';
 import { StatsTab } from './StatsTab';
 import { AdminsTab } from './AdminsTab';
+import { SettingsTab } from './SettingsTab';
 import { InstitutionRequestsTab } from './InstitutionRequestsTab';
 import { InstitutionAdminAccessTab } from './InstitutionAdminAccessTab';
 import styles from './page.module.css';
 
-type Tab = 'overview' | 'verify' | 'classrooms' | 'codes' | 'stats' | 'admins' | 'requests' | 'adminAccess';
+type Tab = 'overview' | 'verify' | 'classrooms' | 'codes' | 'stats' | 'admins' | 'settings' | 'requests' | 'adminAccess';
 const TAB_KEY = 'alumtribe_admin_tab';
-const SCHOOL_ADMIN_TABS: Tab[] = ['overview', 'verify', 'classrooms', 'codes', 'stats', 'admins'];
+const SCHOOL_ADMIN_TABS: Tab[] = ['overview', 'verify', 'classrooms', 'codes', 'stats', 'admins', 'settings'];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -308,6 +309,7 @@ export default function AdminDashboardPage() {
         {tab === 'codes' && <CodesTab institutionId={institutionId} />}
         {tab === 'stats' && <StatsTab institutionId={institutionId} />}
         {tab === 'admins' && <AdminsTab institutionId={institutionId} />}
+        {tab === 'settings' && <SettingsTab institutionId={institutionId} />}
       </PageContainer>
     </AppShell>
   );

@@ -45,6 +45,8 @@ database has NOT been verified against Supabase itself. Run the query in
 | 028_message_announcement_type.sql | ⚠️ Check | Widens `messages_message_type_check` to add `'announcement'` (TASKS_09 TASK 24) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
 | 029_message_visiting_city_type.sql | ✅ Run | Widens `messages_message_type_check` to add `'visiting_city'` and `'poll'` (TASKS_09 TASK 25; `'poll'` added TASKS_10 TASK 01 — confirmed applied manually 2026-10-04) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
 | 030_work_anniversary.sql | ✅ Run | `profiles.work_start_date`, plus `company`/`job_title`/`location_city`/`location_lat`/`location_lng`/`work_company`/`bio`/`website` (TASKS_10 TASK 01 — confirmed applied manually 2026-10-04; `work_company` ended up as its own column alongside `company`, not a reuse as 030's original comment intended) | Yes — `ADD COLUMN IF NOT EXISTS` |
+| 031_institution_admin_requests.sql | ⚠️ Check | `personas.requested_role`/`requested_message` (TASKS_11 TASK 01) | Yes — `ADD COLUMN IF NOT EXISTS` |
+| 032_institution_profile.sql | ⚠️ Check | `institutions.cover_photo_url`/`address`/`website`/`description`/`founded_year`/`board`/`medium` (TASKS_11 TASK 03) | Yes — `ADD COLUMN IF NOT EXISTS` |
 
 ⚠️ Check = not verified against the live database from this environment —
 run the query below and confirm before relying on this table.

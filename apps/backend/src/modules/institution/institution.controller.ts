@@ -25,6 +25,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   PayloadTooLargeException,
   Post,
   Query,
@@ -45,6 +46,7 @@ import { ClaimInstitutionDto } from './dto/claim-institution.dto';
 import { InviteAdminDto } from './dto/invite-admin.dto';
 import { RemoveAdminDto } from './dto/remove-admin.dto';
 import { TransferPrimaryAdminDto } from './dto/transfer-admin.dto';
+import { UpdateInstitutionProfileDto } from './dto/update-institution-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MfaChallengeGuard } from '../auth/guards/mfa-challenge.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -153,6 +155,53 @@ export class InstitutionController {
     }
 
     return this.institutionService.uploadLogo(authToken.sub, institutionId, file);
+  }
+
+  // ── Profile / branding (TASKS_11 TASK 03) ────────────────────────────────
+
+  @Get(':id/profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Full institution profile (platform admin or an active institution admin)' })
+  async getProfile(@CurrentUser() authToken: AuthTokenPayload, @Param('id') institutionId: string) {
+    return this.institutionService.getProfile(authToken.sub, institutionId);
+  }
+
+  @Patch(':id/profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update institution profile fields (platform admin or an active institution admin)' })
+  async updateProfile(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') institutionId: string,
+    @Body() dto: UpdateInstitutionProfileDto,
+    @Req() req: Request,
+  ) {
+    return this.institutionService.updateProfile(authToken.sub, institutionId, dto, req);
+  }
+
+  @Post(':id/cover-photo')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('coverPhoto', { limits: { fileSize: 12 * 1024 * 1024 } }))
+  @ApiOperation({ summary: "Upload the institution cover photo — multipart, field name 'coverPhoto', max 10MB, JPEG/PNG/WebP (platform admin or an active institution admin)" })
+  async updateCoverPhoto(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') institutionId: string,
+    @UploadedFile() file?: UploadedLogoFile,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file was uploaded');
+    }
+    if (!InstitutionController.ALLOWED_LOGO_TYPES.includes(file.mimetype)) {
+      throw new UnsupportedMediaTypeException('Invalid file type. Use JPEG, PNG or WebP.');
+    }
+    if (file.size > InstitutionController.MAX_LOGO_SIZE_BYTES) {
+      throw new PayloadTooLargeException('File too large. Maximum size is 10MB.');
+    }
+
+    return this.institutionService.uploadCoverPhoto(authToken.sub, institutionId, file);
   }
 
   // ── Co-admin roster ──────────────────────────────────────────────────────
