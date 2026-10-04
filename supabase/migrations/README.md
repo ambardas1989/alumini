@@ -43,8 +43,8 @@ database has NOT been verified against Supabase itself. Run the query in
 | 026_events_pending_future_visibility.sql | ⚠️ Check | Updates `events_*_read` RLS to match EventsService.canSeeEvent() — future events visible to any member, past events verified-only and only after joined_at (TASKS_09 TASK 08) | Yes — `DROP POLICY IF EXISTS` before each `CREATE POLICY` |
 | 027_birthday_field.sql | ⚠️ Check | `profiles.birthday_month`/`birthday_day` (no year, by design — TASKS_09 TASK 23) | Yes — `ADD COLUMN IF NOT EXISTS` |
 | 028_message_announcement_type.sql | ⚠️ Check | Widens `messages_message_type_check` to add `'announcement'` (TASKS_09 TASK 24) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
-| 029_message_visiting_city_type.sql | ⚠️ Check | Widens `messages_message_type_check` to add `'visiting_city'` (TASKS_09 TASK 25) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
-| 030_work_anniversary.sql | ⚠️ Check | `profiles.work_start_date` (reuses TASK 22's `company` column instead of adding a duplicate `work_company` — TASKS_09 TASK 27) | Yes — `ADD COLUMN IF NOT EXISTS` |
+| 029_message_visiting_city_type.sql | ✅ Run | Widens `messages_message_type_check` to add `'visiting_city'` and `'poll'` (TASKS_09 TASK 25; `'poll'` added TASKS_10 TASK 01 — confirmed applied manually 2026-10-04) | Yes — `DROP CONSTRAINT IF EXISTS` then re-add |
+| 030_work_anniversary.sql | ✅ Run | `profiles.work_start_date`, plus `company`/`job_title`/`location_city`/`location_lat`/`location_lng`/`work_company`/`bio`/`website` (TASKS_10 TASK 01 — confirmed applied manually 2026-10-04; `work_company` ended up as its own column alongside `company`, not a reuse as 030's original comment intended) | Yes — `ADD COLUMN IF NOT EXISTS` |
 
 ⚠️ Check = not verified against the live database from this environment —
 run the query below and confirm before relying on this table.

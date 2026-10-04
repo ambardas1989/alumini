@@ -197,25 +197,43 @@ Apply this rule in:
 
 ## UPDATE 10 — profiles current-role columns (TASKS_09 TASK 22)
 
-File: a new supabase/migrations/0XX_profile_role_fields.sql
+File: supabase/migrations/030_work_anniversary.sql
 
-NOT yet applied anywhere (unlike UPDATE 01-09 above, which document
-changes already made manually in Supabase) — this is a NEW requirement
-from TASKS_09 TASK 22's "Current role" profile section. The app code
-(apps/backend/src/modules/identity — getProfile/updateProfile/
-UpdateProfileDto, packages/types Profile.jobTitle/company/locationCity)
-already reads/writes these columns; until this migration is applied,
-every read returns null/undefined for them and every write attempting to
-set them will fail with "column does not exist".
+RESOLVED (TASKS_10 TASK 01, 2026-10-04) — job_title/company/location_city
+were manually applied directly in Supabase SQL Editor on 2026-10-04 (see
+UPDATE 11 below for the full list applied in that same session) and the
+migration file has been updated to match. No longer a pending action.
+
+---
+
+## UPDATE 11 — additional profile fields + message_type 'poll' (TASKS_10 TASK 01)
+
+Files: supabase/migrations/030_work_anniversary.sql,
+       supabase/migrations/029_message_visiting_city_type.sql
+
+Already applied manually in Supabase SQL Editor on 2026-10-04:
 
 ALTER TABLE public.profiles
-ADD COLUMN IF NOT EXISTS job_title text,
 ADD COLUMN IF NOT EXISTS company text,
-ADD COLUMN IF NOT EXISTS location_city text;
+ADD COLUMN IF NOT EXISTS job_title text,
+ADD COLUMN IF NOT EXISTS location_city text,
+ADD COLUMN IF NOT EXISTS location_lat numeric(9,6),
+ADD COLUMN IF NOT EXISTS location_lng numeric(9,6),
+ADD COLUMN IF NOT EXISTS work_company text,
+ADD COLUMN IF NOT EXISTS bio text,
+ADD COLUMN IF NOT EXISTS website text;
 
-Action: create the migration file with the SQL above, then run it in the
-Supabase SQL Editor (this repo's migrations are not auto-applied — see
-supabase/migrations/README.md).
+ALTER TABLE public.messages
+DROP CONSTRAINT IF EXISTS messages_message_type_check;
+ALTER TABLE public.messages
+ADD CONSTRAINT messages_message_type_check
+CHECK (message_type IN ('text', 'event_card', 'system', 'attachment', 'announcement', 'visiting_city', 'poll'));
+
+Action: migration files updated to match production. No app code reads
+or writes location_lat/location_lng, work_company, bio, website, or the
+'poll' message type yet — those columns/value exist on the live
+database ahead of any feature using them, not because a feature needs
+them right now.
 
 ---
 
