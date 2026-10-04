@@ -291,6 +291,16 @@ ADD COLUMN IF NOT EXISTS medium text;
 
 ---
 
+## UPDATE 15 — institution_subscriptions table (TASKS_11 TASK 04)
+
+File: supabase/migrations/033_institution_subscriptions.sql
+
+Not yet applied in Supabase. Run manually — full CREATE TABLE in that
+file, one row per institution, created lazily on first PATCH (not
+pre-seeded for every institution).
+
+---
+
 ## HOW TO APPLY
 
 When tokens are available, paste this into Claude Code:

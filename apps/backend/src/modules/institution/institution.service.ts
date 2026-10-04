@@ -70,6 +70,8 @@ import { RequestAdminAccessDto } from './dto/request-admin-access.dto';
 import { ReviewAdminRequestDto } from './dto/review-admin-request.dto';
 import { PlatformInviteAdminDto } from './dto/platform-invite-admin.dto';
 import { UpdateInstitutionProfileDto } from './dto/update-institution-profile.dto';
+import { RequestSubscriptionUpgradeDto } from './dto/request-subscription-upgrade.dto';
+import { UpdateInstitutionSubscriptionDto } from './dto/update-institution-subscription.dto';
 
 /** Payload of the signed co-admin invitation JWT ("magic link" token). */
 interface AdminInviteTokenPayload {
@@ -1255,5 +1257,110 @@ export class InstitutionService {
 
     this.appLogger.info('[INST-ADMIN:logo] uploaded', { institutionId });
     return { coverPhotoUrl: data.coverPhotoUrl as string };
+  }
+
+  // ── Subscription (TASKS_11 TASK 04) ──────────────────────────────────────
+  // No payment processing — same scope limit PremiumService documents for
+  // per-user premium (007_premium_module.sql). A row only exists once
+  // something has actually happened to the subscription (an upgrade
+  // request or a platform-admin PATCH); until then, getSubscription()
+  // returns the implicit free/inactive default rather than needing every
+  // institution pre-seeded with a row.
+
+  private static readonly DEFAULT_SUBSCRIPTION = {
+    plan: 'free' as const,
+    status: 'inactive' as const,
+    trialEndsAt: null,
+    currentPeriodStart: null,
+    currentPeriodEnd: null,
+    maxClassrooms: 5,
+    maxMembersPerClassroom: 100,
+  };
+
+  async getSubscription(userId: string, institutionId: string) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    const { data } = await this.supabase
+      .from('institution_subscriptions')
+      .select(
+        'plan, status, trialEndsAt:trial_ends_at, currentPeriodStart:current_period_start, ' +
+          'currentPeriodEnd:current_period_end, maxClassrooms:max_classrooms, maxMembersPerClassroom:max_members_per_classroom',
+      )
+      .eq('institution_id', institutionId)
+      .maybeSingle();
+
+    return data ?? InstitutionService.DEFAULT_SUBSCRIPTION;
+  }
+
+  async requestSubscriptionUpgrade(userId: string, institutionId: string, dto: RequestSubscriptionUpgradeDto, req?: Request) {
+    await this.assertActiveAdminOrPlatformAdmin(userId, institutionId);
+
+    const { data: institution } = await this.supabase
+      .from('institutions')
+      .select('name')
+      .eq('id', institutionId)
+      .maybeSingle();
+
+    await this.audit.log({
+      eventType: AuditEventType.INSTITUTION_SUBSCRIPTION_UPGRADE_REQUESTED,
+      actorId: userId,
+      targetId: institutionId,
+      targetType: 'institution',
+      metadata: { plan: dto.plan, message: dto.message ?? null },
+      req,
+    });
+
+    this.eventEmitter.emit('institution.subscription.upgrade_requested', {
+      institutionId,
+      institutionName: institution?.name ?? null,
+      userId,
+      message: dto.message,
+    });
+
+    return { message: 'Upgrade request sent. We will contact you shortly.' };
+  }
+
+  /** Platform admin only — upserts since most institutions have no row yet (see this section's own comment). */
+  async updateSubscription(platformAdminId: string, institutionId: string, dto: UpdateInstitutionSubscriptionDto, req?: Request) {
+    await this.assertPlatformAdmin(platformAdminId);
+
+    const patch: Record<string, unknown> = { institution_id: institutionId, updated_at: new Date().toISOString() };
+    if (dto.plan !== undefined) patch.plan = dto.plan;
+    if (dto.status !== undefined) patch.status = dto.status;
+    if (dto.trialEndsAt !== undefined) patch.trial_ends_at = dto.trialEndsAt;
+    if (dto.currentPeriodEnd !== undefined) patch.current_period_end = dto.currentPeriodEnd;
+    if (dto.maxClassrooms !== undefined) patch.max_classrooms = dto.maxClassrooms;
+    if (dto.maxMembersPerClassroom !== undefined) patch.max_members_per_classroom = dto.maxMembersPerClassroom;
+
+    // `as any` — same reasoning as getMessages()'s own cast for this
+    // exact combination (a dynamic aliased select string loses proper
+    // type inference on .maybeSingle(), worse here since it's chained
+    // off .upsert() too).
+    const { data, error } = (await this.supabase
+      .from('institution_subscriptions')
+      .upsert(patch, { onConflict: 'institution_id' })
+      .select(
+        'plan, status, trialEndsAt:trial_ends_at, currentPeriodEnd:current_period_end, ' +
+          'maxClassrooms:max_classrooms, maxMembersPerClassroom:max_members_per_classroom',
+      )
+      .maybeSingle()) as any;
+
+    if (error || !data) {
+      this.appLogger.error('[INST-ADMIN:subscription] failed', { institutionId, error: error?.message });
+      throw new BadRequestException('Failed to update subscription. Please try again.');
+    }
+
+    await this.audit.log({
+      eventType: AuditEventType.INSTITUTION_SUBSCRIPTION_UPDATED,
+      actorId: platformAdminId,
+      targetId: institutionId,
+      targetType: 'institution',
+      metadata: { plan: data.plan, status: data.status },
+      req,
+    });
+
+    this.eventEmitter.emit('institution.subscription.updated', { institutionId, plan: data.plan, status: data.status });
+
+    return data;
   }
 }

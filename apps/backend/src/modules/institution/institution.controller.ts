@@ -47,6 +47,8 @@ import { InviteAdminDto } from './dto/invite-admin.dto';
 import { RemoveAdminDto } from './dto/remove-admin.dto';
 import { TransferPrimaryAdminDto } from './dto/transfer-admin.dto';
 import { UpdateInstitutionProfileDto } from './dto/update-institution-profile.dto';
+import { RequestSubscriptionUpgradeDto } from './dto/request-subscription-upgrade.dto';
+import { UpdateInstitutionSubscriptionDto } from './dto/update-institution-subscription.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MfaChallengeGuard } from '../auth/guards/mfa-challenge.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -202,6 +204,42 @@ export class InstitutionController {
     }
 
     return this.institutionService.uploadCoverPhoto(authToken.sub, institutionId, file);
+  }
+
+  // ── Subscription (TASKS_11 TASK 04) ──────────────────────────────────────
+
+  @Get(':id/subscription')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Current subscription status (platform admin or an active institution admin)' })
+  async getSubscription(@CurrentUser() authToken: AuthTokenPayload, @Param('id') institutionId: string) {
+    return this.institutionService.getSubscription(authToken.sub, institutionId);
+  }
+
+  @Post(':id/subscription/request-upgrade')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Request a Tier 3 upgrade (platform admin or an active institution admin)' })
+  async requestSubscriptionUpgrade(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') institutionId: string,
+    @Body() dto: RequestSubscriptionUpgradeDto,
+    @Req() req: Request,
+  ) {
+    return this.institutionService.requestSubscriptionUpgrade(authToken.sub, institutionId, dto, req);
+  }
+
+  @Patch(':id/subscription')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update subscription plan/status/limits (platform admin only)' })
+  async updateSubscription(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') institutionId: string,
+    @Body() dto: UpdateInstitutionSubscriptionDto,
+    @Req() req: Request,
+  ) {
+    return this.institutionService.updateSubscription(authToken.sub, institutionId, dto, req);
   }
 
   // ── Co-admin roster ──────────────────────────────────────────────────────

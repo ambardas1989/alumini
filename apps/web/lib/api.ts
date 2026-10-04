@@ -1158,6 +1158,29 @@ export function uploadInstitutionCoverPhoto(institutionId: string, file: File): 
   return uploadFile(`/institution/${institutionId}/cover-photo`, 'coverPhoto', file);
 }
 
+// ── INSTITUTION SUBSCRIPTION (TASKS_11 TASK 04) ───────────────────────────
+
+export interface InstitutionSubscription {
+  plan: 'free' | 'tier3';
+  status: 'active' | 'inactive' | 'trial' | 'cancelled';
+  trialEndsAt: string | null;
+  currentPeriodStart?: string | null;
+  currentPeriodEnd: string | null;
+  maxClassrooms: number;
+  maxMembersPerClassroom: number;
+}
+
+export function getInstitutionSubscription(institutionId: string): Promise<InstitutionSubscription> {
+  return request(`/institution/${institutionId}/subscription`);
+}
+
+export function requestSubscriptionUpgrade(institutionId: string, message?: string): Promise<{ message: string }> {
+  return request(`/institution/${institutionId}/subscription/request-upgrade`, {
+    method: 'POST',
+    body: { plan: 'tier3', message },
+  });
+}
+
 export interface AdminClassroomEntry {
   id: string;
   globalId: string;

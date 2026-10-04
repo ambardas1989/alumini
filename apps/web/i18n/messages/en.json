@@ -1132,6 +1132,7 @@
       "stats": "Analytics",
       "admins": "Admins",
       "settings": "Settings",
+      "subscription": "Subscription",
       "requests": "Requests ({count})",
       "adminAccess": "Admin Access"
     },
@@ -1212,6 +1213,33 @@
         "emailLabel": "Email address",
         "submit": "Send invite"
       }
+    },
+    "subscription": {
+      "freeName": "Free",
+      "tier3Name": "Tier 3",
+      "statusLabels": {
+        "active": "Active",
+        "inactive": "Inactive",
+        "trial": "Trial",
+        "cancelled": "Cancelled"
+      },
+      "trialEnds": "Trial ends {date}",
+      "renews": "Renews {date}",
+      "maxClassrooms": "Max classrooms: {count}",
+      "maxMembers": "Max members per classroom: {count}",
+      "featuresSectionLabel": "Tier 3 features",
+      "features": {
+        "unlimitedClassrooms": "Unlimited classrooms",
+        "unlimitedMembers": "Unlimited members",
+        "institutionAnnouncements": "Institution-wide announcements",
+        "advancedAnalytics": "Advanced analytics",
+        "prioritySupport": "Priority support",
+        "verifiedBadge": "Verified institution badge"
+      },
+      "upgradeButton": "Upgrade to Tier 3",
+      "upgradeRequestedToast": "Request sent",
+      "requestSentLine": "Request sent. Our team will reach out.",
+      "contactSupportLine": "Contact support for billing queries."
     },
     "institutionRequests": {
       "empty": {

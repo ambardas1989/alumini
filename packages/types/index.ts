@@ -157,6 +157,8 @@ export const AuditEventType = {
   INSTITUTION_ADMIN_REMOVED: 'institution.admin.removed',
   INSTITUTION_ADMIN_TRANSFERRED: 'institution.admin.transferred',
   INSTITUTION_PROFILE_UPDATED: 'institution.profile.updated',
+  INSTITUTION_SUBSCRIPTION_UPGRADE_REQUESTED: 'institution.subscription.upgrade_requested',
+  INSTITUTION_SUBSCRIPTION_UPDATED: 'institution.subscription.updated',
 
   // Codes
   CODE_GENERATED: 'code.generated',

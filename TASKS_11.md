@@ -412,7 +412,7 @@ Push.
 
 ---
 
-## TASK 04 — Institution admin — subscription management [PENDING]
+## TASK 04 — Institution admin — subscription management [DONE] — ADAPTED onto a new Subscription tab on /admin (see TASK 02's direction). New institution_subscriptions table (033_institution_subscriptions.sql, lazily created on first PATCH) + GET/PATCH/request-upgrade routes on the existing InstitutionController, reusing assertActiveAdminOrPlatformAdmin/assertPlatformAdmin. No payment processing, same scope limit PremiumService already documents for per-user premium. Platform-admin PATCH route has no frontend UI yet (not asked for in this task's frontend section) — reachable via API only for now.
 
 Institution admin can view their current subscription plan,
 upgrade, and manage billing. This is a lightweight

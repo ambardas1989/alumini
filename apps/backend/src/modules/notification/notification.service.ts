@@ -31,6 +31,8 @@
  *   institution.claim.submitted      → in-app fan-out to platform admins (TASKS_11 TASK 01)
  *   institution.claim.approved       → in-app to the requester (TASKS_11 TASK 01)
  *   institution.claim.rejected       → in-app to the requester (TASKS_11 TASK 01)
+ *   institution.subscription.upgrade_requested → in-app fan-out to platform admins (TASKS_11 TASK 04)
+ *   institution.subscription.updated → in-app to the institution's own admin(s) (TASKS_11 TASK 04)
  *
  * classroom.joined is deliberately NOT handled here (any more) — TASK 02's
  * original "new_member on JOIN, any verification status" listener was
@@ -556,6 +558,61 @@ export class NotificationService {
       payload.reason,
       { institution_id: payload.institutionId },
     );
+  }
+
+  /** TASKS_11 TASK 04 — fan out to every platform admin when an institution admin requests a Tier 3 upgrade. Same platform-admin fan-out pattern as handleInstitutionClaimSubmitted() above. */
+  @OnEvent('institution.subscription.upgrade_requested')
+  async handleSubscriptionUpgradeRequested(payload: {
+    institutionId: string;
+    institutionName?: string;
+    userId: string;
+    message?: string;
+  }): Promise<void> {
+    const { data: platformAdmins, error } = await this.supabase
+      .from('profiles')
+      .select('id')
+      .eq('is_platform_admin', true);
+
+    if (error) {
+      this.logger.error('Failed to look up platform admins to notify', { error });
+      return;
+    }
+
+    const title = `${payload.institutionName ?? 'An institution'} requested Tier 3 upgrade`;
+    const body = payload.message ?? 'No message provided';
+
+    for (const admin of platformAdmins ?? []) {
+      await this.sendInApp(admin.id, 'subscription_upgrade_request', title, body, {
+        institution_id: payload.institutionId,
+        requester_user_id: payload.userId,
+      });
+    }
+  }
+
+  /** TASKS_11 TASK 04 — tell the institution's own admin(s) when a platform admin changes their plan. */
+  @OnEvent('institution.subscription.updated')
+  async handleSubscriptionUpdated(payload: { institutionId: string; plan: string; status: string }): Promise<void> {
+    const { data: admins, error } = await this.supabase
+      .from('personas')
+      .select('user_id')
+      .eq('institution_id', payload.institutionId)
+      .eq('type', 'school_admin')
+      .eq('status', 'active');
+
+    if (error) {
+      this.logger.error('Failed to look up institution admins to notify', { error, institutionId: payload.institutionId });
+      return;
+    }
+
+    for (const admin of admins ?? []) {
+      await this.sendInApp(
+        admin.user_id,
+        'institution_subscription_updated',
+        'Subscription plan updated',
+        `Your institution is now on the ${payload.plan === 'tier3' ? 'Tier 3' : 'Free'} plan (${payload.status}).`,
+        { institution_id: payload.institutionId },
+      );
+    }
   }
 
   // classroom.created — deliberately NOT handled. CorridorService already
