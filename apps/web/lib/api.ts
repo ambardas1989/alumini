@@ -547,6 +547,66 @@ export function removeAdmin(institutionId: string, userId: string, reason: strin
   return request(`/institution/${institutionId}/admins/${userId}`, { method: 'DELETE', body: { reason } });
 }
 
+// ── INSTITUTION ADMIN ACCESS (TASKS_11 TASK 01) ───────────────────────────
+// Request/invite/approve/reject flow for BECOMING an institution admin —
+// distinct from INSTITUTION REQUESTS below, which is for proposing a new
+// institution be added to the platform at all.
+
+export type InstitutionAdminRequestRole = 'principal' | 'vice_principal' | 'admin_staff' | 'teacher';
+
+export function requestInstitutionAdminAccess(input: {
+  institutionId: string;
+  fullName: string;
+  role: InstitutionAdminRequestRole;
+  message?: string;
+}): Promise<{ message: string }> {
+  return request('/institution-admin/request', { method: 'POST', body: input });
+}
+
+export interface InstitutionAdminRequestRow {
+  id: string;
+  user_id: string;
+  institution_id: string;
+  status: 'active' | 'pending_approval' | 'suspended';
+  is_primary_admin: boolean;
+  requested_role: InstitutionAdminRequestRole | null;
+  requested_message: string | null;
+  created_at: string;
+  profile: { id: string; full_name: string; avatar_url: string | null; email: string } | null;
+  institution: { id: string; name: string; type: string; city: string | null; country_code: string } | null;
+}
+
+/** status: 'pending' | 'approved' | 'rejected' | 'invited' — mapped to the underlying personas.status by the backend. */
+export function listInstitutionAdminRequests(
+  status?: 'pending' | 'approved' | 'rejected' | 'invited',
+): Promise<{ requests: InstitutionAdminRequestRow[]; invites: InstitutionAdminInvite[] }> {
+  return request('/institution-admin/requests', { query: status ? { status } : undefined });
+}
+
+export function approveInstitutionAdminRequest(personaId: string, notes?: string): Promise<unknown> {
+  return request(`/institution-admin/${personaId}/approve`, { method: 'PATCH', body: { notes } });
+}
+
+export function rejectInstitutionAdminRequest(personaId: string, reason: string): Promise<unknown> {
+  return request(`/institution-admin/${personaId}/reject`, { method: 'PATCH', body: { reason } });
+}
+
+export function platformInviteInstitutionAdmin(input: {
+  institutionId: string;
+  email: string;
+  expiresInDays?: number;
+}): Promise<{ inviteId: string; email: string; expiresAt: string }> {
+  return request('/institution-admin/invite', { method: 'POST', body: input });
+}
+
+export function acceptInstitutionAdminInvite(token: string): Promise<{ institutionId: string; institutionName: string | null }> {
+  return request('/institution-admin/accept-invite', { method: 'POST', body: { token } });
+}
+
+export function previewInstitutionAdminInvite(token: string): Promise<{ institutionId: string; institutionName: string | null; email: string }> {
+  return request('/institution-admin/invite-preview', { query: { token } });
+}
+
 // ── INSTITUTION REQUESTS ─────────────────────────────────────────────────
 
 export interface RequestInstitutionInput {

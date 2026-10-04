@@ -66,6 +66,9 @@ import { RejectClaimDto } from './dto/reject-claim.dto';
 import { InviteAdminDto } from './dto/invite-admin.dto';
 import { RemoveAdminDto } from './dto/remove-admin.dto';
 import { TransferPrimaryAdminDto } from './dto/transfer-admin.dto';
+import { RequestAdminAccessDto } from './dto/request-admin-access.dto';
+import { ReviewAdminRequestDto } from './dto/review-admin-request.dto';
+import { PlatformInviteAdminDto } from './dto/platform-invite-admin.dto';
 
 /** Payload of the signed co-admin invitation JWT ("magic link" token). */
 interface AdminInviteTokenPayload {
@@ -336,6 +339,142 @@ export class InstitutionService {
   }
 
   /**
+   * TASKS_11 TASK 01 — "request institution admin access", reached from
+   * the new /institution-admin/request page. Unlike submitClaim() above,
+   * this is allowed even when the institution is ALREADY claimed — the
+   * existing design says the only way to become a co-admin of a claimed
+   * institution is a Primary Admin invite (SPEC.md §11.3), but TASK 01's
+   * product requirement is that a platform admin (not just the Primary
+   * Admin) can also grant co-admin access directly, e.g. when the Primary
+   * Admin is unresponsive. Same personas insert either way — only the
+   * is_claimed branch in approveClaim() below decides whether the
+   * eventual approval grants Primary Admin or plain co-admin status.
+   */
+  async requestAdminAccess(userId: string, dto: RequestAdminAccessDto, req?: Request) {
+    this.appLogger.debug('[INSTITUTION:request-access] entry', { userId, institutionId: dto.institutionId, role: dto.role });
+
+    const { data: institution } = await this.supabase
+      .from('institutions')
+      .select('id, name')
+      .eq('id', dto.institutionId)
+      .maybeSingle();
+
+    if (!institution) {
+      throw new NotFoundException('Institution not found');
+    }
+
+    const { data: existing } = await this.supabase
+      .from('personas')
+      .select('id, status')
+      .eq('user_id', userId)
+      .eq('type', PersonaType.SCHOOL_ADMIN)
+      .eq('institution_id', dto.institutionId)
+      .maybeSingle();
+
+    if (existing) {
+      throw new ConflictException(
+        existing.status === 'active'
+          ? 'You are already an admin at this institution'
+          : 'You already have a pending admin request at this institution',
+      );
+    }
+
+    const { data: persona, error: insertError } = await this.supabase
+      .from('personas')
+      .insert({
+        user_id: userId,
+        type: PersonaType.SCHOOL_ADMIN,
+        institution_id: dto.institutionId,
+        status: 'pending_approval',
+        is_primary_admin: false,
+        requested_role: dto.role,
+        requested_message: dto.message ?? null,
+      })
+      .select()
+      .single();
+
+    if (insertError || !persona) {
+      this.appLogger.error('[INSTITUTION:request-access] failed', {
+        userId,
+        institutionId: dto.institutionId,
+        error: insertError?.message,
+        code: insertError?.code,
+        hint: insertError?.hint,
+        details: insertError?.details,
+      });
+      throw new ConflictException('This request could not be created. Please try again.');
+    }
+
+    await this.audit.log({
+      eventType: AuditEventType.INSTITUTION_CLAIMED,
+      actorId: userId,
+      targetId: dto.institutionId,
+      targetType: 'institution',
+      metadata: { persona_id: persona.id, requested_role: dto.role, message: dto.message ?? null },
+      req,
+    });
+
+    this.appLogger.info('[INSTITUTION:request-access] submitted', { userId, institutionId: dto.institutionId });
+
+    this.eventEmitter.emit('institution.claim.submitted', {
+      institutionId: dto.institutionId,
+      institutionName: institution.name,
+      userId,
+      personaId: persona.id,
+      role: dto.role,
+      fullName: dto.fullName,
+    });
+
+    return { message: 'Request submitted. We will review shortly.' };
+  }
+
+  /**
+   * TASKS_11 TASK 01 — platform-admin review queue for pending
+   * school_admin requests (both submitClaim() and requestAdminAccess()
+   * land here — they're the same persona row shape).
+   */
+  async listAdminRequests(approverId: string, status?: string) {
+    await this.assertPlatformAdmin(approverId);
+
+    let query = this.supabase
+      .from('personas')
+      .select(
+        'id, user_id, institution_id, status, is_primary_admin, requested_role, requested_message, created_at, ' +
+          'profile:profiles(id, full_name, avatar_url, email), ' +
+          'institution:institutions(id, name, type, city, country_code)',
+      )
+      .eq('type', PersonaType.SCHOOL_ADMIN)
+      .order('created_at', { ascending: false });
+
+    if (status) {
+      // 'invited' has no persona row (it's an institution_admin_invites
+      // row instead) — map it separately below rather than filtering it
+      // out of this query silently.
+      if (status !== 'invited') {
+        query = query.eq('status', status === 'approved' ? 'active' : status === 'rejected' ? 'suspended' : status);
+      }
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      this.appLogger.error('[INSTITUTION:list-requests] failed', { error: error.message, code: error.code });
+      throw new BadRequestException('Failed to load requests');
+    }
+
+    if (status === 'invited') {
+      const { data: invites } = await this.supabase
+        .from('institution_admin_invites')
+        .select('id, institution_id, email, invited_by, expires_at, created_at')
+        .is('accepted_at', null)
+        .gt('expires_at', new Date().toISOString());
+      return { requests: [], invites: invites ?? [] };
+    }
+
+    return { requests: data ?? [], invites: [] };
+  }
+
+  /**
    * Approves a pending claim. SPEC.md §3.4: platform-admin review is
    * "Access controlled via Supabase service role — never exposed to
    * users" — there is intentionally no public controller route for this.
@@ -346,6 +485,7 @@ export class InstitutionService {
    */
   async approveClaim(approverId: string, personaId: string, req?: Request) {
     this.appLogger.debug('[INSTITUTION:approve] entry', { requestId: personaId, adminId: approverId });
+    await this.assertPlatformAdmin(approverId);
     const persona = await this.getPendingClaim(personaId);
 
     const { data: institution } = await this.supabase
@@ -354,26 +494,31 @@ export class InstitutionService {
       .eq('id', persona.institution_id)
       .single();
 
-    if (institution?.is_claimed) {
-      // Another claim for the same institution was approved first — see
-      // submitClaim()'s comment on why is_primary_admin isn't decided at
-      // submission time.
-      throw new ConflictException('This institution has already been claimed by another approved admin');
-    }
-
+    // TASKS_11 TASK 01 — branches instead of always rejecting an
+    // already-claimed institution: requestAdminAccess() (unlike
+    // submitClaim()) allows a request against an already-claimed
+    // institution too, so an approval here can mean either "you're the
+    // first/new Primary Admin" (still unclaimed) or "you're a co-admin"
+    // (already claimed by someone else). Only the unclaimed case touches
+    // `institutions` at all.
+    const becomesPrimary = !institution?.is_claimed;
     const now = new Date().toISOString();
 
-    this.appLogger.debug('[INSTITUTION:approve] activating claim', { institutionId: persona.institution_id, userId: persona.user_id });
+    this.appLogger.debug('[INSTITUTION:approve] activating', { institutionId: persona.institution_id, userId: persona.user_id, becomesPrimary });
 
     const { error: personaError } = await this.supabase
       .from('personas')
-      .update({ status: 'active', is_primary_admin: true })
+      .update({ status: 'active', is_primary_admin: becomesPrimary })
       .eq('id', personaId);
 
-    const { error: institutionError } = await this.supabase
-      .from('institutions')
-      .update({ is_claimed: true, claimed_by: persona.user_id, claimed_at: now })
-      .eq('id', persona.institution_id);
+    let institutionError = null;
+    if (becomesPrimary) {
+      const result = await this.supabase
+        .from('institutions')
+        .update({ is_claimed: true, claimed_by: persona.user_id, claimed_at: now })
+        .eq('id', persona.institution_id);
+      institutionError = result.error;
+    }
 
     if (personaError || institutionError) {
       this.appLogger.error('[INSTITUTION:approve] failed', {
@@ -386,13 +531,13 @@ export class InstitutionService {
       throw new BadRequestException('Failed to approve this claim. Please try again.');
     }
 
-    this.appLogger.info('[INSTITUTION:approve] success', { institutionId: persona.institution_id, userId: persona.user_id });
+    this.appLogger.info('[INSTITUTION:approve] success', { institutionId: persona.institution_id, userId: persona.user_id, becomesPrimary });
     await this.audit.log({
       eventType: AuditEventType.INSTITUTION_CLAIM_APPROVED,
       actorId: approverId,
       targetId: persona.institution_id,
       targetType: 'institution',
-      metadata: { persona_id: personaId, new_primary_admin: persona.user_id },
+      metadata: { persona_id: personaId, new_primary_admin: becomesPrimary ? persona.user_id : null, co_admin: !becomesPrimary ? persona.user_id : null },
       req,
     });
 
@@ -401,12 +546,13 @@ export class InstitutionService {
       userId: persona.user_id,
     });
 
-    return { institutionId: persona.institution_id, userId: persona.user_id, isPrimaryAdmin: true };
+    return { institutionId: persona.institution_id, userId: persona.user_id, isPrimaryAdmin: becomesPrimary };
   }
 
-  /** Rejects a pending claim. Same "no public route" reasoning as approveClaim(). */
+  /** Rejects a pending claim/request. TASKS_11 TASK 01 — now platform-admin gated (see approveClaim()'s matching change). */
   async rejectClaim(approverId: string, personaId: string, dto: RejectClaimDto, req?: Request) {
     this.appLogger.debug('[INSTITUTION:reject] entry', { requestId: personaId, adminId: approverId });
+    await this.assertPlatformAdmin(approverId);
     const persona = await this.getPendingClaim(personaId);
 
     // Rejected claims are suspended, not deleted — personas has no
@@ -507,11 +653,20 @@ export class InstitutionService {
 
   // ── Co-admin invitation flow (SPEC.md §11.3) ─────────────────────────────
 
-  async inviteAdmin(actorId: string, institutionId: string, dto: InviteAdminDto, req?: Request) {
-    await this.assertPrimaryAdmin(actorId, institutionId);
+  async inviteAdmin(actorId: string, institutionId: string, dto: InviteAdminDto, req?: Request, expiresInDays?: number) {
+    // TASKS_11 TASK 01 — a platform admin can also invite directly
+    // (bootstraps the institution's first admin, or adds a co-admin on
+    // the Primary Admin's behalf), not just the institution's own Primary
+    // Admin. See PlatformInviteAdminController route for the platform-admin
+    // call site; the existing co-admin-inviting-a-co-admin call site is
+    // unaffected since assertPrimaryAdmin() still runs for everyone else.
+    if (!(await this.isPlatformAdmin(actorId))) {
+      await this.assertPrimaryAdmin(actorId, institutionId);
+    }
     await this.assertAdminCapNotReached(institutionId);
 
-    const expiresAt = new Date(Date.now() + appConfig.ADMIN_INVITE_EXPIRY_HOURS * 60 * 60 * 1000);
+    const expiryHours = expiresInDays ? expiresInDays * 24 : appConfig.ADMIN_INVITE_EXPIRY_HOURS;
+    const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
 
     const { data: invite, error } = await this.supabase
       .from('institution_admin_invites')
@@ -537,7 +692,7 @@ export class InstitutionService {
     };
     const token = await this.jwtService.signAsync(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: `${appConfig.ADMIN_INVITE_EXPIRY_HOURS}h`,
+      expiresIn: `${expiryHours}h`,
     });
 
     // Actual email delivery (Resend credentials/templates, the magic-link
@@ -575,7 +730,40 @@ export class InstitutionService {
    * POST /auth/signup's job) — if no matching profile exists, the caller
    * is told to sign up first and reopen the link.
    */
-  async acceptInvite(token: string, req?: Request) {
+  /**
+   * TASKS_11 TASK 01 — read-only lookup so the accept-invite page can show
+   * "You've been invited to manage [Institution]" BEFORE the user commits,
+   * without consuming the invite the way acceptInvite() does.
+   */
+  async previewInvite(token: string): Promise<{ institutionId: string; institutionName: string | null; email: string }> {
+    const payload = await this.verifyAdminInviteToken(token);
+
+    const { data: invite } = await this.supabase
+      .from('institution_admin_invites')
+      .select('institution_id, email, accepted_at, expires_at')
+      .eq('id', payload.inviteId)
+      .maybeSingle();
+
+    if (!invite) {
+      throw new NotFoundException('Invitation not found');
+    }
+    if (invite.accepted_at) {
+      throw new ConflictException('This invitation has already been used');
+    }
+    if (isExpired(invite.expires_at)) {
+      throw new UnauthorizedException('This invitation has expired');
+    }
+
+    const { data: institution } = await this.supabase
+      .from('institutions')
+      .select('name')
+      .eq('id', invite.institution_id)
+      .maybeSingle();
+
+    return { institutionId: invite.institution_id, institutionName: institution?.name ?? null, email: invite.email };
+  }
+
+  private async verifyAdminInviteToken(token: string): Promise<AdminInviteTokenPayload> {
     let payload: AdminInviteTokenPayload;
     try {
       payload = await this.jwtService.verifyAsync<AdminInviteTokenPayload>(token, {
@@ -584,10 +772,14 @@ export class InstitutionService {
     } catch {
       throw new UnauthorizedException('Invalid or expired invitation link');
     }
-
     if (payload.purpose !== 'admin_invite') {
       throw new UnauthorizedException('Not an admin invitation token');
     }
+    return payload;
+  }
+
+  async acceptInvite(token: string, req?: Request) {
+    const payload = await this.verifyAdminInviteToken(token);
 
     const { data: invite } = await this.supabase
       .from('institution_admin_invites')
@@ -631,6 +823,21 @@ export class InstitutionService {
 
     // Co-admins go active immediately — only the institution's FIRST claim
     // (ownership itself) needs platform-admin review (SPEC.md §11.1 vs §11.3).
+    //
+    // TASKS_11 TASK 01 — a platform-admin-issued invite (PlatformInviteAdminDto,
+    // see inviteAdmin()'s isPlatformAdmin() bypass above) can target an
+    // institution with no Primary Admin yet, to bootstrap one directly
+    // instead of going through submitClaim()/approveClaim(). Mirrors
+    // approveClaim()'s own is_claimed branch: unclaimed at accept time →
+    // this invitee becomes Primary Admin and the institution is marked
+    // claimed; already claimed → plain co-admin, same as before.
+    const { data: institution } = await this.supabase
+      .from('institutions')
+      .select('id, is_claimed')
+      .eq('id', invite.institution_id)
+      .maybeSingle();
+    const becomesPrimary = !institution?.is_claimed;
+
     const { data: persona, error: insertError } = await this.supabase
       .from('personas')
       .insert({
@@ -638,7 +845,7 @@ export class InstitutionService {
         type: PersonaType.SCHOOL_ADMIN,
         institution_id: invite.institution_id,
         status: 'active',
-        is_primary_admin: false,
+        is_primary_admin: becomesPrimary,
       })
       .select()
       .single();
@@ -646,6 +853,13 @@ export class InstitutionService {
     if (insertError || !persona) {
       this.logger.error('Failed to create co-admin persona', { error: insertError, invite });
       throw new ConflictException('This invitation could not be completed. Please try again.');
+    }
+
+    if (becomesPrimary) {
+      await this.supabase
+        .from('institutions')
+        .update({ is_claimed: true, claimed_by: profile.id, claimed_at: new Date().toISOString() })
+        .eq('id', invite.institution_id);
     }
 
     await this.supabase
@@ -662,7 +876,13 @@ export class InstitutionService {
       req,
     });
 
-    return persona;
+    const { data: institutionRow } = await this.supabase
+      .from('institutions')
+      .select('name')
+      .eq('id', invite.institution_id)
+      .maybeSingle();
+
+    return { ...persona, institutionId: invite.institution_id, institutionName: institutionRow?.name ?? null };
   }
 
   // ── Co-admin removal (SPEC.md §11, §6.2) ─────────────────────────────────
@@ -785,7 +1005,29 @@ export class InstitutionService {
     });
   }
 
+  /**
+   * TASKS_11 TASK 01 — thin wrapper so the platform-admin invite route has
+   * its own typed call site (institutionId from the body, not a path
+   * param) while sharing inviteAdmin()'s actual logic, including its
+   * isPlatformAdmin() bypass of the primary-admin check.
+   */
+  async platformInviteAdmin(platformAdminId: string, dto: PlatformInviteAdminDto, req?: Request) {
+    return this.inviteAdmin(platformAdminId, dto.institutionId, { email: dto.email }, req, dto.expiresInDays);
+  }
+
   // ── Internal: access control + capacity ──────────────────────────────────
+
+  /** TASKS_11 TASK 01 — house convention is a private assertX() per service rather than a shared Guard class (see e.g. AdminService.assertPlatformAdmin()). */
+  private async isPlatformAdmin(userId: string): Promise<boolean> {
+    const { data } = await this.supabase.from('profiles').select('is_platform_admin').eq('id', userId).maybeSingle();
+    return !!data?.is_platform_admin;
+  }
+
+  private async assertPlatformAdmin(userId: string): Promise<void> {
+    if (!(await this.isPlatformAdmin(userId))) {
+      throw new ForbiddenException('Platform admin access required');
+    }
+  }
 
   /** Throws unless `userId` is the active primary admin of `institutionId`. Returns that persona row. */
   private async assertPrimaryAdmin(userId: string, institutionId: string) {

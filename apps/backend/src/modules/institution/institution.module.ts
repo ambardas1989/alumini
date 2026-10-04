@@ -17,11 +17,15 @@
 import { Module } from '@nestjs/common';
 import { InstitutionService } from './institution.service';
 import { InstitutionController } from './institution.controller';
+import { InstitutionAdminController } from './institution-admin.controller';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [AuthModule],
-  controllers: [InstitutionController],
+  // TASKS_11 TASK 01 — InstitutionAdminController is a second, thin
+  // controller over the same InstitutionService (see its own header
+  // comment for why this isn't a separate module).
+  controllers: [InstitutionController, InstitutionAdminController],
   providers: [InstitutionService],
   exports: [InstitutionService],
 })

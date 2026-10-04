@@ -1,0 +1,13 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding-block: 24px;
+}
+
+.prompt {
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}

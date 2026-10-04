@@ -1083,6 +1083,35 @@
       }
     }
   },
+  "institutionAdmin": {
+    "request": {
+      "title": "Request admin access",
+      "searchLabel": "Institution",
+      "searchPlaceholder": "Search your school or college...",
+      "changeLink": "Change",
+      "roleLabel": "Your role at the institution",
+      "roles": {
+        "principal": "Principal",
+        "vice_principal": "Vice Principal",
+        "admin_staff": "Admin Staff",
+        "teacher": "Teacher"
+      },
+      "messageLabel": "Message (optional)",
+      "messagePlaceholder": "Tell us why you should be the admin for this institution",
+      "submitButton": "Request access",
+      "confirmTitle": "Request submitted",
+      "confirmMessage": "We'll review and get back to you.",
+      "goHomeButton": "Go to home"
+    },
+    "acceptInvite": {
+      "title": "Institution admin invite",
+      "loginRequired": "Log in to accept this invitation.",
+      "loginButton": "Log in",
+      "acceptPrompt": "You've been invited to manage {institution} on AlumTribe.",
+      "acceptButton": "Accept invitation",
+      "invalidToken": "This invitation link is invalid or has expired."
+    }
+  },
   "adminDashboard": {
     "title": "Admin Dashboard",
     "noPersona": {
@@ -1102,7 +1131,54 @@
       "codes": "Batch Codes",
       "stats": "Analytics",
       "admins": "Admins",
-      "requests": "Requests ({count})"
+      "requests": "Requests ({count})",
+      "adminAccess": "Admin Access"
+    },
+    "institutionAdminAccess": {
+      "filterTabs": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "invited": "Invited"
+      },
+      "inviteButton": "Invite admin",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approvedToast": "Request approved",
+      "rejectedToast": "Request rejected",
+      "inviteSentToast": "Invitation sent",
+      "unknownUser": "Unknown user",
+      "submitted": "Submitted {time}",
+      "inviteExpires": "Expires {time}",
+      "roles": {
+        "principal": "Principal",
+        "vice_principal": "Vice Principal",
+        "admin_staff": "Admin Staff",
+        "teacher": "Teacher"
+      },
+      "empty": {
+        "pendingTitle": "All caught up",
+        "pendingDescription": "No pending institution admin requests.",
+        "approvedTitle": "No approved requests yet",
+        "approvedDescription": "Approved institution admin requests will appear here.",
+        "rejectedTitle": "No rejected requests",
+        "rejectedDescription": "Rejected institution admin requests will appear here.",
+        "invitedTitle": "No pending invites",
+        "invitedDescription": "Invites you send will appear here until accepted."
+      },
+      "rejectModal": {
+        "title": "Reject this request",
+        "reasonLabel": "Reason (shown to the requester)",
+        "submit": "Reject request"
+      },
+      "inviteModal": {
+        "title": "Invite an institution admin",
+        "institutionLabel": "Institution",
+        "institutionPlaceholder": "Search institutions...",
+        "changeLink": "Change",
+        "emailLabel": "Email address",
+        "submit": "Send invite"
+      }
     },
     "institutionRequests": {
       "empty": {

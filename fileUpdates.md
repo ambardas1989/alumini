@@ -254,6 +254,26 @@ investigation from scratch.
 
 ---
 
+## UPDATE 13 — personas.requested_role/requested_message (TASKS_11 TASK 01)
+
+File: supabase/migrations/031_institution_admin_requests.sql
+
+Not yet applied in Supabase. Run manually:
+
+ALTER TABLE public.personas
+ADD COLUMN IF NOT EXISTS requested_role text,
+ADD COLUMN IF NOT EXISTS requested_message text;
+
+Action: TASKS_11 TASK 01 originally asked for a new `institution_admins`
+table — adapted per explicit product direction to extend the existing
+personas (type='school_admin') + institution_admin_invites claim/invite
+system instead (see the migration file's own comment for why). These two
+nullable columns are the only schema change actually needed: a structured
+place for the "role at the institution" + optional message a
+request-access submission carries, for the platform-admin review UI.
+
+---
+
 ## HOW TO APPLY
 
 When tokens are available, paste this into Claude Code:

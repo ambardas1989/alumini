@@ -28,6 +28,9 @@
  *   event.created                    → in-app + push to verified members
  *   corridor.announcement.sent       → in-app + push, fan-out per channel role (TASK 24)
  *   corridor.visiting_city.response  → in-app to the original poster (TASK 25)
+ *   institution.claim.submitted      → in-app fan-out to platform admins (TASKS_11 TASK 01)
+ *   institution.claim.approved       → in-app to the requester (TASKS_11 TASK 01)
+ *   institution.claim.rejected       → in-app to the requester (TASKS_11 TASK 01)
  *
  * classroom.joined is deliberately NOT handled here (any more) — TASK 02's
  * original "new_member on JOIN, any verification status" listener was
@@ -38,9 +41,10 @@
  * auth module's 'mfa.sms.send' (SMS OTP via Twilio — twilio is already a
  * dependency, anticipating this), codes module's 'codes.import.notify'
  * (emailing bulk-imported students their codes), and institution module's
- * 'institution.claim.submitted' / '.approved' / '.rejected' /
- * 'institution.admin.accepted'. None of these are in this task's event
- * list — adding handlers for them is future work, not an oversight.
+ * 'institution.admin.accepted' (TASKS_11 TASK 01 didn't ask for this one —
+ * the invite email itself, handled above, already told the invitee what
+ * they're accepting). institution.claim.submitted/.approved/.rejected,
+ * previously listed here as unhandled, are now handled above.
  *
  * TWO EXISTING EMITTERS WERE EXTENDED to build this module (both changes
  * are additive — existing listeners are unaffected):
@@ -490,6 +494,68 @@ export class NotificationService {
       `This link expires ${new Date(payload.expiresAt).toLocaleString()}.`;
 
     await this.sendEmail(payload.email, subject, text);
+  }
+
+  /**
+   * TASKS_11 TASK 01 — fan out to every platform admin when a new
+   * institution-admin request (submitClaim() or the newer
+   * requestAdminAccess()) is submitted. This event existed before this
+   * task (institution.service.ts's own module comment anticipated it as
+   * future work) — this is that work.
+   */
+  @OnEvent('institution.claim.submitted')
+  async handleInstitutionClaimSubmitted(payload: {
+    institutionId: string;
+    institutionName?: string;
+    userId: string;
+    personaId: string;
+    role?: string;
+    fullName?: string;
+  }): Promise<void> {
+    const { data: platformAdmins, error } = await this.supabase
+      .from('profiles')
+      .select('id')
+      .eq('is_platform_admin', true);
+
+    if (error) {
+      this.logger.error('Failed to look up platform admins to notify', { error });
+      return;
+    }
+
+    const title = `${payload.fullName ?? 'Someone'} requested institution admin access`;
+    const body = `${payload.institutionName ?? 'An institution'}${payload.role ? ` · ${payload.role}` : ''}`;
+
+    for (const admin of platformAdmins ?? []) {
+      await this.sendInApp(admin.id, 'institution_admin_request', title, body, {
+        institution_id: payload.institutionId,
+        persona_id: payload.personaId,
+        requester_user_id: payload.userId,
+      });
+    }
+  }
+
+  /** TASKS_11 TASK 01 — tell the requester their institution-admin access was approved. */
+  @OnEvent('institution.claim.approved')
+  async handleInstitutionClaimApproved(payload: { institutionId: string; userId: string }): Promise<void> {
+    await this.sendInApp(
+      payload.userId,
+      'institution_admin_approved',
+      'Institution admin access approved',
+      'You can now manage your institution on AlumTribe.',
+      { institution_id: payload.institutionId },
+    );
+  }
+
+  /** TASKS_11 TASK 01 — tell the requester their institution-admin request was not approved. */
+  @OnEvent('institution.claim.rejected')
+  async handleInstitutionClaimRejected(payload: { institutionId: string; userId: string; reason: string }): Promise<void> {
+    await this.sendInApp(
+      payload.userId,
+      'institution_admin_rejected',
+      'Institution admin request update',
+      payload.reason,
+      { institution_id: payload.institutionId },
+    );
   }
 
   // classroom.created — deliberately NOT handled. CorridorService already

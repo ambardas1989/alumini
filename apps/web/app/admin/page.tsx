@@ -23,9 +23,10 @@ import { CodesTab } from './CodesTab';
 import { StatsTab } from './StatsTab';
 import { AdminsTab } from './AdminsTab';
 import { InstitutionRequestsTab } from './InstitutionRequestsTab';
+import { InstitutionAdminAccessTab } from './InstitutionAdminAccessTab';
 import styles from './page.module.css';
 
-type Tab = 'overview' | 'verify' | 'classrooms' | 'codes' | 'stats' | 'admins' | 'requests';
+type Tab = 'overview' | 'verify' | 'classrooms' | 'codes' | 'stats' | 'admins' | 'requests' | 'adminAccess';
 const TAB_KEY = 'alumtribe_admin_tab';
 const SCHOOL_ADMIN_TABS: Tab[] = ['overview', 'verify', 'classrooms', 'codes', 'stats', 'admins'];
 
@@ -46,7 +47,7 @@ export default function AdminDashboardPage() {
 
   const adminPersona = adminPersonas.find((p) => p.id === selectedPersonaId) ?? adminPersonas[0] ?? null;
 
-  const tabs = [...SCHOOL_ADMIN_TABS, ...(isPlatformAdmin ? (['requests'] as const) : [])];
+  const tabs = [...SCHOOL_ADMIN_TABS, ...(isPlatformAdmin ? (['requests', 'adminAccess'] as const) : [])];
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -147,8 +148,22 @@ export default function AdminDashboardPage() {
         <div className={styles.topBar}>
           <h1 className={styles.topBarTitle}>{t('title')}</h1>
         </div>
+        <div className={styles.tabBar} role="tablist">
+          {(['requests', 'adminAccess'] as const).map((tabKey) => (
+            <button
+              key={tabKey}
+              type="button"
+              role="tab"
+              aria-selected={tab === tabKey}
+              className={`${styles.tab} ${tab === tabKey ? styles.tabActive : ''}`}
+              onClick={() => changeTab(tabKey)}
+            >
+              {tabKey === 'requests' ? t('tabs.requests', { count: pendingRequestCount }) : t(`tabs.${tabKey}`)}
+            </button>
+          ))}
+        </div>
         <PageContainer>
-          <InstitutionRequestsTab />
+          {tab === 'adminAccess' ? <InstitutionAdminAccessTab /> : <InstitutionRequestsTab />}
         </PageContainer>
       </AppShell>
     );
@@ -227,6 +242,7 @@ export default function AdminDashboardPage() {
         {tab === 'verify' && <VerifyTab institutionId={institutionId} />}
         {tab === 'classrooms' && <ClassroomsTab institutionId={institutionId} />}
         {tab === 'requests' && <InstitutionRequestsTab />}
+        {tab === 'adminAccess' && <InstitutionAdminAccessTab />}
         {tab === 'codes' && <CodesTab institutionId={institutionId} />}
         {tab === 'stats' && <StatsTab institutionId={institutionId} />}
         {tab === 'admins' && <AdminsTab institutionId={institutionId} />}

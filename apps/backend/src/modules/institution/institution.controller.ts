@@ -5,10 +5,11 @@
  * derived from SPEC.md §5/§7/§11.1/§11.3's described flows, since §17
  * doesn't enumerate an "Institution Endpoints" section.
  *
- * There is deliberately NO route for approving/rejecting a claim —
- * InstitutionService.approveClaim()/rejectClaim() exist and are fully
- * tested, but SPEC.md §3.4 makes platform-admin review service-role-only,
- * "never exposed to users". See InstitutionService's module comment.
+ * TASKS_11 TASK 01 update: approveClaim()/rejectClaim() are now exposed,
+ * but via InstitutionAdminController (platform-admin dashboard), not here
+ * — this controller previously documented them as "deliberately not
+ * exposed, service-role only" per SPEC.md §3.4; that's no longer accurate
+ * now that TASK 01 explicitly wants a platform-admin review UI for them.
  *
  * Literal routes (search, invite/accept) are declared before the `:id`
  * routes below as a defensive convention, even though their fixed path

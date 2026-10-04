@@ -262,8 +262,16 @@ describe('InstitutionService', () => {
   // ── approveClaim() / rejectClaim() ───────────────────────────────────────
 
   describe('approveClaim()', () => {
+    // TASKS_11 TASK 01 — approveClaim()/rejectClaim() are now reachable via
+    // a real controller route (InstitutionAdminController), so they gained
+    // an assertPlatformAdmin() check at the top — every test here now also
+    // mocks `profiles` so that check passes before reaching the behavior
+    // under test.
     it('throws NotFoundException for a non-existent claim', async () => {
-      mockTables({ personas: chain({ data: null, error: null }) });
+      mockTables({
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
+        personas: chain({ data: null, error: null }),
+      });
 
       await expect(service.approveClaim('ops-1', 'persona-missing')).rejects.toThrow(
         NotFoundException,
@@ -272,6 +280,7 @@ describe('InstitutionService', () => {
 
     it('throws ConflictException when the claim was already decided', async () => {
       mockTables({
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
         personas: chain({
           data: { id: 'persona-1', type: PersonaType.SCHOOL_ADMIN, status: 'active' },
           error: null,
@@ -281,26 +290,39 @@ describe('InstitutionService', () => {
       await expect(service.approveClaim('ops-1', 'persona-1')).rejects.toThrow(ConflictException);
     });
 
-    it('throws ConflictException when another claim already won the race', async () => {
+    // TASKS_11 TASK 01 — this used to throw ConflictException ("already
+    // claimed by another approved admin"). requestAdminAccess() now allows
+    // submitting a request against an already-claimed institution too (co-
+    // admin access, not just first-claim ownership), so approveClaim()
+    // instead degrades gracefully: the approval just grants co-admin
+    // status instead of primary-admin status, rather than erroring.
+    it('grants co-admin (not primary admin) status when the institution was already claimed by someone else', async () => {
       mockTables({
-        personas: chain({
-          data: {
-            id: 'persona-1',
-            type: PersonaType.SCHOOL_ADMIN,
-            status: 'pending_approval',
-            institution_id: 'inst-1',
-            user_id: 'user-1',
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
+        personas: chain(
+          {
+            data: {
+              id: 'persona-1',
+              type: PersonaType.SCHOOL_ADMIN,
+              status: 'pending_approval',
+              institution_id: 'inst-1',
+              user_id: 'user-1',
+            },
+            error: null,
           },
-          error: null,
-        }),
+          { data: null, error: null }, // update
+        ),
         institutions: chain({ data: { id: 'inst-1', is_claimed: true }, error: null }),
       });
 
-      await expect(service.approveClaim('ops-1', 'persona-1')).rejects.toThrow(ConflictException);
+      const result = await service.approveClaim('ops-1', 'persona-1');
+
+      expect(result).toEqual({ institutionId: 'inst-1', userId: 'user-1', isPrimaryAdmin: false });
     });
 
     it('activates the persona as primary admin and stamps the institution', async () => {
       mockTables({
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
         personas: chain(
           {
             data: {
@@ -336,6 +358,7 @@ describe('InstitutionService', () => {
   describe('rejectClaim()', () => {
     it('suspends the persona and audits the rejection reason', async () => {
       mockTables({
+        profiles: chain({ data: { is_platform_admin: true }, error: null }),
         personas: chain(
           {
             data: {
