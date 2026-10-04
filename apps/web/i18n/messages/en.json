@@ -612,7 +612,16 @@
         "photo": "Photo",
         "file": "File",
         "announcement": "Announcement",
-        "visitingCity": "Visiting a city"
+        "visitingCity": "Visiting a city",
+        "comingSoonDivider": "Coming soon",
+        "memoryVault": "Memory vault",
+        "yearbook": "Yearbook",
+        "challenge": "Challenge",
+        "liveSession": "Live session",
+        "memoryVaultToast": "Memory vault — coming soon",
+        "yearbookToast": "Yearbook — coming soon",
+        "challengeToast": "Challenges — coming soon",
+        "liveSessionToast": "Live sessions — coming soon"
       },
       "announcementMode": {
         "label": "Announcement",

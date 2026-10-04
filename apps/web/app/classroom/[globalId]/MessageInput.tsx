@@ -195,6 +195,49 @@ export function MessageInput({ onSend, disabled = false }: MessageInputProps) {
                 >
                   📍 {t('attachMenu.visitingCity')}
                 </button>
+
+                {/* TASKS_10 TASK 09 — super features not yet built. Greyed out, no hover effect, each tap just shows a "coming soon" toast. */}
+                <div className={styles.attachMenuDivider}>{t('attachMenu.comingSoonDivider')}</div>
+                <button
+                  type="button"
+                  className={`${styles.attachMenuItem} ${styles.attachMenuItemDisabled}`}
+                  onClick={() => {
+                    setShowAttachMenu(false);
+                    showToast(t('attachMenu.memoryVaultToast'), 'info');
+                  }}
+                >
+                  🔐 {t('attachMenu.memoryVault')}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.attachMenuItem} ${styles.attachMenuItemDisabled}`}
+                  onClick={() => {
+                    setShowAttachMenu(false);
+                    showToast(t('attachMenu.yearbookToast'), 'info');
+                  }}
+                >
+                  📸 {t('attachMenu.yearbook')}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.attachMenuItem} ${styles.attachMenuItemDisabled}`}
+                  onClick={() => {
+                    setShowAttachMenu(false);
+                    showToast(t('attachMenu.challengeToast'), 'info');
+                  }}
+                >
+                  ⚡ {t('attachMenu.challenge')}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.attachMenuItem} ${styles.attachMenuItemDisabled}`}
+                  onClick={() => {
+                    setShowAttachMenu(false);
+                    showToast(t('attachMenu.liveSessionToast'), 'info');
+                  }}
+                >
+                  🎥 {t('attachMenu.liveSession')}
+                </button>
               </div>
             </>
           )}

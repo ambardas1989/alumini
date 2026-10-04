@@ -388,7 +388,7 @@ Push.
 
 ---
 
-## TASK 09 — Feature: "+" menu super feature placeholders [PENDING]
+## TASK 09 — Feature: "+" menu super feature placeholders [DONE] — added a "Coming soon" divider and four greyed-out, no-hover items (Memory vault 🔐, Yearbook 📸, Challenge ⚡, Live session 🎥) below the existing Photo/File/Announcement/Visiting-a-city items in MessageInput.tsx's attach menu, each firing its own toast. This codebase has no icon library wired into the attach menu (every existing item is a plain emoji, no Tabler/icon-font import anywhere) — used the 🔐 emoji fallback the task explicitly allows for Memory vault rather than introducing a new icon dependency for one menu.
 
 Add greyed-out placeholder items to the "+" menu for
 super features that are not yet built. Tapping any of
