@@ -317,6 +317,17 @@ duplicating the table.
 
 ---
 
+## UPDATE 17 — classrooms.archived_at (TASKS_11 TASK 07)
+
+File: supabase/migrations/035_classroom_archive.sql
+
+Not yet applied in Supabase. Run manually:
+
+ALTER TABLE public.classrooms
+ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+
+---
+
 ## HOW TO APPLY
 
 When tokens are available, paste this into Claude Code:

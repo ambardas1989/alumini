@@ -19,9 +19,14 @@ import { InstitutionService } from './institution.service';
 import { InstitutionController } from './institution.controller';
 import { InstitutionAdminController } from './institution-admin.controller';
 import { AuthModule } from '../auth/auth.module';
+import { ClassroomModule } from '../classroom/classroom.module';
 
 @Module({
-  imports: [AuthModule],
+  // TASKS_11 TASK 07 — ClassroomModule imported so InstitutionService can
+  // delegate classroom creation to ClassroomService.createClassroom()
+  // directly (global-id generation, duplicate check, membership insert)
+  // instead of re-deriving that logic here.
+  imports: [AuthModule, ClassroomModule],
   // TASKS_11 TASK 01 — InstitutionAdminController is a second, thin
   // controller over the same InstitutionService (see its own header
   // comment for why this isn't a separate module).

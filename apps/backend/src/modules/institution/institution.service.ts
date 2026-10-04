@@ -73,6 +73,9 @@ import { UpdateInstitutionProfileDto } from './dto/update-institution-profile.dt
 import { RequestSubscriptionUpgradeDto } from './dto/request-subscription-upgrade.dto';
 import { UpdateInstitutionSubscriptionDto } from './dto/update-institution-subscription.dto';
 import { SetClassroomAdminRoleDto } from './dto/set-classroom-admin-role.dto';
+import { CreateClassroomForInstitutionDto } from './dto/create-classroom-for-institution.dto';
+import { UpdateClassroomForInstitutionDto } from './dto/update-classroom-for-institution.dto';
+import { ClassroomService } from '../classroom/classroom.service';
 
 /** Payload of the signed co-admin invitation JWT ("magic link" token). */
 interface AdminInviteTokenPayload {
@@ -92,6 +95,7 @@ export class InstitutionService {
     private readonly audit: AuditService,
     private readonly eventEmitter: EventEmitter2,
     private readonly jwtService: JwtService,
+    private readonly classroomService: ClassroomService,
     appLogger: AppLogger,
   ) {
     this.appLogger = appLogger.setContext('INSTITUTION');
@@ -1499,5 +1503,123 @@ export class InstitutionService {
     });
 
     return { userId: dto.userId, classroomId: dto.classroomId, role: toRole };
+  }
+
+  // ── Classroom create/edit/archive (TASKS_11 TASK 07) ─────────────────────
+  // List already exists (AdminService.getClassroomsByYear(), used by
+  // ClassroomsTab) — not duplicated here.
+
+  /** Delegates to ClassroomService.createClassroom() — see ClassroomModule import in institution.module.ts. creatorRole is forced to 'admin': an institution admin creating a classroom from this dashboard should land as its admin, not whatever their own persona would otherwise map to. */
+  async createClassroomForInstitution(actorId: string, institutionId: string, dto: CreateClassroomForInstitutionDto, req?: Request) {
+    await this.assertActiveAdminOrPlatformAdmin(actorId, institutionId);
+
+    return this.classroomService.createClassroom(
+      actorId,
+      {
+        institutionId,
+        name: dto.name,
+        batchYear: dto.batchYear,
+        grade: dto.grade,
+        section: dto.section,
+        program: dto.program,
+        hasStaffRoom: dto.hasTeacherRoom,
+        requireVerification: dto.requireVerification,
+        creatorRole: 'admin',
+      },
+      req,
+    );
+  }
+
+  /**
+   * TASKS_11 TASK 07 — institution admin editing ANY classroom in their
+   * institution. Deliberately NOT ClassroomService.updateClassroom(),
+   * which requires being that specific classroom's own admin (its own
+   * doc comment: "school-admin personas do not implicitly grant this").
+   * This is a new, additive capability for the institution-wide dashboard,
+   * not a change to that existing rule.
+   */
+  async updateClassroomForInstitution(actorId: string, institutionId: string, classroomId: string, dto: UpdateClassroomForInstitutionDto, req?: Request) {
+    await this.assertActiveAdminOrPlatformAdmin(actorId, institutionId);
+
+    const { data: classroom } = await this.supabase
+      .from('classrooms')
+      .select('id')
+      .eq('id', classroomId)
+      .eq('institution_id', institutionId)
+      .maybeSingle();
+
+    if (!classroom) {
+      throw new NotFoundException('This classroom does not belong to your institution');
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (dto.name !== undefined) patch.name = dto.name;
+    if (dto.hasTeacherRoom !== undefined) patch.has_staff_room = dto.hasTeacherRoom;
+    if (dto.requireVerification !== undefined) patch.require_verification = dto.requireVerification;
+
+    if (Object.keys(patch).length === 0) {
+      throw new BadRequestException('No updatable fields were provided');
+    }
+
+    const { data, error } = await this.supabase.from('classrooms').update(patch).eq('id', classroomId).select().maybeSingle();
+
+    if (error || !data) {
+      this.appLogger.error('[INST-ADMIN:classroom] failed', { classroomId, error: error?.message });
+      throw new BadRequestException('Failed to update this classroom. Please try again.');
+    }
+
+    await this.audit.log({
+      eventType: AuditEventType.CLASSROOM_SETTINGS_UPDATED,
+      actorId,
+      targetId: classroomId,
+      targetType: 'classroom',
+      metadata: { changes: patch, via: 'institution_admin' },
+      req,
+    });
+
+    return data;
+  }
+
+  /** Archived classrooms are read-only — CorridorService.sendMessage() rejects new posts while archived_at is set. Members keep read access and membership. */
+  async archiveClassroom(actorId: string, institutionId: string, classroomId: string, req?: Request) {
+    await this.assertActiveAdminOrPlatformAdmin(actorId, institutionId);
+
+    const { data: classroom } = await this.supabase
+      .from('classrooms')
+      .select('id, archived_at')
+      .eq('id', classroomId)
+      .eq('institution_id', institutionId)
+      .maybeSingle();
+
+    if (!classroom) {
+      throw new NotFoundException('This classroom does not belong to your institution');
+    }
+    if (classroom.archived_at) {
+      throw new ConflictException('This classroom is already archived');
+    }
+
+    const { data, error } = await this.supabase
+      .from('classrooms')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('id', classroomId)
+      .select()
+      .maybeSingle();
+
+    if (error || !data) {
+      this.appLogger.error('[INST-ADMIN:classroom] failed', { classroomId, error: error?.message });
+      throw new BadRequestException('Failed to archive this classroom. Please try again.');
+    }
+
+    this.appLogger.info('[INST-ADMIN:classroom] archived', { classroomId });
+    await this.audit.log({
+      eventType: AuditEventType.CLASSROOM_ARCHIVED,
+      actorId,
+      targetId: classroomId,
+      targetType: 'classroom',
+      metadata: { institution_id: institutionId },
+      req,
+    });
+
+    return data;
   }
 }

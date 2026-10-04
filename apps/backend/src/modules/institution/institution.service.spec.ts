@@ -34,6 +34,7 @@ import {
 } from '@nestjs/common';
 
 import { InstitutionService } from './institution.service';
+import { ClassroomService } from '../classroom/classroom.service';
 import { AuditService } from '../audit/audit.service';
 import { AppLogger } from '../../common/logger/logger.service';
 import { AuditEventType, PersonaType } from '@alumini/types';
@@ -79,6 +80,7 @@ describe('InstitutionService', () => {
   let jwtService: JwtService;
   const mockAuditLog = jest.fn().mockResolvedValue(undefined);
   const mockEventEmit = jest.fn();
+  const mockCreateClassroom = jest.fn();
 
   beforeEach(async () => {
     process.env.SUPABASE_URL = 'https://test.supabase.co';
@@ -96,6 +98,7 @@ describe('InstitutionService', () => {
         { provide: AuditService, useValue: { log: mockAuditLog } },
         { provide: EventEmitter2, useValue: { emit: mockEventEmit, on: jest.fn(), off: jest.fn() } },
         { provide: JwtService, useValue: jwtService },
+        { provide: ClassroomService, useValue: { createClassroom: mockCreateClassroom } },
         { provide: AppLogger, useValue: mockAppLogger },
       ],
     }).compile();

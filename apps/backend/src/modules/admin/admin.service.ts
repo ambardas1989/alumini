@@ -238,7 +238,7 @@ export class AdminService {
 
     const { data: classrooms, error } = await this.supabase
       .from('classrooms')
-      .select('id, global_id, name, batch_year, grade, section, program, member_count')
+      .select('id, global_id, name, batch_year, grade, section, program, member_count, archived_at')
       .eq('institution_id', institutionId)
       .order('batch_year', { ascending: false });
 
@@ -278,6 +278,7 @@ export class AdminService {
         memberCount:   c.member_count,
         verifiedCount: verifiedCounts[c.id] ?? 0,
         pendingCount:  pendingCounts[c.id] ?? 0,
+        archivedAt:    c.archived_at,
       };
       const bucket = byYear.get(c.batch_year) ?? [];
       bucket.push(entry);

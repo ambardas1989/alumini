@@ -514,6 +514,17 @@ export class CorridorService {
     }
     classroomId = resolvedId;
 
+    // TASKS_11 TASK 07 — archived classrooms (InstitutionService.archiveClassroom())
+    // are read-only. Members keep access to read history; only new posts
+    // are blocked.
+    const { data: classroomRow } = await this.supabase.from('classrooms').select('archived_at').eq('id', classroomId).maybeSingle();
+    if (classroomRow?.archived_at) {
+      throw new ForbiddenException({
+        message: 'This classroom has been archived and is read-only',
+        error: ErrorCode.CHANNEL_ACCESS_DENIED,
+      });
+    }
+
     const canAccess = await this.membershipService.canAccessChannel(userId, classroomId, channel);
     this.appLogger.debug('[CORRIDOR:send] membership check', { canAccess });
     if (!canAccess) {

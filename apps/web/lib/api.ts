@@ -1214,6 +1214,8 @@ export interface AdminClassroomEntry {
   memberCount: number;
   verifiedCount: number;
   pendingCount: number;
+  /** TASKS_11 TASK 07 — set once InstitutionService.archiveClassroom() runs; classroom becomes read-only. */
+  archivedAt: string | null;
 }
 
 export interface AdminClassroomYearGroup {
@@ -1224,6 +1226,34 @@ export interface AdminClassroomYearGroup {
 
 export function getClassrooms(institutionId: string): Promise<AdminClassroomYearGroup[]> {
   return request(`/admin/${institutionId}/classrooms`);
+}
+
+// ── INSTITUTION ADMIN — CLASSROOM CREATE/EDIT/ARCHIVE (TASKS_11 TASK 07) ──
+
+export interface CreateClassroomForInstitutionInput {
+  name: string;
+  batchYear: number;
+  grade?: string;
+  section?: string;
+  program?: string;
+  hasTeacherRoom?: boolean;
+  requireVerification?: boolean;
+}
+
+export function createClassroomForInstitution(institutionId: string, input: CreateClassroomForInstitutionInput): Promise<unknown> {
+  return request(`/institution/${institutionId}/classrooms`, { method: 'POST', body: input });
+}
+
+export function updateClassroomForInstitution(
+  institutionId: string,
+  classroomId: string,
+  input: { name?: string; hasTeacherRoom?: boolean; requireVerification?: boolean },
+): Promise<unknown> {
+  return request(`/institution/${institutionId}/classrooms/${classroomId}`, { method: 'PATCH', body: input });
+}
+
+export function archiveClassroomForInstitution(institutionId: string, classroomId: string): Promise<unknown> {
+  return request(`/institution/${institutionId}/classrooms/${classroomId}/archive`, { method: 'PATCH' });
 }
 
 export interface PendingDocumentVerification {

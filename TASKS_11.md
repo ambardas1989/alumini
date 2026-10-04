@@ -698,7 +698,7 @@ Push.
 
 ---
 
-## TASK 07 — Institution admin — classroom management [PENDING]
+## TASK 07 — Institution admin — classroom management [DONE] — List already existed (ClassroomsTab via AdminService.getClassroomsByYear()). Added create (delegates to ClassroomService.createClassroom() via a new ClassroomModule import into InstitutionModule, creatorRole forced to 'admin'), edit, and archive as new InstitutionService methods — deliberately NOT routed through ClassroomService.updateClassroom()/assertClassroomAdmin(), whose own doc comment says school-admin personas do NOT implicitly get that access (a documented SPEC.md §7.2 design choice); this adds a separate, additive institution-wide capability instead of weakening that existing rule. Archived classrooms are read-only — CorridorService.sendMessage() now checks classrooms.archived_at (new column, 035_classroom_archive.sql) and rejects new posts while keeping read access. Added a status Active/Archived tab to ClassroomsTab, distinct from its pre-existing Active/Alumni batch-year filter.
 
 Institution admin can view, create, and archive all
 classrooms under their institution.

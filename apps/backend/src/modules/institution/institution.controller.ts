@@ -50,6 +50,8 @@ import { UpdateInstitutionProfileDto } from './dto/update-institution-profile.dt
 import { RequestSubscriptionUpgradeDto } from './dto/request-subscription-upgrade.dto';
 import { UpdateInstitutionSubscriptionDto } from './dto/update-institution-subscription.dto';
 import { SetClassroomAdminRoleDto } from './dto/set-classroom-admin-role.dto';
+import { CreateClassroomForInstitutionDto } from './dto/create-classroom-for-institution.dto';
+import { UpdateClassroomForInstitutionDto } from './dto/update-classroom-for-institution.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MfaChallengeGuard } from '../auth/guards/mfa-challenge.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -241,6 +243,49 @@ export class InstitutionController {
     @Req() req: Request,
   ) {
     return this.institutionService.updateSubscription(authToken.sub, institutionId, dto, req);
+  }
+
+  // ── Classroom create/edit/archive (TASKS_11 TASK 07) ─────────────────────
+  // List already exists at GET /admin/:institutionId/classrooms.
+
+  @Post(':id/classrooms')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a classroom for this institution, auto-adding the caller as its admin' })
+  async createClassroomForInstitution(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') institutionId: string,
+    @Body() dto: CreateClassroomForInstitutionDto,
+    @Req() req: Request,
+  ) {
+    return this.institutionService.createClassroomForInstitution(authToken.sub, institutionId, dto, req);
+  }
+
+  @Patch(':id/classrooms/:classroomId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Update any of this institution's classrooms (platform admin or an active institution admin)" })
+  async updateClassroomForInstitution(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') institutionId: string,
+    @Param('classroomId') classroomId: string,
+    @Body() dto: UpdateClassroomForInstitutionDto,
+    @Req() req: Request,
+  ) {
+    return this.institutionService.updateClassroomForInstitution(authToken.sub, institutionId, classroomId, dto, req);
+  }
+
+  @Patch(':id/classrooms/:classroomId/archive')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Archive a classroom — read-only afterwards (platform admin or an active institution admin)' })
+  async archiveClassroomForInstitution(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') institutionId: string,
+    @Param('classroomId') classroomId: string,
+    @Req() req: Request,
+  ) {
+    return this.institutionService.archiveClassroom(authToken.sub, institutionId, classroomId, req);
   }
 
   // ── Co-admin roster ──────────────────────────────────────────────────────

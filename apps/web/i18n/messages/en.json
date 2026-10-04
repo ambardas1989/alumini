@@ -1421,6 +1421,36 @@
       "empty": {
         "title": "No classrooms yet",
         "description": "Classrooms at this institution will appear here."
+      },
+      "statusTabs": {
+        "active": "Active",
+        "archived": "Archived"
+      },
+      "create": {
+        "cta": "Create classroom",
+        "title": "Create classroom",
+        "nameLabel": "Name",
+        "batchYearLabel": "Batch year",
+        "gradeLabel": "Grade (schools)",
+        "sectionLabel": "Section",
+        "programLabel": "Program (colleges)",
+        "submit": "Create",
+        "successToast": "Classroom created"
+      },
+      "edit": {
+        "cta": "Edit",
+        "title": "Edit classroom",
+        "nameLabel": "Name",
+        "submit": "Save",
+        "successToast": "Classroom updated"
+      },
+      "archive": {
+        "cta": "Archive",
+        "confirmTitle": "Archive this classroom?",
+        "confirmMessage": "Archive {name}? Members will not lose access but no new messages can be sent.",
+        "cancel": "Cancel",
+        "confirm": "Archive",
+        "successToast": "Classroom archived"
       }
     },
     "admins": {

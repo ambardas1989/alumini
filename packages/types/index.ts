@@ -142,6 +142,7 @@ export const AuditEventType = {
   CLASSROOM_JOINED: 'classroom.joined',
   CLASSROOM_LEFT: 'classroom.left',
   CLASSROOM_SETTINGS_UPDATED: 'classroom.settings.updated',
+  CLASSROOM_ARCHIVED: 'classroom.archived',
   CLASSROOM_ADMIN_PROMOTED: 'classroom.admin.promoted',
   CLASSROOM_ADMIN_DEMOTED: 'classroom.admin.demoted',
 
