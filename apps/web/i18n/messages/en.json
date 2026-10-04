@@ -1444,6 +1444,23 @@
         "mfaTitle": "Confirm your identity",
         "mfaDescription": "Enter your MFA code to confirm removing this admin.",
         "successToast": "Admin removed."
+      },
+      "classroomAdmins": {
+        "title": "Classroom admins",
+        "empty": "No classroom admins yet.",
+        "since": "since {time}",
+        "demoteAction": "Demote",
+        "demotedToast": "Admin demoted",
+        "promotedToast": "Member promoted to admin",
+        "promoteCta": "Promote member",
+        "promoteModal": {
+          "title": "Promote a member",
+          "classroomLabel": "Classroom",
+          "classroomPlaceholder": "Select a classroom...",
+          "memberLabel": "Member",
+          "memberPlaceholder": "Select a member...",
+          "confirm": "Promote to admin"
+        }
       }
     }
   },

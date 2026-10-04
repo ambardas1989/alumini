@@ -55,7 +55,7 @@ import { Request } from 'express';
 
 import { AuditService } from '../audit/audit.service';
 import { AppLogger } from '../../common/logger/logger.service';
-import { AuditEventType, ErrorCode, PersonaType } from '@alumini/types';
+import { AuditEventType, ErrorCode, MemberRole, PersonaType } from '@alumini/types';
 import { isExpired } from '@alumini/utils';
 import { appConfig } from '@alumini/config/app';
 
@@ -72,6 +72,7 @@ import { PlatformInviteAdminDto } from './dto/platform-invite-admin.dto';
 import { UpdateInstitutionProfileDto } from './dto/update-institution-profile.dto';
 import { RequestSubscriptionUpgradeDto } from './dto/request-subscription-upgrade.dto';
 import { UpdateInstitutionSubscriptionDto } from './dto/update-institution-subscription.dto';
+import { SetClassroomAdminRoleDto } from './dto/set-classroom-admin-role.dto';
 
 /** Payload of the signed co-admin invitation JWT ("magic link" token). */
 interface AdminInviteTokenPayload {
@@ -628,11 +629,14 @@ export class InstitutionService {
   async listAdmins(callerId: string, institutionId: string) {
     await this.assertActiveAdmin(callerId, institutionId);
 
+    // TASKS_11 TASK 05 — profile.email added so AdminsTab can show it
+    // (previously only pending invites carried an email, per this
+    // method's own prior comment — now admin rows do too).
     const { data: admins, error } = await this.supabase
       .from('personas')
       .select(
         'id, user_id, status, is_primary_admin, created_at, ' +
-          'profile:profiles(id, full_name, avatar_url)',
+          'profile:profiles(id, full_name, avatar_url, email)',
       )
       .eq('institution_id', institutionId)
       .eq('type', PersonaType.SCHOOL_ADMIN)
@@ -1362,5 +1366,138 @@ export class InstitutionService {
     this.eventEmitter.emit('institution.subscription.updated', { institutionId, plan: data.plan, status: data.status });
 
     return data;
+  }
+
+  // ── Classroom-level admin roster + promote/demote (TASKS_11 TASK 05) ────
+  // Distinct from listAdmins()/inviteAdmin() above, which manage
+  // INSTITUTION-level personas (school_admin). These two methods manage
+  // membership.role='admin' across every classroom the institution owns —
+  // MembershipService.changeRole() already does this exact promote/demote,
+  // but only lets a classroom's OWN admin call it for that one classroom;
+  // an institution admin needs to do it across ALL of their classrooms, so
+  // this is a self-contained sibling rather than a change to that method's
+  // existing, tested single-classroom scope.
+
+  async listClassroomAdmins(callerId: string, institutionId: string) {
+    await this.assertActiveAdminOrPlatformAdmin(callerId, institutionId);
+
+    const { data: classrooms } = await this.supabase
+      .from('classrooms')
+      .select('id, global_id, name')
+      .eq('institution_id', institutionId);
+
+    const classroomIds = (classrooms ?? []).map((c) => c.id);
+    if (classroomIds.length === 0) return [];
+
+    const { data: memberships, error } = await this.supabase
+      .from('memberships')
+      .select('user_id, classroom_id, joined_at, profile:profiles(id, full_name, avatar_url)')
+      .in('classroom_id', classroomIds)
+      .eq('role', MemberRole.ADMIN);
+
+    if (error) {
+      this.appLogger.error('[INST-ADMIN:classroom-admins] failed', { institutionId, error: error.message });
+      throw new BadRequestException('Failed to load classroom admins');
+    }
+
+    const classroomById = new Map((classrooms ?? []).map((c) => [c.id, c]));
+
+    return (memberships ?? []).map((m: any) => ({
+      userId: m.user_id,
+      classroomId: m.classroom_id,
+      classroom: classroomById.get(m.classroom_id) ?? null,
+      since: m.joined_at,
+      profile: m.profile,
+    }));
+  }
+
+  async setClassroomAdminRole(actorId: string, institutionId: string, dto: SetClassroomAdminRoleDto, req?: Request) {
+    await this.assertActiveAdminOrPlatformAdmin(actorId, institutionId);
+
+    const { data: classroom } = await this.supabase
+      .from('classrooms')
+      .select('id')
+      .eq('id', dto.classroomId)
+      .eq('institution_id', institutionId)
+      .maybeSingle();
+
+    if (!classroom) {
+      throw new NotFoundException('This classroom does not belong to your institution');
+    }
+
+    const { data: membership } = await this.supabase
+      .from('memberships')
+      .select('id, role')
+      .eq('user_id', dto.userId)
+      .eq('classroom_id', dto.classroomId)
+      .maybeSingle();
+
+    if (!membership) {
+      throw new NotFoundException('This user is not a member of this classroom');
+    }
+
+    const fromRole = membership.role as MemberRole;
+    let toRole: MemberRole;
+
+    if (dto.action === 'promote') {
+      toRole = MemberRole.ADMIN;
+    } else {
+      if (fromRole !== MemberRole.ADMIN) {
+        throw new BadRequestException('This member is not currently an admin of this classroom');
+      }
+
+      const { count } = await this.supabase
+        .from('memberships')
+        .select('id', { count: 'exact', head: true })
+        .eq('classroom_id', dto.classroomId)
+        .eq('role', MemberRole.ADMIN);
+
+      if ((count ?? 0) <= 1) {
+        throw new BadRequestException('Cannot demote the only admin of this classroom. Promote another member first.');
+      }
+
+      // TASKS_11 TASK 05 — "revert to their original role, check
+      // verification_method to determine original role" per the task's
+      // literal text doesn't quite work (verification_method is about HOW
+      // they verified, not WHAT role they held) — same persona-based
+      // derivation TASKS_10 TASK 03 already established for
+      // ClassroomService.createClassroom()'s creatorRole is reused here
+      // instead: an active teacher persona at this institution reverts to
+      // 'teacher', otherwise 'student'.
+      const { data: teacherPersona } = await this.supabase
+        .from('personas')
+        .select('id')
+        .eq('user_id', dto.userId)
+        .eq('type', PersonaType.TEACHER)
+        .eq('institution_id', institutionId)
+        .eq('status', 'active')
+        .maybeSingle();
+      toRole = teacherPersona ? MemberRole.TEACHER : MemberRole.STUDENT;
+    }
+
+    const { error } = await this.supabase.from('memberships').update({ role: toRole }).eq('id', membership.id);
+
+    if (error) {
+      this.appLogger.error('[INST-ADMIN:roles] failed', { institutionId, error: error.message });
+      throw new BadRequestException('Failed to change this member’s role. Please try again.');
+    }
+
+    this.appLogger.info(`[INST-ADMIN:roles] ${dto.action === 'promote' ? 'promoted' : 'demoted'}`, { userId: dto.userId, classroomId: dto.classroomId });
+    await this.audit.log({
+      eventType: dto.action === 'promote' ? AuditEventType.CLASSROOM_ADMIN_PROMOTED : AuditEventType.CLASSROOM_ADMIN_DEMOTED,
+      actorId,
+      targetId: dto.userId,
+      targetType: 'membership',
+      metadata: { classroom_id: dto.classroomId, institution_id: institutionId, from_role: fromRole, to_role: toRole },
+      req,
+    });
+
+    this.eventEmitter.emit('institution.classroom_admin.role_changed', {
+      userId: dto.userId,
+      classroomId: dto.classroomId,
+      action: dto.action,
+    });
+
+    return { userId: dto.userId, classroomId: dto.classroomId, role: toRole };
   }
 }

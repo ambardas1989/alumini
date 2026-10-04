@@ -615,6 +615,23 @@ export class NotificationService {
     }
   }
 
+  /** TASKS_11 TASK 05 — tell the member when an institution admin promotes/demotes their classroom role. */
+  @OnEvent('institution.classroom_admin.role_changed')
+  async handleClassroomAdminRoleChanged(payload: { userId: string; classroomId: string; action: 'promote' | 'demote' }): Promise<void> {
+    const { data: classroom } = await this.supabase.from('classrooms').select('name').eq('id', payload.classroomId).maybeSingle();
+    const classroomName = classroom?.name ?? 'your classroom';
+
+    const title = payload.action === 'promote' ? 'You have been made an admin' : 'Your admin role has been updated';
+    const body =
+      payload.action === 'promote'
+        ? `You have been made an admin of ${classroomName}`
+        : `Your admin role in ${classroomName} has been updated`;
+
+    await this.sendInApp(payload.userId, 'institution_classroom_admin_role_changed', title, body, {
+      classroom_id: payload.classroomId,
+    });
+  }
+
   // classroom.created — deliberately NOT handled. CorridorService already
   // posts the welcome system message (SPEC.md's "corridor handles system
   // message" per this task) — a notification here would be redundant.

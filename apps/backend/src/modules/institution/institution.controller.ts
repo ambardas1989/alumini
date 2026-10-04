@@ -49,6 +49,7 @@ import { TransferPrimaryAdminDto } from './dto/transfer-admin.dto';
 import { UpdateInstitutionProfileDto } from './dto/update-institution-profile.dto';
 import { RequestSubscriptionUpgradeDto } from './dto/request-subscription-upgrade.dto';
 import { UpdateInstitutionSubscriptionDto } from './dto/update-institution-subscription.dto';
+import { SetClassroomAdminRoleDto } from './dto/set-classroom-admin-role.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MfaChallengeGuard } from '../auth/guards/mfa-challenge.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -250,6 +251,29 @@ export class InstitutionController {
   @ApiOperation({ summary: 'List active/pending admins and outstanding invites for an institution' })
   async listAdmins(@CurrentUser() authToken: AuthTokenPayload, @Param('id') institutionId: string) {
     return this.institutionService.listAdmins(authToken.sub, institutionId);
+  }
+
+  // ── Classroom-level admin roster + promote/demote (TASKS_11 TASK 05) ────
+
+  @Get(':id/classroom-admins')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List members with role=admin across every classroom of this institution' })
+  async listClassroomAdmins(@CurrentUser() authToken: AuthTokenPayload, @Param('id') institutionId: string) {
+    return this.institutionService.listClassroomAdmins(authToken.sub, institutionId);
+  }
+
+  @Patch(':id/classroom-admins')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Promote or demote a member\'s classroom-level role (platform admin or an active institution admin)' })
+  async setClassroomAdminRole(
+    @CurrentUser() authToken: AuthTokenPayload,
+    @Param('id') institutionId: string,
+    @Body() dto: SetClassroomAdminRoleDto,
+    @Req() req: Request,
+  ) {
+    return this.institutionService.setClassroomAdminRole(authToken.sub, institutionId, dto, req);
   }
 
   // ── Co-admin management (primary admin only, MFA re-challenge) ──────────

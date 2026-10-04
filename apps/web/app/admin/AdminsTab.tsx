@@ -11,10 +11,12 @@ import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { MfaChallengeModal } from '@/components/MfaChallengeModal';
 import styles from './AdminsTab.module.css';
 import tabStyles from './Tab.module.css';
+import { safeRelativeTime } from '@/lib/format';
 
 interface AdminsTabProps {
   institutionId: string;
@@ -41,13 +43,29 @@ export function AdminsTab({ institutionId }: AdminsTabProps) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
 
+  // TASKS_11 TASK 05 — classroom-level admins (membership.role='admin'),
+  // distinct from the institution-level roster above.
+  const [classroomAdmins, setClassroomAdmins] = useState<api.ClassroomAdminRow[]>([]);
+  const [demoting, setDemoting] = useState<string | null>(null);
+
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const [promoteClassrooms, setPromoteClassrooms] = useState<api.AdminClassroomEntry[]>([]);
+  const [promoteClassroomId, setPromoteClassroomId] = useState('');
+  const [promoteMembers, setPromoteMembers] = useState<api.ClassroomMember[]>([]);
+  const [promoteUserId, setPromoteUserId] = useState('');
+  const [promoting, setPromoting] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getAdmins(institutionId);
+      const [data, classroomAdminRows] = await Promise.all([
+        api.getAdmins(institutionId),
+        api.getClassroomAdmins(institutionId),
+      ]);
       setAdmins(data.admins);
       setPendingInvites(data.pendingInvites);
+      setClassroomAdmins(classroomAdminRows);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -58,6 +76,62 @@ export function AdminsTab({ institutionId }: AdminsTabProps) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleOpenPromote = async () => {
+    setPromoteOpen(true);
+    setPromoteClassroomId('');
+    setPromoteUserId('');
+    setPromoteMembers([]);
+    try {
+      const yearGroups = await api.getClassrooms(institutionId);
+      setPromoteClassrooms(yearGroups.flatMap((g) => g.classrooms));
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    }
+  };
+
+  const handleSelectPromoteClassroom = async (classroomId: string) => {
+    setPromoteClassroomId(classroomId);
+    setPromoteUserId('');
+    if (!classroomId) {
+      setPromoteMembers([]);
+      return;
+    }
+    try {
+      const members = await api.getMembers(classroomId);
+      setPromoteMembers(members.filter((m) => m.role !== 'admin'));
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    }
+  };
+
+  const handlePromote = async () => {
+    if (!promoteClassroomId || !promoteUserId) return;
+    setPromoting(true);
+    try {
+      await api.setClassroomAdminRole(institutionId, promoteUserId, promoteClassroomId, 'promote');
+      showToast(t('classroomAdmins.promotedToast'), 'success');
+      setPromoteOpen(false);
+      load();
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setPromoting(false);
+    }
+  };
+
+  const handleDemote = async (row: api.ClassroomAdminRow) => {
+    setDemoting(`${row.userId}:${row.classroomId}`);
+    try {
+      await api.setClassroomAdminRole(institutionId, row.userId, row.classroomId, 'demote');
+      showToast(t('classroomAdmins.demotedToast'), 'success');
+      setClassroomAdmins((prev) => prev.filter((a) => !(a.userId === row.userId && a.classroomId === row.classroomId)));
+    } catch (err) {
+      showToast(getErrorMessage(err), 'error');
+    } finally {
+      setDemoting(null);
+    }
+  };
 
   const usedSlots = admins.length + pendingInvites.length;
 
@@ -123,9 +197,8 @@ export function AdminsTab({ institutionId }: AdminsTabProps) {
           <Avatar avatarUrl={admin.profile?.avatar_url} fullName={admin.profile?.full_name ?? t('unknownAdmin')} size="md" />
           <span className={styles.rowText}>
             <span className={styles.rowName}>{admin.profile?.full_name ?? t('unknownAdmin')}</span>
-            {/* Admin rows carry no email — institution.service.ts's listAdmins()
-                doesn't select profiles.email, only pending invites have one. */}
             <span className={styles.rowMeta}>
+              {admin.profile?.email ? `${admin.profile.email} · ` : ''}
               {admin.is_primary_admin ? t('primaryBadge') : t('coAdminBadge')}
             </span>
           </span>
@@ -190,6 +263,78 @@ export function AdminsTab({ institutionId }: AdminsTabProps) {
         </Button>
       ) : (
         <p className={styles.slotsFullHint}>{t('slotsFullHint')}</p>
+      )}
+
+      {/* TASKS_11 TASK 05 — classroom-level admins, distinct from the institution-level roster above. */}
+      <div className={tabStyles.sectionHeader}>
+        <span className={tabStyles.sectionLabel}>{t('classroomAdmins.title')}</span>
+      </div>
+      {classroomAdmins.length === 0 ? (
+        <p className={styles.slotLabel}>{t('classroomAdmins.empty')}</p>
+      ) : (
+        classroomAdmins.map((row) => {
+          const key = `${row.userId}:${row.classroomId}`;
+          return (
+            <div key={key} className={styles.row}>
+              <Avatar avatarUrl={row.profile?.avatar_url} fullName={row.profile?.full_name ?? t('unknownAdmin')} size="md" />
+              <span className={styles.rowText}>
+                <span className={styles.rowName}>{row.profile?.full_name ?? t('unknownAdmin')}</span>
+                <span className={styles.rowMeta}>
+                  {row.classroom?.name ?? row.classroomId} · {t('classroomAdmins.since', { time: safeRelativeTime(row.since) })}
+                </span>
+              </span>
+              <Button variant="secondary" size="sm" loading={demoting === key} onClick={() => handleDemote(row)}>
+                {t('classroomAdmins.demoteAction')}
+              </Button>
+            </div>
+          );
+        })
+      )}
+      <Button variant="secondary" size="md" fullWidth onClick={handleOpenPromote}>
+        {t('classroomAdmins.promoteCta')}
+      </Button>
+
+      {promoteOpen && (
+        <Modal title={t('classroomAdmins.promoteModal.title')} onClose={() => setPromoteOpen(false)}>
+          <Select
+            label={t('classroomAdmins.promoteModal.classroomLabel')}
+            value={promoteClassroomId}
+            onChange={(e) => handleSelectPromoteClassroom(e.target.value)}
+          >
+            <option value="">{t('classroomAdmins.promoteModal.classroomPlaceholder')}</option>
+            {promoteClassrooms.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </Select>
+
+          {promoteClassroomId && (
+            <Select
+              label={t('classroomAdmins.promoteModal.memberLabel')}
+              value={promoteUserId}
+              onChange={(e) => setPromoteUserId(e.target.value)}
+            >
+              <option value="">{t('classroomAdmins.promoteModal.memberPlaceholder')}</option>
+              {promoteMembers.map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {m.fullName ?? t('unknownAdmin')}
+                </option>
+              ))}
+            </Select>
+          )}
+
+          <Button
+            variant="primary"
+            size="md"
+            fullWidth
+            loading={promoting}
+            disabled={!promoteClassroomId || !promoteUserId}
+            onClick={handlePromote}
+          >
+            {t('classroomAdmins.promoteModal.confirm')}
+          </Button>
+        </Modal>
       )}
 
       {inviteOpen && (

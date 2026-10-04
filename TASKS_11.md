@@ -512,7 +512,7 @@ Push.
 
 ---
 
-## TASK 05 — Institution admin — admin role management [PENDING]
+## TASK 05 — Institution admin — admin role management [DONE] — Institution-level admin roster (list/invite/remove) already existed on AdminsTab (now also shows email). Added the missing "classroom admins" half: GET/PATCH /institution/:id/classroom-admins (list role=admin across all of the institution's classrooms; promote/demote), as a self-contained sibling to MembershipService.changeRole() rather than modifying that method's existing single-classroom scope. Demote's "revert to original role" uses the same active-teacher-persona check TASKS_10 TASK 03 established for classroom creation, since verification_method doesn't actually encode a prior role. Promote flow: pick classroom → pick non-admin member from it → confirm (institution-wide member search comes in TASK 09, not built yet).
 
 Institution admin can assign and revoke classroom-level
 admin roles for members within their institution.

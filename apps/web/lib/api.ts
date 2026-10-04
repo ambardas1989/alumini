@@ -510,10 +510,8 @@ export function claimInstitution(institutionId: string, justification?: string):
 
 /**
  * Matches InstitutionService.listAdmins()'s real shape exactly — the
- * earlier flat-array typing here was wrong. Note admin rows carry no
- * email (the backend's own select doesn't fetch profiles.email for
- * them) — only pending invites have one, from institution_admin_invites
- * itself. Screens showing admin rows work around this.
+ * earlier flat-array typing here was wrong. profile.email was added in
+ * TASKS_11 TASK 05 (previously only pending invites carried an email).
  */
 export interface InstitutionAdminRow {
   id: string;
@@ -521,7 +519,7 @@ export interface InstitutionAdminRow {
   status: 'active' | 'pending_approval';
   is_primary_admin: boolean;
   created_at: string;
-  profile: { id: string; full_name: string; avatar_url: string | null } | null;
+  profile: { id: string; full_name: string; avatar_url: string | null; email: string } | null;
 }
 
 export interface InstitutionAdminInvite {
@@ -545,6 +543,31 @@ export function inviteAdmin(institutionId: string, email: string): Promise<void>
 /** RemoveAdminDto requires a `reason` (audit trail) — added as a required 3rd param, the endpoint 400s without it. */
 export function removeAdmin(institutionId: string, userId: string, reason: string): Promise<void> {
   return request(`/institution/${institutionId}/admins/${userId}`, { method: 'DELETE', body: { reason } });
+}
+
+// ── CLASSROOM-LEVEL ADMINS (TASKS_11 TASK 05) ─────────────────────────────
+// Distinct from InstitutionAdminRow above (institution-level personas) —
+// these are memberships.role='admin' across the institution's classrooms.
+
+export interface ClassroomAdminRow {
+  userId: string;
+  classroomId: string;
+  classroom: { id: string; global_id: string; name: string } | null;
+  since: string;
+  profile: { id: string; full_name: string; avatar_url: string | null } | null;
+}
+
+export function getClassroomAdmins(institutionId: string): Promise<ClassroomAdminRow[]> {
+  return request(`/institution/${institutionId}/classroom-admins`);
+}
+
+export function setClassroomAdminRole(
+  institutionId: string,
+  userId: string,
+  classroomId: string,
+  action: 'promote' | 'demote',
+): Promise<unknown> {
+  return request(`/institution/${institutionId}/classroom-admins`, { method: 'PATCH', body: { userId, classroomId, action } });
 }
 
 // ── INSTITUTION ADMIN ACCESS (TASKS_11 TASK 01) ───────────────────────────
