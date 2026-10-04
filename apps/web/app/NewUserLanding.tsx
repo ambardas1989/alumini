@@ -175,6 +175,7 @@ export function NewUserLanding({ variant, firstName, onJoined }: NewUserLandingP
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
+          className={styles.searchInput}
         />
 
         {searching && (
@@ -325,18 +326,32 @@ export function NewUserLanding({ variant, firstName, onJoined }: NewUserLandingP
       <div className={styles.actionGrid}>
         {variant === 'admin' ? (
           <>
-            <ActionCard icon={<BuildingIcon />} title={t('admin.actions.find.title')} description={t('admin.actions.find.description')} onClick={() => document.querySelector('input')?.focus()} />
-            <ActionCard icon={<SendIcon />} title={t('admin.actions.request.title')} description={t('admin.actions.request.description')} onClick={() => setShowRequestForm(true)} />
+            <ActionCard
+              variant="primary"
+              icon={<BuildingIcon size={48} />}
+              title={t('admin.actions.find.title')}
+              description={t('admin.actions.find.description')}
+              onClick={() => document.querySelector('input')?.focus()}
+            />
+            <ActionCard
+              variant="secondary"
+              icon={<SendIcon />}
+              title={t('admin.actions.request.title')}
+              description={t('admin.actions.request.description')}
+              onClick={() => setShowRequestForm(true)}
+            />
           </>
         ) : (
           <>
             <ActionCard
-              icon={<SchoolIcon />}
+              variant="primary"
+              icon={<SchoolIcon size={48} />}
               title={t(`${variant}.actions.join.title`)}
               description={t(`${variant}.actions.join.description`)}
               onClick={() => document.querySelector('input')?.focus()}
             />
             <ActionCard
+              variant="secondary"
               icon={<PlusIcon />}
               title={t(`${variant}.actions.create.title`)}
               description={t(`${variant}.actions.create.description`)}
@@ -367,70 +382,86 @@ export function NewUserLanding({ variant, firstName, onJoined }: NewUserLandingP
 // convention (see AuthLayout.tsx's own ICON_PROPS comment) rather than
 // pulling in an icon-font package that isn't installed anywhere here. ──
 
-const ICON_PROPS = {
-  width: 24,
-  height: 24,
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 2,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-};
+function iconProps(size: number) {
+  return {
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+}
 
-function SchoolIcon() {
+function SchoolIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg {...ICON_PROPS}>
+    <svg {...iconProps(size)}>
       <path d="M12 3 2 8l10 5 10-5-10-5Z" />
       <path d="M6 10.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-5.5" />
     </svg>
   );
 }
 
-function PlusIcon() {
+function PlusIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg {...ICON_PROPS}>
+    <svg {...iconProps(size)}>
       <path d="M12 5v14M5 12h14" />
     </svg>
   );
 }
 
-function BuildingIcon() {
+function BuildingIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg {...ICON_PROPS}>
+    <svg {...iconProps(size)}>
       <rect x="4" y="2" width="16" height="20" rx="1" />
       <path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01" />
     </svg>
   );
 }
 
-function SendIcon() {
+function SendIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg {...ICON_PROPS}>
+    <svg {...iconProps(size)}>
       <path d="m22 2-7 20-4-9-9-4 20-7Z" />
       <path d="M22 2 11 13" />
     </svg>
   );
 }
 
+/**
+ * TASKS_10 TASK 10 — purely visual hierarchy: `variant="primary"` is the
+ * large, brand-colored, full-width card (Find your batch / Find your
+ * institution); `variant="secondary"` is the smaller outlined card below
+ * it (Create a classroom / Request institution). No onClick/logic change.
+ */
 function ActionCard({
   icon,
   title,
   description,
   onClick,
+  variant = 'secondary',
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   onClick: () => void;
+  variant?: 'primary' | 'secondary';
 }) {
+  const isPrimary = variant === 'primary';
   return (
-    <button type="button" className={styles.actionCard} onClick={onClick}>
-      <span className={styles.actionIcon} aria-hidden="true">
+    <button
+      type="button"
+      className={`${styles.actionCard} ${isPrimary ? styles.actionCardPrimary : styles.actionCardSecondary}`}
+      onClick={onClick}
+    >
+      <span className={isPrimary ? styles.actionIconPrimary : styles.actionIcon} aria-hidden="true">
         {icon}
       </span>
-      <span className={styles.actionTitle}>{title}</span>
-      <span className={styles.actionDescription}>{description}</span>
+      <span className={isPrimary ? styles.actionTitlePrimary : styles.actionTitle}>{title}</span>
+      <span className={isPrimary ? styles.actionDescriptionPrimary : styles.actionDescription}>{description}</span>
+      {isPrimary && <span className={styles.actionCta}>→</span>}
     </button>
   );
 }

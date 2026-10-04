@@ -442,7 +442,7 @@ Push.
 
 ---
 
-## TASK 10 — UI: Find your batch and Create classroom landing [PENDING]
+## TASK 10 — UI: Find your batch and Create classroom landing [DONE] — NewUserLanding.tsx's actionGrid was a 2-column grid of two visually-identical cards. Restacked into a column; "Find your batch"/"Find your institution" is now a large primary-colored full-width card (48px icon, 16px bold heading, 12px subtitle, CTA arrow), "Create a classroom"/"Request institution" stays a smaller outlined secondary card. Search input's card got a primary-tinted border + 16px radius and a larger font-size via a new className passthrough on Input. No onClick/logic changed.
 
 The new user landing screen (TASK 01 from TASKS_09, currently
 deferred) has a "Find your batch" and "Create a classroom"
@@ -490,13 +490,24 @@ Push.
 
 ## COMPLETION SUMMARY
 
-(Claude Code fills this in when all tasks are [DONE])
-
-Date completed:
-Tasks completed:
-Tests passing:
-Build status:
-Notes:
+Date completed: 2026-10-04
+Tasks completed: 10/10 (TASK 01 through TASK 10, all [DONE])
+Tests passing: yes — full workspace suite (backend + utils) green after every task
+Build status: yes — `next build` green after every frontend-touching task (03, 05–10)
+Notes: Several tasks (02, 04) described bugs that no longer reproduced in the
+current code — each was independently audited (service guard, read-side
+switch, frontend gating, RLS policies) and found already correct, most
+likely fixed in an earlier TASKS_08/09 session. Rather than skip those,
+applied the task's literal requested changes anyway as explicit
+defense-in-depth / intentional policy tightening, and documented the audit
+findings in both TASKS_10.md's own per-task notes and fileUpdates.md
+(UPDATE 12) so a future session doesn't re-investigate from scratch. TASK 05's
+real bug turned out to be one level removed from where the task description
+pointed (ThreadView.tsx, not the Message button itself) — found by tracing
+the actual call chain rather than only the named component. TASK 06 used a
+simpler, more correct fix (exact match on the classrooms.grade/section
+columns, which already existed) than the task's suggested ILIKE-on-name
+fallback.
 
 ---
 

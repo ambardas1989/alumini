@@ -22,14 +22,20 @@
   margin-block-start: 2px;
 }
 
+/* TASKS_10 TASK 10 — more prominent card (rounded 16px, primary-tinted border) around the already-autoFocused search input, per the task's "make it prominent" instruction. */
 .searchCard {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 14px;
+  border: 1.5px solid var(--color-primary-light);
+  border-radius: 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.searchInput {
+  font-size: 15px;
+  padding-block: 12px;
 }
 
 .searchStatus {
@@ -149,26 +155,50 @@
   padding-block: 8px;
 }
 
+/* TASKS_10 TASK 10 — stacked (not side-by-side) so the primary action can
+   be a large, full-width card with the secondary one visually smaller
+   below it, per the task's requested hierarchy. Purely visual — no
+   onClick/logic change. */
 .actionGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .actionCard {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 14px 12px;
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
+  text-align: start;
+  width: 100%;
+}
+
+.actionCardPrimary {
+  background: var(--color-primary);
+  border: none;
+  padding: 24px 20px;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.actionCardSecondary {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  padding: 14px 12px;
   align-items: flex-start;
   gap: 6px;
-  text-align: start;
 }
 
 .actionIcon {
   color: var(--color-primary);
+}
+
+.actionIconPrimary {
+  color: #fff;
+  margin-block-end: 4px;
 }
 
 .actionTitle {
@@ -177,9 +207,30 @@
   color: var(--color-text-primary);
 }
 
+.actionTitlePrimary {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+}
+
 .actionDescription {
   font-size: 11px;
   color: var(--color-text-muted);
+}
+
+.actionDescriptionPrimary {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.actionCta {
+  position: absolute;
+  inset-inline-end: 16px;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .howItWorks {
