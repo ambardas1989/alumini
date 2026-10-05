@@ -20,11 +20,34 @@ CREATE TABLE IF NOT EXISTS public.institution_subscriptions (
   trial_ends_at timestamptz,
   current_period_start timestamptz,
   current_period_end timestamptz,
-  max_classrooms integer DEFAULT 5,
-  max_members_per_classroom integer DEFAULT 100,
+  max_classrooms integer DEFAULT NULL,
+  max_members_per_classroom integer DEFAULT NULL,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
 
 COMMENT ON TABLE public.institution_subscriptions IS
   'One row per institution, created on first GET if missing. plan=free/status=inactive is the implicit default for an institution with no row yet — InstitutionService.getSubscription() returns that shape without needing to pre-create a row for every institution.';
+
+ALTER TABLE public.institution_subscriptions
+ENABLE ROW LEVEL SECURITY;
+
+-- NOTE: p.type stores lowercase values per personas' own CHECK constraint
+-- (001_initial_schema.sql: CHECK (type IN ('alumni', 'teacher',
+-- 'school_admin'))) — 'school_admin', not 'SCHOOL_ADMIN'.
+CREATE POLICY "institution_subscriptions_admin"
+ON public.institution_subscriptions FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM public.personas p
+    WHERE p.user_id = auth.uid()
+    AND p.institution_id = institution_subscriptions.institution_id
+    AND p.type = 'school_admin'
+    AND p.status = 'active'
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND is_platform_admin = true
+  )
+);

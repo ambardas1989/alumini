@@ -299,6 +299,15 @@ Not yet applied in Supabase. Run manually — full CREATE TABLE in that
 file, one row per institution, created lazily on first PATCH (not
 pre-seeded for every institution).
 
+Post-TASK-11 correction: max_classrooms/max_members_per_classroom now
+default to NULL (were 5/100) — InstitutionService.getSubscription()'s own
+application-level DEFAULT_SUBSCRIPTION fallback is the sole source of
+truth for those defaults when no row exists; the DB no longer also
+defines them. RLS enabled (service-role backend calls bypass it as usual;
+this is defense-in-depth for any future direct client access) — admin
+access via an active school_admin persona for that institution OR a
+platform admin.
+
 ---
 
 ## UPDATE 16 — institution_codes.is_active (TASKS_11 TASK 06)
@@ -334,6 +343,11 @@ File: supabase/migrations/036_institution_announcements.sql
 
 Not yet applied in Supabase. Run manually — full CREATE TABLE in that
 file.
+
+Post-TASK-11 correction: added an index on institution_id (every query
+InstitutionService.listAnnouncements()/sendAnnouncement() runs filters by
+it) and enabled RLS — admin access via an active school_admin persona for
+that institution OR a platform admin, same policy shape as UPDATE 15.
 
 ---
 

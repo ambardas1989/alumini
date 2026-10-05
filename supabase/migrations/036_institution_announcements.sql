@@ -20,3 +20,29 @@ CREATE TABLE IF NOT EXISTS public.institution_announcements (
 
 COMMENT ON TABLE public.institution_announcements IS
   'Read-only after send — no edit route exists. Delivery is via NotificationService.sendInApp()/sendPush() per recipient (institution.announcement.sent event), not a separate feed_item table — this schema has none (see notification.service.ts''s own module comment).';
+
+CREATE INDEX IF NOT EXISTS institution_announcements_institution_idx
+ON public.institution_announcements(institution_id);
+
+ALTER TABLE public.institution_announcements
+ENABLE ROW LEVEL SECURITY;
+
+-- NOTE: p.type stores lowercase values per personas' own CHECK constraint
+-- (001_initial_schema.sql: CHECK (type IN ('alumni', 'teacher',
+-- 'school_admin'))) — 'school_admin', not 'SCHOOL_ADMIN'.
+CREATE POLICY "institution_announcements_admin"
+ON public.institution_announcements FOR ALL
+USING (
+  EXISTS (
+    SELECT 1 FROM public.personas p
+    WHERE p.user_id = auth.uid()
+    AND p.institution_id = institution_announcements.institution_id
+    AND p.type = 'school_admin'
+    AND p.status = 'active'
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid()
+    AND is_platform_admin = true
+  )
+);
